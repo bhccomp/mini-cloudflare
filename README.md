@@ -1,68 +1,82 @@
 # FirePhage WAF SaaS
 
-Security-first multi-tenant WAF/CDN dashboard built with Laravel + Filament.
+Proxy-based WAF/CDN security SaaS (not customer-AWS automation).
 
-## Panels (Fully Isolated)
-- `Admin Panel`: `/admin`
-  - Super admins/internal operators only
-  - Users, organizations, global sites, plans, audit logs, system settings
-  - Monitoring and billing overview pages are currently placeholders: **Coming soon**
-- `User Panel`: `/app`
-  - Customer users only
-  - Their own sites, alert rules/channels/events, billing and organization settings
-  - Billing and analytics details currently placeholders: **Coming soon**
+Traffic model:
+- Customer domain -> CloudFront (our AWS account, WAF attached) -> Customer origin
 
-## MVP Domain Model
-- `organizations`, `organization_user`, `sites`
-- `alert_rules`, `alert_channels`, `alert_events`, `site_events`
-- `audit_logs`
-- `plans`, `organization_subscriptions`, `system_settings`
+## Panels
+- Admin panel: `/admin`
+  - Internal operators only (`is_super_admin = true`)
+  - Organizations, users, all sites, audit logs, plans, system settings
+  - Retry/override provisioning actions
+- User panel: `/app`
+  - Customer users with organization membership
+  - Sites provisioning flow, alert resources, billing/settings placeholders
 
-## Provisioning Jobs (Queue)
-- `ProvisionCloudFrontJob`
-- `ProvisionWafJob`
+## MVP Provisioning Flow
+1. Create site (`display_name`, domain, origin)
+2. Click `Provision`
+   - ACM cert requested in `us-east-1`
+   - ACM DNS validation records stored in `required_dns_records`
+   - status -> `pending_dns`
+3. Click `Check DNS`
+   - server-side DNS check (`dig` + fallback lookup)
+   - on success: create WAF + CloudFront, persist IDs
+   - add traffic DNS target records (domain -> `*.cloudfront.net`)
+   - status -> `active`
+
+Actions:
+- Under Attack Mode (WAF stricter rate limit)
+- Purge Cache (CloudFront invalidation)
+
+## Guardrails
+- Domain validation (`ApexDomainRule`)
+- SSRF protection for origin URL (`SafeOriginUrlRule`)
+- Rate-limited sensitive site actions
+- Idempotent queue jobs with audit entries
+
+## Main Jobs
+- `StartSiteProvisioningJob`
+- `CheckSiteDnsAndFinalizeProvisioningJob`
 - `ToggleUnderAttackModeJob`
 - `InvalidateCacheJob`
 
-All provisioning is asynchronous and audit-logged.
+## AWS Integration Service
+- `App\Services\Aws\AwsEdgeService`
+- Uses AWS SDK clients for:
+  - ACM
+  - CloudFront
+  - WAFV2
+- Safe mode default: `AWS_EDGE_DRY_RUN=true`
 
-## AWS/Stripe Config
-Set in `.env`:
+## Required Env
 - `AWS_EDGE_ACCESS_KEY_ID`
 - `AWS_EDGE_SECRET_ACCESS_KEY`
-- `AWS_EDGE_REGION`
+- `AWS_EDGE_REGION=us-east-1`
 - `AWS_EDGE_DRY_RUN=true|false`
-- `STRIPE_SECRET`
-- `STRIPE_WEBHOOK_SECRET`
-- `STRIPE_PRICE_BASIC_MONTHLY`
-- `STRIPE_PRICE_PRO_MONTHLY`
-- `STRIPE_PRICE_BUSINESS_MONTHLY`
+- `AWS_EDGE_MANAGE_DNS=false` (MVP default)
+- Stripe keys (for billing work):
+  - `STRIPE_SECRET`
+  - `STRIPE_WEBHOOK_SECRET`
+  - `STRIPE_PRICE_BASIC_MONTHLY`
+  - `STRIPE_PRICE_PRO_MONTHLY`
+  - `STRIPE_PRICE_BUSINESS_MONTHLY`
 
-`AWS_EDGE_DRY_RUN=true` is the default-safe mode for MVP scaffolding.
+## Local / CI checks
+- `php artisan migrate --force`
+- `php artisan test`
+- `php artisan optimize`
 
-## Local Dev
-1. `composer install`
-2. `cp .env.example .env && php artisan key:generate`
-3. Configure DB/Redis in `.env`
-4. `php artisan migrate`
-5. `pnpm install && pnpm build`
-6. `php artisan serve`
-7. `php artisan queue:work`
+## Production deployment
+1. `git pull`
+2. `composer install --no-dev --optimize-autoloader`
+3. `pnpm install && pnpm build`
+4. `php artisan migrate --force`
+5. `php artisan optimize`
+6. `supervisorctl restart firephage-queue:*`
+7. `systemctl reload nginx`
 
-## Production Ops
-1. Pull and install:
-   - `git pull`
-   - `composer install --no-dev --optimize-autoloader`
-   - `pnpm install && pnpm build`
-2. Run schema/app caches:
-   - `php artisan migrate --force`
-   - `php artisan optimize`
-3. Restart workers/services:
-   - `supervisorctl restart firephage-queue:*`
-   - `systemctl reload nginx`
-
-## Security Notes
-- Admin and user data access are separated by panel and scoped queries/policies.
-- Sensitive site actions are rate-limited in UI actions.
-- Origin URL validation blocks local/private targets.
-- No secrets are stored in git.
+## Notes
+- Keep secrets in `.env` only, never in git.
+- `required_dns_records` stores customer-facing DNS steps for ACM validation and traffic cutover.
