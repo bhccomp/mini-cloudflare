@@ -11,8 +11,14 @@ class ApexDomainRule implements ValidationRule
     {
         $domain = strtolower(trim((string) $value));
 
+        if ($domain === '' || str_starts_with($domain, '*.') || str_contains($domain, '/')) {
+            $fail('Provide a valid domain without wildcards or paths.');
+
+            return;
+        }
+
         if (! preg_match('/^(?=.{3,253}$)(?!-)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/', $domain)) {
-            $fail('Provide a valid apex domain (e.g. example.com).');
+            $fail('Provide a valid domain (example.com).');
 
             return;
         }

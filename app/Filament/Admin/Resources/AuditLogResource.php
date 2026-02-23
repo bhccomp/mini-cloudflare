@@ -27,6 +27,7 @@ class AuditLogResource extends Resource
             ->defaultSort('created_at', 'desc')
             ->columns([
                 Tables\Columns\TextColumn::make('created_at')->dateTime()->sortable(),
+                Tables\Columns\TextColumn::make('actor.email')->label('Actor')->toggleable(),
                 Tables\Columns\TextColumn::make('organization.name')->label('Organization')->toggleable(),
                 Tables\Columns\TextColumn::make('site.apex_domain')->label('Site')->toggleable(),
                 Tables\Columns\TextColumn::make('action')->searchable(),

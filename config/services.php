@@ -27,6 +27,7 @@ return [
         'secret_access_key' => env('AWS_EDGE_SECRET_ACCESS_KEY'),
         'region' => env('AWS_EDGE_REGION', env('AWS_DEFAULT_REGION', 'us-east-1')),
         'dry_run' => env('AWS_EDGE_DRY_RUN', true),
+        'manage_dns' => env('AWS_EDGE_MANAGE_DNS', false),
     ],
 
     'stripe' => [

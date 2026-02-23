@@ -31,21 +31,25 @@ class SafeOriginUrlRule implements ValidationRule
             return;
         }
 
-        if (! $host) {
-            $fail('Origin host is required.');
-
-            return;
-        }
-
-        if ($host === 'localhost' || str_ends_with($host, '.local')) {
+        if (! $host || $host === 'localhost' || str_ends_with($host, '.local')) {
             $fail('Local/private origins are not allowed.');
 
             return;
         }
 
+        $ips = [];
         if (filter_var($host, FILTER_VALIDATE_IP)) {
-            if (! filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
-                $fail('Private or reserved IP origins are not allowed.');
+            $ips[] = $host;
+        } else {
+            $resolved = gethostbynamel($host) ?: [];
+            $ips = array_merge($ips, $resolved);
+        }
+
+        foreach (array_unique($ips) as $ip) {
+            if (! filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+                $fail('Origin resolves to private or reserved IP ranges; this is blocked.');
+
+                return;
             }
         }
     }
