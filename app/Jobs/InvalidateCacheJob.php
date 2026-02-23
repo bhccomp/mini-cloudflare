@@ -15,7 +15,7 @@ class InvalidateCacheJob implements ShouldQueue
     public function __construct(
         public int $siteId,
         public array $paths = ['/*'],
-        public ?int $triggeredByUserId = null,
+        public ?int $actorId = null,
     ) {
         $this->onQueue('default');
     }
@@ -29,11 +29,11 @@ class InvalidateCacheJob implements ShouldQueue
         AuditLog::create([
             'organization_id' => $site->organization_id,
             'site_id' => $site->id,
-            'user_id' => $this->triggeredByUserId,
+            'actor_id' => $this->actorId,
             'action' => 'cloudfront.invalidate',
             'status' => ($result['changed'] ?? false) ? 'success' : 'info',
             'message' => $result['message'] ?? 'Cache invalidation requested.',
-            'context' => $result,
+            'meta' => $result,
         ]);
     }
 }

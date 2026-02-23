@@ -15,7 +15,7 @@ class ToggleUnderAttackModeJob implements ShouldQueue
     public function __construct(
         public int $siteId,
         public bool $enabled,
-        public ?int $triggeredByUserId = null,
+        public ?int $actorId = null,
     ) {
         $this->onQueue('default');
     }
@@ -33,11 +33,11 @@ class ToggleUnderAttackModeJob implements ShouldQueue
         AuditLog::create([
             'organization_id' => $site->organization_id,
             'site_id' => $site->id,
-            'user_id' => $this->triggeredByUserId,
+            'actor_id' => $this->actorId,
             'action' => 'waf.under_attack_mode',
             'status' => 'success',
             'message' => $result['message'] ?? 'Under attack mode updated.',
-            'context' => ['enabled' => $this->enabled] + $result,
+            'meta' => ['enabled' => $this->enabled] + $result,
         ]);
     }
 }
