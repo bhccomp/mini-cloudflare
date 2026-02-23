@@ -9,6 +9,7 @@ use App\Models\Organization;
 use App\Models\Site;
 use App\Rules\ApexDomainRule;
 use App\Rules\SafeOriginUrlRule;
+use Filament\Actions;
 use Filament\Forms;
 use Filament\Forms\Components\Section;
 use Filament\Notifications\Notification;
@@ -75,7 +76,7 @@ class SiteResource extends Resource
                 Tables\Columns\TextColumn::make('updated_at')->since(),
             ])
             ->actions([
-                Tables\Actions\Action::make('retryProvisioning')
+                Actions\Action::make('retryProvisioning')
                     ->label('Retry Provisioning')
                     ->color('warning')
                     ->requiresConfirmation()
@@ -83,7 +84,7 @@ class SiteResource extends Resource
                         StartSiteProvisioningJob::dispatch($record->id, auth()->id());
                         Notification::make()->title('Provisioning retry queued')->success()->send();
                     }),
-                Tables\Actions\Action::make('forceCheckDns')
+                Actions\Action::make('forceCheckDns')
                     ->label('Check DNS + Finalize')
                     ->color('info')
                     ->requiresConfirmation()
@@ -91,7 +92,7 @@ class SiteResource extends Resource
                         CheckSiteDnsAndFinalizeProvisioningJob::dispatch($record->id, auth()->id());
                         Notification::make()->title('DNS finalize queued')->success()->send();
                     }),
-                Tables\Actions\EditAction::make(),
+                Actions\EditAction::make(),
             ]);
     }
 

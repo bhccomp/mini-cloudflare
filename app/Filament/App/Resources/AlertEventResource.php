@@ -4,6 +4,7 @@ namespace App\Filament\App\Resources;
 
 use App\Filament\App\Resources\AlertEventResource\Pages;
 use App\Models\AlertEvent;
+use Filament\Actions;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -39,7 +40,7 @@ class AlertEventResource extends Resource
                 Tables\Columns\TextColumn::make('payload')->label('Details')->formatStateUsing(fn () => 'Coming soon'),
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
+                Actions\ViewAction::make(),
             ]);
     }
 

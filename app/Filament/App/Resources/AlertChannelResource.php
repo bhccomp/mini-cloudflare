@@ -5,6 +5,7 @@ namespace App\Filament\App\Resources;
 use App\Filament\App\Resources\AlertChannelResource\Pages;
 use App\Models\AlertChannel;
 use App\Models\Site;
+use Filament\Actions;
 use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -54,7 +55,7 @@ class AlertChannelResource extends Resource
             Tables\Columns\TextColumn::make('site.apex_domain')->label('Site')->toggleable(),
             Tables\Columns\IconColumn::make('is_active')->boolean(),
         ])->actions([
-            Tables\Actions\EditAction::make(),
+            Actions\EditAction::make(),
         ]);
     }
 

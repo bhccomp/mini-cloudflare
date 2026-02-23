@@ -10,6 +10,7 @@ use App\Jobs\ToggleUnderAttackModeJob;
 use App\Models\Site;
 use App\Rules\ApexDomainRule;
 use App\Rules\SafeOriginUrlRule;
+use Filament\Actions;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
@@ -101,7 +102,7 @@ class SiteResource extends Resource
                 Tables\Columns\TextColumn::make('updated_at')->since(),
             ])
             ->actions([
-                Tables\Actions\Action::make('provision')
+                Actions\Action::make('provision')
                     ->label('Provision')
                     ->color('warning')
                     ->requiresConfirmation()
@@ -110,7 +111,7 @@ class SiteResource extends Resource
                         StartSiteProvisioningJob::dispatch($record->id, auth()->id());
                         Notification::make()->title('Provisioning started')->success()->send();
                     }),
-                Tables\Actions\Action::make('checkDns')
+                Actions\Action::make('checkDns')
                     ->label('Check DNS')
                     ->color('info')
                     ->visible(fn (Site $record): bool => in_array($record->status, ['pending_dns', 'provisioning'], true))
@@ -119,7 +120,7 @@ class SiteResource extends Resource
                         CheckSiteDnsAndFinalizeProvisioningJob::dispatch($record->id, auth()->id());
                         Notification::make()->title('DNS check queued')->success()->send();
                     }),
-                Tables\Actions\Action::make('underAttack')
+                Actions\Action::make('underAttack')
                     ->label(fn (Site $record): string => $record->under_attack_mode_enabled ? 'Disable Under Attack' : 'Enable Under Attack')
                     ->color('danger')
                     ->requiresConfirmation()
@@ -128,7 +129,7 @@ class SiteResource extends Resource
                         ToggleUnderAttackModeJob::dispatch($record->id, ! $record->under_attack_mode_enabled, auth()->id());
                         Notification::make()->title('Under-attack mode update queued')->success()->send();
                     }),
-                Tables\Actions\Action::make('purgeCache')
+                Actions\Action::make('purgeCache')
                     ->label('Purge Cache')
                     ->color('gray')
                     ->requiresConfirmation()
@@ -137,7 +138,7 @@ class SiteResource extends Resource
                         InvalidateCacheJob::dispatch($record->id, ['/*'], auth()->id());
                         Notification::make()->title('Cache purge queued')->success()->send();
                     }),
-                Tables\Actions\EditAction::make(),
+                Actions\EditAction::make(),
             ]);
     }
 

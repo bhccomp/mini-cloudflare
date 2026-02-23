@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources;
 
 use App\Filament\Admin\Resources\AuditLogResource\Pages;
 use App\Models\AuditLog;
+use Filament\Actions;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -35,7 +36,7 @@ class AuditLogResource extends Resource
                 Tables\Columns\TextColumn::make('message')->limit(80)->wrap(),
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
+                Actions\ViewAction::make(),
             ]);
     }
 

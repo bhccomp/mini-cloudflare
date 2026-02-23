@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources;
 
 use App\Filament\Admin\Resources\PlanResource\Pages;
 use App\Models\Plan;
+use Filament\Actions;
 use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -39,7 +40,7 @@ class PlanResource extends Resource
             Tables\Columns\TextColumn::make('monthly_price_cents')->money('USD', divideBy: 100),
             Tables\Columns\IconColumn::make('is_active')->boolean(),
         ])->actions([
-            Tables\Actions\EditAction::make(),
+            Actions\EditAction::make(),
         ]);
     }
 

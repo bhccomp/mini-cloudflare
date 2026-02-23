@@ -5,6 +5,7 @@ namespace App\Filament\App\Resources;
 use App\Filament\App\Resources\AlertRuleResource\Pages;
 use App\Models\AlertRule;
 use App\Models\Site;
+use Filament\Actions;
 use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -51,7 +52,7 @@ class AlertRuleResource extends Resource
             Tables\Columns\TextColumn::make('threshold'),
             Tables\Columns\IconColumn::make('is_active')->boolean(),
         ])->actions([
-            Tables\Actions\EditAction::make(),
+            Actions\EditAction::make(),
         ]);
     }
 

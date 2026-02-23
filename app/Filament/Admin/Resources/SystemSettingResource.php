@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources;
 
 use App\Filament\Admin\Resources\SystemSettingResource\Pages;
 use App\Models\SystemSetting;
+use Filament\Actions;
 use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -37,7 +38,7 @@ class SystemSettingResource extends Resource
                 Tables\Columns\TextColumn::make('updated_at')->since(),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                Actions\EditAction::make(),
             ]);
     }
 
