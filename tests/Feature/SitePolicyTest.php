@@ -26,17 +26,21 @@ class SitePolicyTest extends TestCase
         $siteA = Site::create([
             'organization_id' => $orgA->id,
             'name' => 'A',
+            'display_name' => 'A',
             'apex_domain' => 'example-a.com',
-            'environment' => 'prod',
-            'status' => 'active',
+            'origin_type' => 'url',
+            'origin_url' => 'https://origin-a.example.com',
+            'status' => 'draft',
         ]);
 
         $siteB = Site::create([
             'organization_id' => $orgB->id,
             'name' => 'B',
+            'display_name' => 'B',
             'apex_domain' => 'example-b.com',
-            'environment' => 'prod',
-            'status' => 'active',
+            'origin_type' => 'url',
+            'origin_url' => 'https://origin-b.example.com',
+            'status' => 'draft',
         ]);
 
         $this->assertTrue($policy->view($user, $siteA));

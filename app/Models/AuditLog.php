@@ -11,6 +11,7 @@ class AuditLog extends Model
     use HasFactory;
 
     protected $fillable = [
+        'actor_id',
         'organization_id',
         'site_id',
         'user_id',
@@ -18,13 +19,20 @@ class AuditLog extends Model
         'status',
         'message',
         'context',
+        'meta',
     ];
 
     protected function casts(): array
     {
         return [
             'context' => 'array',
+            'meta' => 'array',
         ];
+    }
+
+    public function actor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'actor_id');
     }
 
     public function organization(): BelongsTo

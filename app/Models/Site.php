@@ -14,28 +14,42 @@ class Site extends Model
     protected $fillable = [
         'organization_id',
         'name',
+        'display_name',
         'apex_domain',
-        'environment',
-        'status',
-        'notes',
+        'www_domain',
+        'origin_type',
         'origin_url',
-        'origin_ip',
-        'provisioning_status',
+        'origin_host',
+        'status',
+        'last_error',
+        'last_provisioned_at',
         'cloudfront_distribution_id',
         'cloudfront_domain_name',
         'waf_web_acl_arn',
+        'acm_certificate_arn',
+        'required_dns_records',
         'under_attack_mode_enabled',
-        'last_provisioned_at',
-        'last_provision_error',
-        'meta',
     ];
+
+    protected static function booted(): void
+    {
+        static::saving(function (Site $site): void {
+            if (! $site->display_name && $site->name) {
+                $site->display_name = $site->name;
+            }
+
+            if (! $site->name && $site->display_name) {
+                $site->name = $site->display_name;
+            }
+        });
+    }
 
     protected function casts(): array
     {
         return [
+            'required_dns_records' => 'array',
             'under_attack_mode_enabled' => 'boolean',
             'last_provisioned_at' => 'datetime',
-            'meta' => 'array',
         ];
     }
 
