@@ -1,34 +1,44 @@
 <x-filament-panels::page>
-    <div class="mx-auto w-full max-w-7xl space-y-6">
+    <div class="mx-auto w-full max-w-6xl space-y-6">
         @if (! $this->site)
             @include('filament.app.pages.protection.empty-state')
         @else
             <div class="grid gap-4 xl:grid-cols-3">
-                <x-filament::section icon="heroicon-o-globe-alt" heading="Edge Delivery" description="Distribution health and traffic routing controls." class="xl:col-span-2">
-                    <div class="grid gap-4 md:grid-cols-3">
-                        <div class="rounded-2xl border border-blue-200/40 bg-blue-500/10 p-4 dark:border-blue-700/40">
-                            <p class="text-xs uppercase tracking-wide text-gray-500">Status</p>
-                            <p class="mt-1 text-lg font-semibold">{{ $this->site->cloudfront_distribution_id ? 'Provisioned' : 'Not deployed' }}</p>
-                        </div>
-                        <div class="rounded-2xl border border-cyan-200/40 bg-cyan-500/10 p-4 dark:border-cyan-700/40">
-                            <p class="text-xs uppercase tracking-wide text-gray-500">Health</p>
-                            <p class="mt-1 text-lg font-semibold">{{ $this->distributionHealth() }}</p>
-                        </div>
-                        <div class="rounded-2xl border border-indigo-200/40 bg-indigo-500/10 p-4 dark:border-indigo-700/40">
-                            <p class="text-xs uppercase tracking-wide text-gray-500">Edge domain</p>
-                            <p class="mt-1 text-sm font-semibold break-all">{{ $this->site->cloudfront_domain_name ?: 'Not assigned yet' }}</p>
-                        </div>
-                    </div>
-                    <div class="mt-4 flex flex-wrap gap-2">
-                        <x-filament::button color="gray" wire:click="purgeCache">Purge cache</x-filament::button>
-                    </div>
-                </x-filament::section>
+                <div class="xl:col-span-2">
+                    <x-filament.app.settings.card
+                        title="CDN Settings"
+                        description="Distribution health and edge routing controls."
+                        icon="heroicon-o-globe-alt"
+                        :status="$this->site->cloudfront_distribution_id ? 'Connected' : 'Not deployed'"
+                        :status-color="$this->site->cloudfront_distribution_id ? 'success' : 'gray'"
+                    >
+                        <x-filament.app.settings.section title="Distribution" description="Current edge delivery state">
+                            <x-filament.app.settings.key-value-grid :rows="[
+                                ['label' => 'Status', 'value' => $this->site->cloudfront_distribution_id ? 'Provisioned' : 'Not deployed'],
+                                ['label' => 'Health', 'value' => $this->distributionHealth()],
+                                ['label' => 'Deployment', 'value' => $this->site->cloudfront_domain_name ?: 'Not assigned yet'],
+                                ['label' => 'Last action', 'value' => $this->lastAction('cloudfront.')],
+                            ]" />
 
-                <x-filament::section icon="heroicon-o-command-line" heading="Recent Action" description="Last CDN operation status.">
-                    <div class="rounded-xl border border-gray-200/70 bg-white/70 p-3 text-sm dark:border-gray-800 dark:bg-gray-900/60">
-                        {{ $this->lastAction('cloudfront.') }}
-                    </div>
-                </x-filament::section>
+                            <x-slot name="actions">
+                                <x-filament.app.settings.action-row>
+                                    <x-filament::button color="gray" wire:click="purgeCache">Purge cache</x-filament::button>
+                                </x-filament.app.settings.action-row>
+                            </x-slot>
+                        </x-filament.app.settings.section>
+                    </x-filament.app.settings.card>
+                </div>
+
+                <x-filament.app.settings.card
+                    title="Recent Action"
+                    description="Latest CDN operation"
+                    icon="heroicon-o-command-line"
+                >
+                    <x-filament.app.settings.key-value-grid :rows="[
+                        ['label' => 'Event', 'value' => $this->lastAction('cloudfront.')],
+                        ['label' => 'Propagation', 'value' => 'In progress / Coming soon'],
+                    ]" />
+                </x-filament.app.settings.card>
             </div>
         @endif
     </div>

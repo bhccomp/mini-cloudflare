@@ -1,36 +1,46 @@
 <x-filament-panels::page>
-    <div class="mx-auto w-full max-w-7xl space-y-6">
+    <div class="mx-auto w-full max-w-6xl space-y-6">
         @if (! $this->site)
             @include('filament.app.pages.protection.empty-state')
         @else
             <div class="grid gap-4 xl:grid-cols-3">
-                <x-filament::section icon="heroicon-o-shield-check" heading="Firewall Controls" description="Threat filtering and emergency hardening." class="xl:col-span-2">
-                    <div class="grid gap-4 md:grid-cols-3">
-                        <div class="rounded-2xl border border-rose-200/40 bg-rose-500/10 p-4 dark:border-rose-700/40">
-                            <p class="text-xs uppercase tracking-wide text-gray-500">Protection mode</p>
-                            <p class="mt-1 text-lg font-semibold">{{ $this->site->under_attack ? 'Under Attack' : 'Baseline' }}</p>
-                        </div>
-                        <div class="rounded-2xl border border-orange-200/40 bg-orange-500/10 p-4 dark:border-orange-700/40">
-                            <p class="text-xs uppercase tracking-wide text-gray-500">WAF status</p>
-                            <p class="mt-1 text-lg font-semibold">{{ $this->site->waf_web_acl_arn ? 'Active' : 'Pending setup' }}</p>
-                        </div>
-                        <div class="rounded-2xl border border-amber-200/40 bg-amber-500/10 p-4 dark:border-amber-700/40">
-                            <p class="text-xs uppercase tracking-wide text-gray-500">Blocked requests (24h)</p>
-                            <p class="mt-1 text-lg font-semibold">{{ $this->metricBlockedRequests() }}</p>
-                        </div>
-                    </div>
-                    <div class="mt-4 flex flex-wrap gap-2">
-                        <x-filament::button color="danger" wire:click="toggleUnderAttack">
-                            {{ $this->site->under_attack ? 'Disable Under Attack Mode' : 'Enable Under Attack Mode' }}
-                        </x-filament::button>
-                    </div>
-                </x-filament::section>
+                <div class="xl:col-span-2">
+                    <x-filament.app.settings.card
+                        title="Firewall Settings"
+                        description="Control threat filtering and emergency hardening."
+                        icon="heroicon-o-shield-check"
+                        :status="$this->site->under_attack ? 'Under Attack Mode' : 'Baseline Protection'"
+                        :status-color="$this->site->under_attack ? 'danger' : 'success'"
+                    >
+                        <x-filament.app.settings.section title="Protection Posture" description="Current firewall operating mode">
+                            <x-filament.app.settings.key-value-grid :rows="[
+                                ['label' => 'Status', 'value' => $this->site->waf_web_acl_arn ? 'Active' : 'Pending setup'],
+                                ['label' => 'Health', 'value' => $this->site->under_attack ? 'Hardened' : 'Healthy'],
+                                ['label' => 'Deployment', 'value' => $this->metricBlockedRequests() . ' blocked / 24h'],
+                                ['label' => 'Last action', 'value' => $this->lastAction('waf.')],
+                            ]" />
 
-                <x-filament::section icon="heroicon-o-clock" heading="Recent Action" description="Last firewall operation status.">
-                    <div class="rounded-xl border border-gray-200/70 bg-white/70 p-3 text-sm dark:border-gray-800 dark:bg-gray-900/60">
-                        {{ $this->lastAction('waf.') }}
-                    </div>
-                </x-filament::section>
+                            <x-slot name="actions">
+                                <x-filament.app.settings.action-row>
+                                    <x-filament::button color="danger" wire:click="toggleUnderAttack">
+                                        {{ $this->site->under_attack ? 'Disable Under Attack Mode' : 'Enable Under Attack Mode' }}
+                                    </x-filament::button>
+                                </x-filament.app.settings.action-row>
+                            </x-slot>
+                        </x-filament.app.settings.section>
+                    </x-filament.app.settings.card>
+                </div>
+
+                <x-filament.app.settings.card
+                    title="Recent Action"
+                    description="Latest firewall operation"
+                    icon="heroicon-o-clock"
+                >
+                    <x-filament.app.settings.key-value-grid :rows="[
+                        ['label' => 'Event', 'value' => $this->lastAction('waf.')],
+                        ['label' => 'Rule updates', 'value' => 'Coming soon'],
+                    ]" />
+                </x-filament.app.settings.card>
             </div>
         @endif
     </div>

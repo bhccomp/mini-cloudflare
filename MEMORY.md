@@ -249,3 +249,29 @@
   - `./vendor/bin/pint` passed
   - `php artisan test` passed
   - `php artisan optimize` passed
+
+## Settings Layout System Refactor (Latest)
+- Added reusable anonymous Blade components for app settings UI:
+  - `resources/views/components/filament/app/settings/card.blade.php`
+  - `resources/views/components/filament/app/settings/section.blade.php`
+  - `resources/views/components/filament/app/settings/key-value-grid.blade.php`
+  - `resources/views/components/filament/app/settings/action-row.blade.php`
+  - `resources/views/components/filament/app/settings/status-pill.blade.php`
+- Refactored page layouts to use this system:
+  - `resources/views/filament/app/pages/dashboard.blade.php`
+  - `resources/views/filament/app/pages/protection/ssl.blade.php`
+  - `resources/views/filament/app/pages/protection/cdn.blade.php`
+  - `resources/views/filament/app/pages/protection/cache.blade.php`
+  - `resources/views/filament/app/pages/protection/firewall.blade.php`
+  - `resources/views/filament/app/pages/protection/origin.blade.php`
+  - `resources/views/filament/app/pages/protection/analytics.blade.php`
+  - `resources/views/filament/app/pages/protection/logs.blade.php`
+- `Protection Control Stack` is now a grouped multi-section card (SSL/TLS, CDN/Cache, Firewall, Origin) with aligned key-value grids and action rows.
+- Visual consistency updates:
+  - fixed card max width (`max-w-6xl`) to avoid stretched content
+  - consistent section dividers, spacing, status pills, and action alignment
+  - mobile-first 1-column behavior with desktop 2-column key/value structure
+- Validation snapshot:
+  - `./vendor/bin/pint` passed
+  - `php artisan test` passed
+  - `php artisan optimize` passed

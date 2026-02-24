@@ -1,31 +1,44 @@
 <x-filament-panels::page>
-    <div class="mx-auto w-full max-w-7xl space-y-6">
+    <div class="mx-auto w-full max-w-6xl space-y-6">
         @if (! $this->site)
             @include('filament.app.pages.protection.empty-state')
         @else
             <div class="grid gap-4 xl:grid-cols-3">
-                <x-filament::section icon="heroicon-o-server-stack" heading="Origin Posture" description="Origin visibility and lock-down controls." class="xl:col-span-2">
-                    <div class="grid gap-4 md:grid-cols-2">
-                        <div class="rounded-2xl border border-violet-200/40 bg-violet-500/10 p-4 dark:border-violet-700/40">
-                            <p class="text-xs uppercase tracking-wide text-gray-500">Origin host</p>
-                            <p class="mt-1 text-lg font-semibold break-all">{{ parse_url($this->site->origin_url, PHP_URL_HOST) ?: 'Not configured' }}</p>
-                        </div>
-                        <div class="rounded-2xl border border-yellow-200/40 bg-yellow-500/10 p-4 dark:border-yellow-700/40">
-                            <p class="text-xs uppercase tracking-wide text-gray-500">Direct access</p>
-                            <p class="mt-1 text-lg font-semibold">Review policy</p>
-                            <p class="mt-1 text-sm text-gray-500">Restrict origin access to edge traffic only.</p>
-                        </div>
-                    </div>
-                    <div class="mt-4 flex flex-wrap gap-2">
-                        <x-filament::button wire:click="toggleOriginProtection">Toggle origin protection</x-filament::button>
-                    </div>
-                </x-filament::section>
+                <div class="xl:col-span-2">
+                    <x-filament.app.settings.card
+                        title="Origin Settings"
+                        description="Origin visibility and access hardening controls."
+                        icon="heroicon-o-server-stack"
+                        status="Review access"
+                        status-color="warning"
+                    >
+                        <x-filament.app.settings.section title="Origin Endpoint" description="Current origin exposure and lock-down state">
+                            <x-filament.app.settings.key-value-grid :rows="[
+                                ['label' => 'Status', 'value' => parse_url($this->site->origin_url, PHP_URL_HOST) ?: 'Not configured'],
+                                ['label' => 'Health', 'value' => 'Review direct access policy'],
+                                ['label' => 'Deployment', 'value' => data_get($this->site->required_dns_records, 'control_panel.origin_lockdown', false) ? 'Origin lock-down enabled' : 'Origin lock-down pending'],
+                                ['label' => 'Last action', 'value' => $this->lastAction('site.control.origin')],
+                            ]" />
 
-                <x-filament::section icon="heroicon-o-clock" heading="Recent Action" description="Last origin operation status.">
-                    <div class="rounded-xl border border-gray-200/70 bg-white/70 p-3 text-sm dark:border-gray-800 dark:bg-gray-900/60">
-                        {{ $this->lastAction('site.control.origin') }}
-                    </div>
-                </x-filament::section>
+                            <x-slot name="actions">
+                                <x-filament.app.settings.action-row>
+                                    <x-filament::button wire:click="toggleOriginProtection">Toggle origin protection</x-filament::button>
+                                </x-filament.app.settings.action-row>
+                            </x-slot>
+                        </x-filament.app.settings.section>
+                    </x-filament.app.settings.card>
+                </div>
+
+                <x-filament.app.settings.card
+                    title="Recent Action"
+                    description="Latest origin operation"
+                    icon="heroicon-o-clock"
+                >
+                    <x-filament.app.settings.key-value-grid :rows="[
+                        ['label' => 'Event', 'value' => $this->lastAction('site.control.origin')],
+                        ['label' => 'Direct access policy', 'value' => 'Coming soon'],
+                    ]" />
+                </x-filament.app.settings.card>
             </div>
         @endif
     </div>
