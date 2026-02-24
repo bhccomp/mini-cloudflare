@@ -2,8 +2,11 @@
 
 namespace Tests\Feature;
 
-use App\Jobs\CheckSiteDnsAndFinalizeProvisioningJob;
-use App\Jobs\StartSiteProvisioningJob;
+use App\Jobs\AssociateWebAclToDistributionJob;
+use App\Jobs\CheckAcmDnsValidationJob;
+use App\Jobs\ProvisionCloudFrontDistributionJob;
+use App\Jobs\ProvisionWafWebAclJob;
+use App\Jobs\RequestAcmCertificateJob;
 use App\Models\AuditLog;
 use App\Models\Organization;
 use App\Models\Site;
@@ -16,7 +19,7 @@ class ProvisionJobsTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_provisioning_flow_transitions_draft_to_active_with_audit_entries(): void
+    public function test_mvp_job_flow_transitions_site_to_active_when_dns_validates(): void
     {
         $org = Organization::create(['name' => 'Org A', 'slug' => 'org-a']);
         $user = User::factory()->create();
@@ -24,21 +27,21 @@ class ProvisionJobsTest extends TestCase
 
         $site = Site::create([
             'organization_id' => $org->id,
-            'name' => 'Main',
-            'display_name' => 'Main',
+            'display_name' => 'Main Site',
+            'name' => 'Main Site',
             'apex_domain' => 'example.com',
-            'origin_type' => 'url',
+            'www_enabled' => true,
             'origin_url' => 'https://origin.example.com',
             'status' => 'draft',
         ]);
 
-        $fakeAws = new class extends AwsEdgeService
+        $aws = new class extends AwsEdgeService
         {
             public function requestAcmCertificate(Site $site): array
             {
                 return [
                     'changed' => true,
-                    'certificate_arn' => 'arn:aws:acm:us-east-1:000000000000:certificate/test-cert',
+                    'certificate_arn' => 'arn:aws:acm:us-east-1:000000000000:certificate/demo',
                     'required_dns_records' => [
                         'acm_validation' => [[
                             'purpose' => 'acm_validation',
@@ -48,11 +51,10 @@ class ProvisionJobsTest extends TestCase
                             'status' => 'pending',
                         ]],
                     ],
-                    'message' => 'Certificate requested',
                 ];
             }
 
-            public function checkDnsValidation(Site $site): array
+            public function checkAcmDnsValidation(Site $site): array
             {
                 return [
                     'validated' => true,
@@ -65,17 +67,15 @@ class ProvisionJobsTest extends TestCase
                             'status' => 'verified',
                         ]],
                     ],
-                    'message' => 'DNS validated',
                 ];
             }
 
-            public function provisionEdge(Site $site): array
+            public function provisionCloudFrontDistribution(Site $site): array
             {
                 return [
                     'changed' => true,
-                    'distribution_id' => 'E123FAKE',
+                    'distribution_id' => 'E12345',
                     'distribution_domain_name' => 'd111111abcdef8.cloudfront.net',
-                    'waf_web_acl_arn' => 'arn:aws:wafv2:us-east-1:000000000000:global/webacl/fp-site/abc',
                     'required_dns_records' => [
                         'acm_validation' => [[
                             'purpose' => 'acm_validation',
@@ -86,31 +86,53 @@ class ProvisionJobsTest extends TestCase
                         ]],
                         'traffic' => [[
                             'purpose' => 'traffic',
-                            'type' => 'CNAME',
+                            'type' => 'CNAME/ALIAS',
                             'name' => 'example.com',
                             'value' => 'd111111abcdef8.cloudfront.net',
                             'status' => 'pending',
                         ]],
                     ],
-                    'message' => 'Provisioned',
+                ];
+            }
+
+            public function provisionWafWebAcl(Site $site, bool $strict = false): array
+            {
+                return [
+                    'changed' => true,
+                    'web_acl_arn' => 'arn:aws:wafv2:us-east-1:000000000000:global/webacl/site/123',
+                ];
+            }
+
+            public function associateWebAclToDistribution(Site $site): array
+            {
+                return ['changed' => true];
+            }
+
+            public function checkTrafficDns(Site $site): array
+            {
+                return [
+                    'validated' => true,
+                    'required_dns_records' => $site->required_dns_records,
                 ];
             }
         };
 
-        (new StartSiteProvisioningJob($site->id, $user->id))->handle($fakeAws);
-        $site->refresh();
+        (new RequestAcmCertificateJob($site->id, $user->id))->handle($aws);
+        (new CheckAcmDnsValidationJob($site->id, $user->id))->handle($aws);
+        (new ProvisionCloudFrontDistributionJob($site->id, $user->id))->handle($aws);
+        (new ProvisionWafWebAclJob($site->id, $user->id))->handle($aws);
+        (new AssociateWebAclToDistributionJob($site->id, $user->id))->handle($aws);
+        (new CheckAcmDnsValidationJob($site->id, $user->id))->handle($aws);
 
-        $this->assertSame('pending_dns', $site->status);
-        $this->assertNotNull($site->acm_certificate_arn);
-
-        (new CheckSiteDnsAndFinalizeProvisioningJob($site->id, $user->id))->handle($fakeAws);
         $site->refresh();
 
         $this->assertSame('active', $site->status);
+        $this->assertNotNull($site->acm_certificate_arn);
         $this->assertNotNull($site->cloudfront_distribution_id);
         $this->assertNotNull($site->waf_web_acl_arn);
 
-        $this->assertGreaterThanOrEqual(1, AuditLog::query()->where('action', 'site.provision.start')->count());
-        $this->assertGreaterThanOrEqual(1, AuditLog::query()->where('action', 'site.provision.finalize')->count());
+        $this->assertGreaterThanOrEqual(1, AuditLog::where('action', 'acm.request')->count());
+        $this->assertGreaterThanOrEqual(1, AuditLog::where('action', 'cloudfront.provision')->count());
+        $this->assertGreaterThanOrEqual(1, AuditLog::where('action', 'waf.provision')->count());
     }
 }

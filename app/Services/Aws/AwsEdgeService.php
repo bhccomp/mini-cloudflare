@@ -31,24 +31,20 @@ class AwsEdgeService
         }
 
         if ($this->dryRun()) {
-            $token = Str::lower(Str::random(8));
-            $dnsRecords = [
-                [
-                    'purpose' => 'acm_validation',
-                    'type' => 'CNAME',
-                    'name' => "_{$token}.{$site->apex_domain}",
-                    'value' => "_{$token}.acm-validations.aws.",
-                    'status' => 'pending',
-                ],
-            ];
+            $records = [[
+                'purpose' => 'acm_validation',
+                'type' => 'CNAME',
+                'name' => '_'.Str::lower(Str::random(8)).'.'.$site->apex_domain,
+                'value' => '_'.Str::lower(Str::random(8)).'.acm-validations.aws.',
+                'status' => 'pending',
+            ]];
 
-            if ($site->www_domain) {
-                $token2 = Str::lower(Str::random(8));
-                $dnsRecords[] = [
+            if ($site->www_enabled) {
+                $records[] = [
                     'purpose' => 'acm_validation',
                     'type' => 'CNAME',
-                    'name' => "_{$token2}.{$site->www_domain}",
-                    'value' => "_{$token2}.acm-validations.aws.",
+                    'name' => '_'.Str::lower(Str::random(8)).'.www.'.$site->apex_domain,
+                    'value' => '_'.Str::lower(Str::random(8)).'.acm-validations.aws.',
                     'status' => 'pending',
                 ];
             }
@@ -56,260 +52,207 @@ class AwsEdgeService
             return [
                 'changed' => true,
                 'certificate_arn' => 'arn:aws:acm:us-east-1:000000000000:certificate/'.Str::uuid(),
-                'required_dns_records' => [
-                    'acm_validation' => $dnsRecords,
-                ],
-                'message' => 'Dry-run: ACM certificate requested.',
+                'required_dns_records' => ['acm_validation' => $records],
+                'message' => 'Dry-run ACM request created.',
             ];
         }
 
         $client = $this->acmClient();
-        $domains = array_values(array_filter([$site->apex_domain, $site->www_domain]));
+        $sans = $site->www_enabled ? [$site->www_domain] : [];
 
         $request = [
             'DomainName' => $site->apex_domain,
             'ValidationMethod' => 'DNS',
-            'Options' => [
-                'CertificateTransparencyLoggingPreference' => 'ENABLED',
-            ],
         ];
 
-        if (count($domains) > 1) {
-            $request['SubjectAlternativeNames'] = [$site->www_domain];
+        if ($sans !== []) {
+            $request['SubjectAlternativeNames'] = $sans;
         }
 
         $result = $client->requestCertificate($request);
-        $certificateArn = (string) $result->get('CertificateArn');
+        $arn = (string) $result->get('CertificateArn');
 
-        $describe = $client->describeCertificate([
-            'CertificateArn' => $certificateArn,
-        ]);
+        $describe = $client->describeCertificate(['CertificateArn' => $arn])->toArray();
+        $domainOptions = Arr::get($describe, 'Certificate.DomainValidationOptions', []);
 
         $records = [];
-        foreach (($describe->get('Certificate')['DomainValidationOptions'] ?? []) as $validationOption) {
-            $record = $validationOption['ResourceRecord'] ?? null;
+        foreach ($domainOptions as $option) {
+            $record = Arr::get($option, 'ResourceRecord');
             if (! $record) {
                 continue;
             }
 
             $records[] = [
                 'purpose' => 'acm_validation',
-                'type' => $record['Type'],
-                'name' => $record['Name'],
-                'value' => $record['Value'],
+                'type' => (string) Arr::get($record, 'Type'),
+                'name' => (string) Arr::get($record, 'Name'),
+                'value' => (string) Arr::get($record, 'Value'),
                 'status' => 'pending',
             ];
         }
 
         return [
             'changed' => true,
-            'certificate_arn' => $certificateArn,
-            'required_dns_records' => [
-                'acm_validation' => $records,
-            ],
+            'certificate_arn' => $arn,
+            'required_dns_records' => ['acm_validation' => $records],
             'message' => 'ACM certificate requested.',
         ];
     }
 
-    public function checkDnsValidation(Site $site): array
+    public function checkAcmDnsValidation(Site $site): array
     {
         $records = Arr::get($site->required_dns_records, 'acm_validation', []);
-
         if ($records === []) {
-            return [
-                'validated' => false,
-                'required_dns_records' => $site->required_dns_records,
-                'message' => 'No ACM validation records found.',
-            ];
+            return ['validated' => false, 'required_dns_records' => $site->required_dns_records, 'message' => 'No ACM records found.'];
         }
 
-        $validatedCount = 0;
         $updated = [];
+        $allValid = true;
 
         foreach ($records as $record) {
             $name = rtrim((string) Arr::get($record, 'name', ''), '.');
             $expected = rtrim((string) Arr::get($record, 'value', ''), '.');
-            $actualValues = $this->lookupCname($name);
+            $actual = collect($this->lookupCname($name))
+                ->map(fn (string $v) => rtrim(strtolower($v), '.'))
+                ->all();
 
-            $isValid = collect($actualValues)
-                ->map(fn (string $value) => rtrim(strtolower($value), '.'))
-                ->contains(strtolower($expected));
-
-            if ($isValid) {
-                $validatedCount++;
-            }
+            $valid = in_array(strtolower($expected), $actual, true);
+            $allValid = $allValid && $valid;
 
             $updated[] = [
                 ...$record,
-                'status' => $isValid ? 'verified' : 'pending',
+                'status' => $valid ? 'verified' : 'pending',
             ];
         }
 
-        $requiredDnsRecords = $site->required_dns_records ?? [];
-        $requiredDnsRecords['acm_validation'] = $updated;
+        $dns = $site->required_dns_records ?? [];
+        $dns['acm_validation'] = $updated;
 
         return [
-            'validated' => $validatedCount === count($updated),
-            'required_dns_records' => $requiredDnsRecords,
-            'message' => $validatedCount === count($updated)
-                ? 'ACM validation records are published.'
-                : 'DNS validation records are not fully propagated yet.',
+            'validated' => $allValid,
+            'required_dns_records' => $dns,
+            'message' => $allValid ? 'ACM DNS validated.' : 'ACM DNS validation pending.',
         ];
     }
 
-    public function provisionEdge(Site $site): array
+    public function provisionCloudFrontDistribution(Site $site): array
     {
-        if ($site->cloudfront_distribution_id && $site->waf_web_acl_arn && $site->status === 'active') {
+        if ($site->cloudfront_distribution_id && $site->cloudfront_domain_name) {
             return [
                 'changed' => false,
                 'distribution_id' => $site->cloudfront_distribution_id,
                 'distribution_domain_name' => $site->cloudfront_domain_name,
-                'waf_web_acl_arn' => $site->waf_web_acl_arn,
                 'required_dns_records' => $site->required_dns_records,
-                'message' => 'Edge resources already active.',
+                'message' => 'CloudFront distribution already exists.',
             ];
         }
 
-        if ($this->dryRun()) {
-            $distributionDomain = Str::lower(Str::random(12)).'.cloudfront.net';
-            $requiredDnsRecords = $site->required_dns_records ?? [];
-            $requiredDnsRecords['traffic'] = [
-                [
-                    'purpose' => 'traffic',
-                    'type' => 'CNAME',
-                    'name' => $site->apex_domain,
-                    'value' => $distributionDomain,
-                    'status' => 'pending',
-                ],
-            ];
+        if (! $site->acm_certificate_arn) {
+            throw new RuntimeException('ACM certificate ARN missing.');
+        }
 
-            if ($site->www_domain) {
-                $requiredDnsRecords['traffic'][] = [
-                    'purpose' => 'traffic',
-                    'type' => 'CNAME',
-                    'name' => $site->www_domain,
-                    'value' => $distributionDomain,
-                    'status' => 'pending',
-                ];
-            }
+        if ($this->dryRun()) {
+            $domain = Str::lower(Str::random(12)).'.cloudfront.net';
+            $dns = $site->required_dns_records ?? [];
+            $dns['traffic'] = $this->trafficRecords($site, $domain);
 
             return [
                 'changed' => true,
                 'distribution_id' => 'E'.Str::upper(Str::random(13)),
-                'distribution_domain_name' => $distributionDomain,
-                'waf_web_acl_arn' => 'arn:aws:wafv2:us-east-1:000000000000:global/webacl/firephage-site-'.$site->id.'/'.Str::uuid(),
-                'required_dns_records' => $requiredDnsRecords,
-                'message' => 'Dry-run: CloudFront + WAF provisioned.',
+                'distribution_domain_name' => $domain,
+                'required_dns_records' => $dns,
+                'message' => 'Dry-run CloudFront distribution provisioned.',
             ];
         }
 
-        $this->ensureAwsCredentials();
+        $originHost = (string) parse_url((string) $site->origin_url, PHP_URL_HOST);
+        if (! $originHost) {
+            throw new RuntimeException('Origin URL host is required.');
+        }
 
-        $wafArn = $site->waf_web_acl_arn ?: $this->createWebAcl($site, strictMode: false)['web_acl_arn'];
-        $distribution = $site->cloudfront_distribution_id
-            ? [
-                'distribution_id' => $site->cloudfront_distribution_id,
-                'distribution_domain_name' => $site->cloudfront_domain_name,
-            ]
-            : $this->createCloudFrontDistribution($site, $wafArn);
+        $aliases = [$site->apex_domain];
+        if ($site->www_enabled && $site->www_domain) {
+            $aliases[] = $site->www_domain;
+        }
 
-        $requiredDnsRecords = $site->required_dns_records ?? [];
-        $requiredDnsRecords['traffic'] = [
-            [
-                'purpose' => 'traffic',
-                'type' => 'CNAME',
-                'name' => $site->apex_domain,
-                'value' => $distribution['distribution_domain_name'],
-                'status' => 'pending',
+        $distribution = $this->cloudFrontClient()->createDistribution([
+            'DistributionConfig' => [
+                'CallerReference' => (string) Str::uuid(),
+                'Comment' => 'FirePhage site '.$site->id,
+                'Enabled' => true,
+                'Aliases' => [
+                    'Quantity' => count($aliases),
+                    'Items' => $aliases,
+                ],
+                'Origins' => [
+                    'Quantity' => 1,
+                    'Items' => [[
+                        'Id' => 'origin-'.$site->id,
+                        'DomainName' => $originHost,
+                        'CustomOriginConfig' => [
+                            'HTTPPort' => 80,
+                            'HTTPSPort' => 443,
+                            'OriginProtocolPolicy' => 'https-only',
+                            'OriginSslProtocols' => ['Quantity' => 1, 'Items' => ['TLSv1.2']],
+                        ],
+                    ]],
+                ],
+                'DefaultCacheBehavior' => [
+                    'TargetOriginId' => 'origin-'.$site->id,
+                    'ViewerProtocolPolicy' => 'redirect-to-https',
+                    'AllowedMethods' => [
+                        'Quantity' => 2,
+                        'Items' => ['GET', 'HEAD'],
+                        'CachedMethods' => ['Quantity' => 2, 'Items' => ['GET', 'HEAD']],
+                    ],
+                    'ForwardedValues' => [
+                        'QueryString' => true,
+                        'Cookies' => ['Forward' => 'all'],
+                    ],
+                    'MinTTL' => 0,
+                ],
+                'ViewerCertificate' => [
+                    'ACMCertificateArn' => $site->acm_certificate_arn,
+                    'SSLSupportMethod' => 'sni-only',
+                    'MinimumProtocolVersion' => 'TLSv1.2_2021',
+                ],
+                'PriceClass' => 'PriceClass_100',
             ],
-        ];
+        ])->toArray();
 
-        if ($site->www_domain) {
-            $requiredDnsRecords['traffic'][] = [
-                'purpose' => 'traffic',
-                'type' => 'CNAME',
-                'name' => $site->www_domain,
-                'value' => $distribution['distribution_domain_name'],
-                'status' => 'pending',
-            ];
-        }
+        $distributionId = (string) Arr::get($distribution, 'Distribution.Id');
+        $domain = (string) Arr::get($distribution, 'Distribution.DomainName');
+
+        $dns = $site->required_dns_records ?? [];
+        $dns['traffic'] = $this->trafficRecords($site, $domain);
 
         return [
             'changed' => true,
-            'distribution_id' => $distribution['distribution_id'],
-            'distribution_domain_name' => $distribution['distribution_domain_name'],
-            'waf_web_acl_arn' => $wafArn,
-            'required_dns_records' => $requiredDnsRecords,
-            'message' => 'Edge resources provisioned.',
+            'distribution_id' => $distributionId,
+            'distribution_domain_name' => $domain,
+            'required_dns_records' => $dns,
+            'message' => 'CloudFront distribution provisioned.',
         ];
     }
 
-    public function setUnderAttackMode(Site $site, bool $enabled): array
+    public function provisionWafWebAcl(Site $site, bool $strict = false): array
     {
-        if (! $site->waf_web_acl_arn) {
+        if ($site->waf_web_acl_arn) {
             return [
                 'changed' => false,
-                'enabled' => $enabled,
-                'message' => 'WAF is not provisioned yet.',
-            ];
-        }
-
-        if ($this->dryRun()) {
-            return [
-                'changed' => $site->under_attack_mode_enabled !== $enabled,
-                'enabled' => $enabled,
-                'message' => 'Dry-run: under-attack mode toggled.',
-            ];
-        }
-
-        $this->updateWebAclRateRule($site->waf_web_acl_arn, strictMode: $enabled);
-
-        return [
-            'changed' => true,
-            'enabled' => $enabled,
-            'message' => 'Under-attack mode updated.',
-        ];
-    }
-
-    public function invalidateCache(Site $site, array $paths = ['/*']): array
-    {
-        if (! $site->cloudfront_distribution_id) {
-            return [
-                'changed' => false,
-                'message' => 'CloudFront distribution is not provisioned yet.',
+                'web_acl_arn' => $site->waf_web_acl_arn,
+                'message' => 'WAF WebACL already exists.',
             ];
         }
 
         if ($this->dryRun()) {
             return [
                 'changed' => true,
-                'invalidation_id' => Str::upper(Str::random(12)),
-                'paths' => Arr::wrap($paths),
-                'message' => 'Dry-run: cache invalidation simulated.',
+                'web_acl_arn' => 'arn:aws:wafv2:us-east-1:000000000000:global/webacl/fp-site-'.$site->id.'/'.Str::uuid(),
+                'message' => 'Dry-run WAF provisioned.',
             ];
         }
 
-        $result = $this->cloudFrontClient()->createInvalidation([
-            'DistributionId' => $site->cloudfront_distribution_id,
-            'InvalidationBatch' => [
-                'CallerReference' => (string) Str::uuid(),
-                'Paths' => [
-                    'Quantity' => count($paths),
-                    'Items' => array_values($paths),
-                ],
-            ],
-        ]);
-
-        return [
-            'changed' => true,
-            'invalidation_id' => (string) Arr::get($result->toArray(), 'Invalidation.Id'),
-            'paths' => array_values($paths),
-            'message' => 'CloudFront invalidation requested.',
-        ];
-    }
-
-    protected function createWebAcl(Site $site, bool $strictMode): array
-    {
         $name = 'fp-site-'.$site->id;
         $result = $this->wafClient()->createWebACL([
             'Name' => $name,
@@ -320,15 +263,189 @@ class AwsEdgeService
                 'CloudWatchMetricsEnabled' => true,
                 'MetricName' => $name,
             ],
-            'Rules' => $this->wafRules($strictMode),
-        ]);
+            'Rules' => $this->wafRules($strict),
+        ])->toArray();
 
         return [
-            'web_acl_arn' => Arr::get($result->toArray(), 'Summary.ARN'),
+            'changed' => true,
+            'web_acl_arn' => (string) Arr::get($result, 'Summary.ARN'),
+            'message' => 'WAF WebACL provisioned.',
         ];
     }
 
-    protected function updateWebAclRateRule(string $webAclArn, bool $strictMode): void
+    public function associateWebAclToDistribution(Site $site): array
+    {
+        if (! $site->cloudfront_distribution_id || ! $site->waf_web_acl_arn) {
+            return [
+                'changed' => false,
+                'message' => 'Distribution or WebACL missing.',
+            ];
+        }
+
+        if ($this->dryRun()) {
+            return [
+                'changed' => true,
+                'message' => 'Dry-run WebACL associated to distribution.',
+            ];
+        }
+
+        $get = $this->cloudFrontClient()->getDistributionConfig([
+            'Id' => $site->cloudfront_distribution_id,
+        ])->toArray();
+
+        $config = Arr::get($get, 'DistributionConfig', []);
+        $etag = (string) Arr::get($get, 'ETag');
+
+        if ((string) Arr::get($config, 'WebACLId') === $site->waf_web_acl_arn) {
+            return [
+                'changed' => false,
+                'message' => 'WebACL already associated.',
+            ];
+        }
+
+        $config['WebACLId'] = $site->waf_web_acl_arn;
+
+        $this->cloudFrontClient()->updateDistribution([
+            'Id' => $site->cloudfront_distribution_id,
+            'IfMatch' => $etag,
+            'DistributionConfig' => $config,
+        ]);
+
+        return [
+            'changed' => true,
+            'message' => 'WebACL associated to distribution.',
+        ];
+    }
+
+    public function checkTrafficDns(Site $site): array
+    {
+        if (! $site->cloudfront_domain_name) {
+            return ['validated' => false, 'message' => 'CloudFront domain is missing.'];
+        }
+
+        $targets = [$site->apex_domain];
+        if ($site->www_enabled && $site->www_domain) {
+            $targets[] = $site->www_domain;
+        }
+
+        $all = true;
+        $dns = $site->required_dns_records ?? [];
+        $traffic = Arr::get($dns, 'traffic', []);
+
+        foreach ($targets as $domain) {
+            $valid = $this->domainPointsToCloudFront($domain, $site->cloudfront_domain_name);
+            $all = $all && $valid;
+
+            foreach ($traffic as &$record) {
+                if (($record['name'] ?? null) === $domain) {
+                    $record['status'] = $valid ? 'verified' : 'pending';
+                }
+            }
+            unset($record);
+        }
+
+        $dns['traffic'] = $traffic;
+
+        return [
+            'validated' => $all,
+            'required_dns_records' => $dns,
+            'message' => $all ? 'Traffic DNS is pointed to CloudFront.' : 'Point your domain to CloudFront target and retry.',
+        ];
+    }
+
+    public function setUnderAttackMode(Site $site, bool $enabled): array
+    {
+        if (! $site->waf_web_acl_arn) {
+            return ['changed' => false, 'enabled' => $enabled, 'message' => 'WAF is not provisioned yet.'];
+        }
+
+        if ($this->dryRun()) {
+            return ['changed' => $site->under_attack !== $enabled, 'enabled' => $enabled, 'message' => 'Dry-run under-attack updated.'];
+        }
+
+        $this->updateWafRateRule($site->waf_web_acl_arn, $enabled);
+
+        return ['changed' => true, 'enabled' => $enabled, 'message' => 'Under-attack mode updated.'];
+    }
+
+    public function invalidateCloudFrontCache(Site $site, array $paths = ['/*']): array
+    {
+        if (! $site->cloudfront_distribution_id) {
+            return ['changed' => false, 'message' => 'CloudFront distribution missing.'];
+        }
+
+        if ($this->dryRun()) {
+            return [
+                'changed' => true,
+                'invalidation_id' => Str::upper(Str::random(12)),
+                'paths' => array_values($paths),
+                'message' => 'Dry-run invalidation requested.',
+            ];
+        }
+
+        $result = $this->cloudFrontClient()->createInvalidation([
+            'DistributionId' => $site->cloudfront_distribution_id,
+            'InvalidationBatch' => [
+                'CallerReference' => (string) Str::uuid(),
+                'Paths' => ['Quantity' => count($paths), 'Items' => array_values($paths)],
+            ],
+        ])->toArray();
+
+        return [
+            'changed' => true,
+            'invalidation_id' => (string) Arr::get($result, 'Invalidation.Id'),
+            'paths' => array_values($paths),
+            'message' => 'Invalidation requested.',
+        ];
+    }
+
+    protected function trafficRecords(Site $site, string $cloudFrontDomain): array
+    {
+        $records = [[
+            'purpose' => 'traffic',
+            'type' => 'CNAME/ALIAS',
+            'name' => $site->apex_domain,
+            'value' => $cloudFrontDomain,
+            'status' => 'pending',
+        ]];
+
+        if ($site->www_enabled && $site->www_domain) {
+            $records[] = [
+                'purpose' => 'traffic',
+                'type' => 'CNAME',
+                'name' => $site->www_domain,
+                'value' => $cloudFrontDomain,
+                'status' => 'pending',
+            ];
+        }
+
+        return $records;
+    }
+
+    protected function domainPointsToCloudFront(string $domain, string $cloudFrontDomain): bool
+    {
+        $domain = rtrim(strtolower($domain), '.');
+        $cloudFrontDomain = rtrim(strtolower($cloudFrontDomain), '.');
+
+        $cname = collect($this->lookupCname($domain))
+            ->map(fn (string $v) => rtrim(strtolower($v), '.'))
+            ->contains($cloudFrontDomain);
+
+        if ($cname) {
+            return true;
+        }
+
+        $domainIps = gethostbynamel($domain) ?: [];
+        $cfIps = gethostbynamel($cloudFrontDomain) ?: [];
+
+        if ($domainIps === [] || $cfIps === []) {
+            return false;
+        }
+
+        return count(array_intersect($domainIps, $cfIps)) > 0;
+    }
+
+    protected function updateWafRateRule(string $webAclArn, bool $strict): void
     {
         $id = $this->webAclIdFromArn($webAclArn);
         $name = $this->webAclNameFromArn($webAclArn);
@@ -343,92 +460,14 @@ class AwsEdgeService
             'Scope' => 'CLOUDFRONT',
             'Id' => $id,
             'Name' => $name,
-            'DefaultAction' => Arr::get($existing, 'WebACL.DefaultAction', ['Allow' => new \stdClass]),
+            'DefaultAction' => Arr::get($existing, 'WebACL.DefaultAction'),
             'VisibilityConfig' => Arr::get($existing, 'WebACL.VisibilityConfig'),
+            'Rules' => $this->wafRules($strict),
             'LockToken' => Arr::get($existing, 'LockToken'),
-            'Rules' => $this->wafRules($strictMode),
         ]);
     }
 
-    protected function createCloudFrontDistribution(Site $site, string $webAclArn): array
-    {
-        if (! $site->acm_certificate_arn) {
-            throw new RuntimeException('ACM certificate ARN missing; cannot create CloudFront distribution.');
-        }
-
-        $aliases = array_values(array_filter([$site->apex_domain, $site->www_domain]));
-        $originDomain = $site->origin_type === 'ip'
-            ? (string) $site->origin_host
-            : (string) parse_url((string) $site->origin_url, PHP_URL_HOST);
-
-        if (! $originDomain) {
-            throw new RuntimeException('Origin host is missing.');
-        }
-
-        $distributionConfig = [
-            'CallerReference' => (string) Str::uuid(),
-            'Comment' => 'FirePhage site '.$site->id,
-            'Enabled' => true,
-            'Aliases' => [
-                'Quantity' => count($aliases),
-                'Items' => $aliases,
-            ],
-            'Origins' => [
-                'Quantity' => 1,
-                'Items' => [[
-                    'Id' => 'origin-'.$site->id,
-                    'DomainName' => $originDomain,
-                    'CustomOriginConfig' => [
-                        'HTTPPort' => 80,
-                        'HTTPSPort' => 443,
-                        'OriginProtocolPolicy' => 'https-only',
-                        'OriginSslProtocols' => [
-                            'Quantity' => 1,
-                            'Items' => ['TLSv1.2'],
-                        ],
-                    ],
-                ]],
-            ],
-            'DefaultCacheBehavior' => [
-                'TargetOriginId' => 'origin-'.$site->id,
-                'ViewerProtocolPolicy' => 'redirect-to-https',
-                'Compress' => true,
-                'AllowedMethods' => [
-                    'Quantity' => 7,
-                    'Items' => ['GET', 'HEAD', 'OPTIONS', 'PUT', 'POST', 'PATCH', 'DELETE'],
-                    'CachedMethods' => [
-                        'Quantity' => 2,
-                        'Items' => ['GET', 'HEAD'],
-                    ],
-                ],
-                'ForwardedValues' => [
-                    'QueryString' => true,
-                    'Cookies' => ['Forward' => 'all'],
-                ],
-                'MinTTL' => 0,
-                'DefaultTTL' => 60,
-                'MaxTTL' => 300,
-            ],
-            'PriceClass' => 'PriceClass_100',
-            'ViewerCertificate' => [
-                'ACMCertificateArn' => $site->acm_certificate_arn,
-                'SSLSupportMethod' => 'sni-only',
-                'MinimumProtocolVersion' => 'TLSv1.2_2021',
-            ],
-            'WebACLId' => $webAclArn,
-        ];
-
-        $result = $this->cloudFrontClient()->createDistribution([
-            'DistributionConfig' => $distributionConfig,
-        ]);
-
-        return [
-            'distribution_id' => Arr::get($result->toArray(), 'Distribution.Id'),
-            'distribution_domain_name' => Arr::get($result->toArray(), 'Distribution.DomainName'),
-        ];
-    }
-
-    protected function wafRules(bool $strictMode): array
+    protected function wafRules(bool $strict): array
     {
         return [
             [
@@ -452,7 +491,7 @@ class AwsEdgeService
                 'Priority' => 2,
                 'Statement' => [
                     'RateBasedStatement' => [
-                        'Limit' => $strictMode ? 500 : 2000,
+                        'Limit' => $strict ? 500 : 2000,
                         'AggregateKeyType' => 'IP',
                     ],
                 ],
@@ -476,27 +515,12 @@ class AwsEdgeService
         $process->setTimeout(10);
         $process->run();
 
-        $fromDig = collect(explode("\n", trim($process->getOutput())))
-            ->filter()
-            ->values()
-            ->all();
-
-        if ($fromDig !== []) {
-            return $fromDig;
-        }
-
-        return collect(dns_get_record($name, DNS_CNAME) ?: [])
-            ->pluck('target')
-            ->filter()
-            ->values()
-            ->all();
+        return collect(explode("\n", trim($process->getOutput())))->filter()->values()->all();
     }
 
     protected function webAclIdFromArn(string $arn): string
     {
-        $parts = explode('/', $arn);
-
-        return (string) end($parts);
+        return (string) last(explode('/', $arn));
     }
 
     protected function webAclNameFromArn(string $arn): string
@@ -540,13 +564,6 @@ class AwsEdgeService
                 'secret' => config('services.aws_edge.secret_access_key'),
             ],
         ]);
-    }
-
-    protected function ensureAwsCredentials(): void
-    {
-        if (! config('services.aws_edge.access_key_id') || ! config('services.aws_edge.secret_access_key')) {
-            throw new RuntimeException('AWS_EDGE credentials are missing. Set AWS_EDGE_ACCESS_KEY_ID and AWS_EDGE_SECRET_ACCESS_KEY.');
-        }
     }
 
     protected function dryRun(): bool
