@@ -3,7 +3,6 @@
 namespace App\Filament\App\Resources\SiteResource\Pages;
 
 use App\Filament\App\Resources\SiteResource;
-use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 
 class EditSite extends EditRecord
@@ -12,8 +11,11 @@ class EditSite extends EditRecord
 
     protected function getHeaderActions(): array
     {
-        return [
-            Actions\DeleteAction::make(),
-        ];
+        return [];
+    }
+
+    protected function getFormActions(): array
+    {
+        return [];
     }
 }

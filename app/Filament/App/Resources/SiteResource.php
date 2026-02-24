@@ -3,6 +3,7 @@
 namespace App\Filament\App\Resources;
 
 use App\Filament\App\Resources\SiteResource\Pages;
+use App\Jobs\ApplySiteControlSettingJob;
 use App\Jobs\CheckAcmDnsValidationJob;
 use App\Jobs\InvalidateCloudFrontCacheJob;
 use App\Jobs\RequestAcmCertificateJob;
@@ -12,9 +13,9 @@ use App\Rules\ApexDomainRule;
 use App\Rules\SafeOriginUrlRule;
 use Filament\Actions;
 use Filament\Forms;
-use Filament\Schemas\Components\Section;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
@@ -143,31 +144,231 @@ class SiteResource extends Resource
                                     ->content('Open the site status hub, click Provision, and follow DNS instructions until the site becomes active.'),
                             ])->columns(1),
                     ])->columnSpanFull(),
-                ]),
-            Section::make('Status hub')
-                ->description('Track provisioning state and follow the next required action.')
-                ->schema([
-                    Forms\Components\Placeholder::make('status_badge')
-                        ->label('Status')
-                        ->content(fn (?Site $record) => $record?->status ?? 'draft'),
-                    Forms\Components\Placeholder::make('next_step')
-                        ->label('Next step')
-                        ->content(fn (?Site $record) => $record ? static::nextStep($record) : 'Complete the onboarding wizard first.'),
-                    Forms\Components\Textarea::make('required_dns_records')
-                        ->label('DNS instructions')
-                        ->rows(12)
-                        ->formatStateUsing(fn (?array $state) => $state ? json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) : 'No DNS records yet. Click Provision to generate them.')
-                        ->dehydrated(false)
-                        ->disabled()
-                        ->columnSpanFull(),
-                    Forms\Components\Textarea::make('last_error')
-                        ->label('Last error')
-                        ->dehydrated(false)
-                        ->disabled()
-                        ->visible(fn (?Site $record) => filled($record?->last_error)),
                 ])
-                ->visible(fn (?Site $record) => $record !== null)
-                ->columns(2),
+                ->visible(fn (string $operation): bool => $operation === 'create'),
+
+            Section::make('SSL')
+                ->icon('heroicon-o-lock-closed')
+                ->description('Certificate and secure transport controls for your protected domain.')
+                ->schema([
+                    Forms\Components\Placeholder::make('ssl_certificate_status')
+                        ->label('Certificate status')
+                        ->content(fn (?Site $record): string => $record?->acm_certificate_arn ? 'Issued or pending validation' : 'Not requested yet'),
+                    Forms\Components\Toggle::make('https_enforced_control')
+                        ->label('Force HTTPS for visitors')
+                        ->helperText('Keeps visitor traffic on encrypted connections only.')
+                        ->dehydrated(false)
+                        ->default(fn (?Site $record): bool => (bool) static::controlValue($record, 'https_enforced', true))
+                        ->live()
+                        ->afterStateUpdated(function (?Site $record, mixed $state): void {
+                            if (! $record) {
+                                return;
+                            }
+
+                            static::queuePlaceholderControl(
+                                $record,
+                                'https_enforced',
+                                (bool) $state,
+                                'HTTPS enforcement update queued.'
+                            );
+                        }),
+                    Forms\Components\Placeholder::make('ssl_expiry')
+                        ->label('Certificate expiration')
+                        ->content('Coming soon'),
+                    Forms\Components\Placeholder::make('ssl_explanation')
+                        ->label('How this works')
+                        ->content('We handle certificate issuance and guide you through any DNS records needed. No certificate management is required on your side.'),
+                ])
+                ->columns(2)
+                ->visible(fn (string $operation): bool => $operation === 'edit'),
+
+            Section::make('CDN')
+                ->icon('heroicon-o-cloud')
+                ->description('Traffic delivery and edge routing status.')
+                ->headerActions([
+                    Actions\Action::make('purgeCacheFromCdn')
+                        ->label('Purge cache')
+                        ->icon('heroicon-m-arrow-path')
+                        ->color('gray')
+                        ->requiresConfirmation()
+                        ->action(function (?Site $record): void {
+                            if (! $record) {
+                                return;
+                            }
+
+                            static::throttle($record, 'purge-cache-cdn');
+                            InvalidateCloudFrontCacheJob::dispatch($record->id, ['/*'], auth()->id());
+                            Notification::make()->title('Cache purge queued')->success()->send();
+                        }),
+                ])
+                ->schema([
+                    Forms\Components\Placeholder::make('cdn_distribution_status')
+                        ->label('Distribution status')
+                        ->content(fn (?Site $record): string => $record?->cloudfront_distribution_id ? 'Provisioned' : 'Not provisioned yet'),
+                    Forms\Components\Placeholder::make('cdn_domain')
+                        ->label('Distribution domain')
+                        ->content(fn (?Site $record): string => $record?->cloudfront_domain_name ?: 'Waiting for provisioning'),
+                    Forms\Components\Placeholder::make('cdn_health')
+                        ->label('Health')
+                        ->content(function (?Site $record): string {
+                            if (! $record?->cloudfront_distribution_id) {
+                                return 'Needs setup';
+                            }
+
+                            return $record->status === 'active' ? 'Healthy' : 'Provisioning';
+                        }),
+                ])
+                ->columns(2)
+                ->visible(fn (string $operation): bool => $operation === 'edit'),
+
+            Section::make('Cache')
+                ->icon('heroicon-o-bolt')
+                ->description('Control response caching behavior at the edge.')
+                ->headerActions([
+                    Actions\Action::make('purgeCacheFromCacheCard')
+                        ->label('Purge cache')
+                        ->icon('heroicon-m-arrow-path')
+                        ->color('gray')
+                        ->requiresConfirmation()
+                        ->action(function (?Site $record): void {
+                            if (! $record) {
+                                return;
+                            }
+
+                            static::throttle($record, 'purge-cache-card');
+                            InvalidateCloudFrontCacheJob::dispatch($record->id, ['/*'], auth()->id());
+                            Notification::make()->title('Cache purge queued')->success()->send();
+                        }),
+                ])
+                ->schema([
+                    Forms\Components\Toggle::make('cache_enabled_control')
+                        ->label('Cache enabled')
+                        ->dehydrated(false)
+                        ->default(fn (?Site $record): bool => (bool) static::controlValue($record, 'cache_enabled', true))
+                        ->live()
+                        ->afterStateUpdated(function (?Site $record, mixed $state): void {
+                            if (! $record) {
+                                return;
+                            }
+
+                            static::queuePlaceholderControl(
+                                $record,
+                                'cache_enabled',
+                                (bool) $state,
+                                'Cache toggle queued.'
+                            );
+                        }),
+                    Forms\Components\Select::make('cache_mode_control')
+                        ->label('Cache mode')
+                        ->options([
+                            'standard' => 'Standard',
+                            'aggressive' => 'Aggressive',
+                        ])
+                        ->dehydrated(false)
+                        ->default(fn (?Site $record): string => (string) static::controlValue($record, 'cache_mode', 'standard'))
+                        ->live()
+                        ->afterStateUpdated(function (?Site $record, mixed $state): void {
+                            if (! $record || ! is_string($state)) {
+                                return;
+                            }
+
+                            static::queuePlaceholderControl(
+                                $record,
+                                'cache_mode',
+                                $state,
+                                'Cache mode update queued.'
+                            );
+                        }),
+                ])
+                ->columns(2)
+                ->visible(fn (string $operation): bool => $operation === 'edit'),
+
+            Section::make('WAF')
+                ->icon('heroicon-o-shield-check')
+                ->description('Application-layer protection controls and traffic filtering.')
+                ->schema([
+                    Forms\Components\Placeholder::make('waf_status')
+                        ->label('Protection status')
+                        ->content(fn (?Site $record): string => $record?->waf_web_acl_arn ? 'Protection active' : 'Protection pending'),
+                    Forms\Components\Toggle::make('under_attack_control')
+                        ->label('Under attack mode')
+                        ->helperText('Tightens traffic filtering during spikes or abuse events.')
+                        ->dehydrated(false)
+                        ->default(fn (?Site $record): bool => (bool) ($record?->under_attack ?? false))
+                        ->live()
+                        ->afterStateUpdated(function (?Site $record, mixed $state): void {
+                            if (! $record) {
+                                return;
+                            }
+
+                            static::throttle($record, 'under-attack-control');
+                            ToggleUnderAttackModeJob::dispatch($record->id, (bool) $state, auth()->id());
+                            Notification::make()->title('Under attack update queued')->success()->send();
+                        }),
+                    Forms\Components\Select::make('waf_ruleset_preset_control')
+                        ->label('Ruleset preset')
+                        ->options([
+                            'baseline' => 'Baseline',
+                            'strict' => 'Strict',
+                        ])
+                        ->dehydrated(false)
+                        ->default(fn (?Site $record): string => (string) static::controlValue($record, 'waf_preset', 'baseline'))
+                        ->live()
+                        ->afterStateUpdated(function (?Site $record, mixed $state): void {
+                            if (! $record || ! is_string($state)) {
+                                return;
+                            }
+
+                            static::queuePlaceholderControl(
+                                $record,
+                                'waf_preset',
+                                $state,
+                                'Ruleset preset update queued.'
+                            );
+                        }),
+                    Forms\Components\Placeholder::make('waf_blocked_metric')
+                        ->label('Blocked traffic (24h)')
+                        ->content('Coming soon'),
+                ])
+                ->columns(2)
+                ->visible(fn (string $operation): bool => $operation === 'edit'),
+
+            Section::make('Origin')
+                ->icon('heroicon-o-server-stack')
+                ->description('Origin endpoint details and access hardening guidance.')
+                ->schema([
+                    Forms\Components\Placeholder::make('origin_host_display')
+                        ->label('Origin host')
+                        ->content(function (?Site $record): string {
+                            if (! $record?->origin_url) {
+                                return 'Not configured';
+                            }
+
+                            return parse_url($record->origin_url, PHP_URL_HOST) ?: $record->origin_url;
+                        }),
+                    Forms\Components\Placeholder::make('origin_warning')
+                        ->label('Direct access warning')
+                        ->content('Keep direct origin access restricted where possible so visitors pass through the protection layer.'),
+                    Forms\Components\Toggle::make('origin_protection_control')
+                        ->label('Origin access lock (placeholder)')
+                        ->dehydrated(false)
+                        ->default(fn (?Site $record): bool => (bool) static::controlValue($record, 'origin_lockdown', false))
+                        ->live()
+                        ->afterStateUpdated(function (?Site $record, mixed $state): void {
+                            if (! $record) {
+                                return;
+                            }
+
+                            static::queuePlaceholderControl(
+                                $record,
+                                'origin_lockdown',
+                                (bool) $state,
+                                'Origin protection update queued.'
+                            );
+                        }),
+                ])
+                ->columns(2)
+                ->visible(fn (string $operation): bool => $operation === 'edit'),
         ]);
     }
 
@@ -256,6 +457,24 @@ class SiteResource extends Resource
         if (! RateLimiter::attempt($key, maxAttempts: 3, callback: static fn () => true, decaySeconds: 60)) {
             abort(429, 'Too many sensitive requests. Please retry in a minute.');
         }
+    }
+
+    protected static function queuePlaceholderControl(Site $site, string $setting, mixed $value, string $message): void
+    {
+        static::throttle($site, 'control-'.$setting);
+
+        ApplySiteControlSettingJob::dispatch($site->id, $setting, $value, auth()->id());
+
+        Notification::make()->title($message)->success()->send();
+    }
+
+    protected static function controlValue(?Site $site, string $setting, mixed $default): mixed
+    {
+        if (! $site) {
+            return $default;
+        }
+
+        return data_get($site->required_dns_records, 'control_panel.'.$setting, $default);
     }
 
     protected static function nextStep(Site $site): string

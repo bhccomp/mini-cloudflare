@@ -116,3 +116,36 @@
 - `f3886ce` feat(aws-admin): AWS proxy integrations + admin overrides + guardrails
 - `dda0f8c` feat(app): app site workflow + provision/check-dns jobs
 - `c1c6fb5` feat(core): proxy schema pivot + panel isolation verification
+
+## Hotfixes (Latest 500s)
+- 500 on `/app/sites/create` root cause #1:
+  - `Class "Filament\\Forms\\Components\\Section" not found`
+  - Fixed by using `Filament\\Schemas\\Components\\Section`.
+  - Commit: `17acb48`
+- 500 on `/app/sites/create` root cause #2:
+  - `Class "Filament\\Forms\\Components\\Wizard" not found`
+  - Fixed by using `Filament\\Schemas\\Components\\Wizard` and `Filament\\Schemas\\Components\\Wizard\\Step`.
+  - Commit: `6fe87f3`
+- Post-fix actions run:
+  - `php artisan optimize`
+  - `php artisan test` (all passing)
+  - `systemctl reload php8.3-fpm`
+
+## Site Edit UX (Stacked Security Control Panel)
+- Site edit page (`/app/sites/{id}/edit`) now uses 5 stacked sections:
+  - SSL
+  - CDN
+  - Cache
+  - WAF
+  - Origin
+- Create page remains a wizard; edit page is now control-oriented instead of generic CRUD.
+- Functional controls on edit:
+  - CDN/Cache purge actions -> `InvalidateCloudFrontCacheJob`
+  - Under attack toggle -> `ToggleUnderAttackModeJob`
+- Placeholder controls (queued + audited):
+  - HTTPS enforcement toggle
+  - Cache enabled toggle
+  - Cache mode selector
+  - WAF ruleset preset selector
+  - Origin protection toggle
+- Placeholder control job: `ApplySiteControlSettingJob` (audit-only for now).
