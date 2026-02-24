@@ -6,18 +6,14 @@
     'icon' => null,
 ])
 
-<x-filament::section :heading="$title" :description="$description" :icon="$icon">
-    <div class="space-y-4">
-        @if ($status)
-            <div class="flex items-center justify-end">
-                <x-filament.app.settings.status-pill :color="$statusColor">
-                    {{ $status }}
-                </x-filament.app.settings.status-pill>
-            </div>
-        @endif
+<x-filament::section :heading="$title" :description="$description" :icon="$icon" :divided="true">
+    @if ($status)
+        <x-slot name="afterHeader">
+            <x-filament.app.settings.status-pill :color="$statusColor">
+                {{ $status }}
+            </x-filament.app.settings.status-pill>
+        </x-slot>
+    @endif
 
-        <div class="space-y-4">
-            {{ $slot }}
-        </div>
-    </div>
+    {{ $slot }}
 </x-filament::section>

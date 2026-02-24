@@ -1,5 +1,7 @@
 <x-filament-panels::page>
-    <div class="mx-auto w-full max-w-6xl space-y-8 pb-2">
+    <x-filament.app.settings.layout-styles />
+
+    <div class="fp-protection-shell">
         @if (! $this->site)
             @include('filament.app.pages.protection.empty-state')
         @else

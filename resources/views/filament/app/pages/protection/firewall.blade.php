@@ -1,10 +1,11 @@
 <x-filament-panels::page>
-    <div class="mx-auto w-full max-w-6xl space-y-6">
+    <x-filament.app.settings.layout-styles />
+    <div class="fp-protection-shell">
         @if (! $this->site)
             @include('filament.app.pages.protection.empty-state')
         @else
-            <div class="grid gap-4 xl:grid-cols-3">
-                <div class="xl:col-span-2">
+            <div class="fp-protection-grid">
+                <div>
                     <x-filament.app.settings.card
                         title="Firewall Settings"
                         description="Control threat filtering and emergency hardening."
@@ -31,15 +32,13 @@
                     </x-filament.app.settings.card>
                 </div>
 
-                <x-filament.app.settings.card
-                    title="Recent Action"
-                    description="Latest firewall operation"
-                    icon="heroicon-o-clock"
-                >
-                    <x-filament.app.settings.key-value-grid :rows="[
-                        ['label' => 'Event', 'value' => $this->lastAction('waf.')],
-                        ['label' => 'Rule updates', 'value' => 'Coming soon'],
-                    ]" />
+                <x-filament.app.settings.card title="Recent Action" description="Latest firewall operation" icon="heroicon-o-clock">
+                    <x-filament.app.settings.section title="Operational Events" description="Recent WebACL and policy updates">
+                        <x-filament.app.settings.key-value-grid :rows="[
+                            ['label' => 'Most recent event', 'value' => $this->lastAction('waf.')],
+                            ['label' => 'Rule updates', 'value' => 'Coming soon'],
+                        ]" />
+                    </x-filament.app.settings.section>
                 </x-filament.app.settings.card>
             </div>
         @endif

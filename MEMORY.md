@@ -289,3 +289,31 @@
   - `./vendor/bin/pint` passed
   - `php artisan test` passed
   - `php artisan optimize` passed
+
+## Native Filament Layout Hardening (Latest)
+- Root cause of plain-looking UI confirmed:
+  - Protection page structure depended too heavily on utility-class styling, which degraded when theme CSS utility generation did not fully cover those classes.
+- Shared settings components were hardened to rely on Filament-native primitives:
+  - `resources/views/components/filament/app/settings/card.blade.php`
+  - `resources/views/components/filament/app/settings/section.blade.php`
+  - `resources/views/components/filament/app/settings/key-value-grid.blade.php`
+  - `resources/views/components/filament/app/settings/action-row.blade.php`
+  - `resources/views/components/filament/app/settings/status-pill.blade.php`
+- Added a stable non-utility layout scaffold for protection/overview pages:
+  - `resources/views/components/filament/app/settings/layout-styles.blade.php`
+  - Provides consistent shell/grid spacing and responsive 2-col -> 1-col fallback independent of Tailwind utility compilation.
+- Applied stabilized layout to all protection pages:
+  - `resources/views/filament/app/pages/protection/ssl.blade.php`
+  - `resources/views/filament/app/pages/protection/cdn.blade.php`
+  - `resources/views/filament/app/pages/protection/cache.blade.php`
+  - `resources/views/filament/app/pages/protection/firewall.blade.php`
+  - `resources/views/filament/app/pages/protection/origin.blade.php`
+  - `resources/views/filament/app/pages/protection/analytics.blade.php`
+  - `resources/views/filament/app/pages/protection/logs.blade.php`
+- Overview stabilization completed:
+  - `resources/views/filament/app/pages/dashboard.blade.php` now uses the same stable layout include.
+  - `Security Signals` graph widgets were intentionally left unchanged (`SiteSignalsStats`, `TrafficTrendChart`, `CacheDistributionChart`, `RegionalTrafficShareChart`, `RegionalThreatLevelChart`).
+- Validation after hardening:
+  - `./vendor/bin/pint --dirty` passed
+  - `php artisan test` passed (9 tests)
+  - `php artisan optimize` passed

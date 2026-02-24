@@ -2,21 +2,26 @@
     'rows' => [],
 ])
 
-<div class="grid gap-3 md:grid-cols-2">
+<div style="display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
     @foreach ($rows as $row)
         @php
             $value = data_get($row, 'value');
             $isHtml = (bool) data_get($row, 'is_html', false);
         @endphp
-        <div class="rounded-lg border border-gray-200 bg-white px-3 py-2.5 dark:border-gray-700 dark:bg-gray-900">
-            <p class="text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ data_get($row, 'label') }}</p>
-            <div class="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100 break-all">
-                @if ($isHtml)
-                    {!! $value !!}
-                @else
-                    {{ $value }}
-                @endif
+        <x-filament::section compact secondary>
+            <div style="display: grid; gap: 0.5rem;">
+                <x-filament::badge color="gray">
+                    {{ data_get($row, 'label') }}
+                </x-filament::badge>
+
+                <div>
+                    @if ($isHtml)
+                        {!! $value !!}
+                    @else
+                        {{ $value }}
+                    @endif
+                </div>
             </div>
-        </div>
+        </x-filament::section>
     @endforeach
 </div>
