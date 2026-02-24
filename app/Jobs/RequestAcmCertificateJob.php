@@ -8,14 +8,12 @@ use App\Services\Aws\AwsEdgeService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
-class StartSiteProvisioningJob implements ShouldQueue
+class RequestAcmCertificateJob implements ShouldQueue
 {
     use Queueable;
 
-    public function __construct(
-        public int $siteId,
-        public ?int $actorId = null,
-    ) {
+    public function __construct(public int $siteId, public ?int $actorId = null)
+    {
         $this->onQueue('default');
     }
 
@@ -23,16 +21,13 @@ class StartSiteProvisioningJob implements ShouldQueue
     {
         $site = Site::query()->findOrFail($this->siteId);
 
-        if ($site->status === 'active' && $site->cloudfront_distribution_id && $site->waf_web_acl_arn) {
-            $this->audit($site, 'site.provision.start', 'info', 'Site already active.', []);
+        if ($site->status === 'active' && $site->acm_certificate_arn) {
+            $this->audit($site, 'acm.request', 'info', 'Certificate already exists.', []);
 
             return;
         }
 
-        $site->update([
-            'status' => 'provisioning',
-            'last_error' => null,
-        ]);
+        $site->update(['status' => 'provisioning', 'last_error' => null]);
 
         try {
             $result = $aws->requestAcmCertificate($site);
@@ -44,21 +39,10 @@ class StartSiteProvisioningJob implements ShouldQueue
                 'last_error' => null,
             ]);
 
-            $this->audit(
-                $site,
-                'site.provision.start',
-                'success',
-                $result['message'] ?? 'Certificate requested; waiting DNS validation.',
-                $result,
-            );
+            $this->audit($site, 'acm.request', 'success', $result['message'] ?? 'ACM requested.', $result);
         } catch (\Throwable $e) {
-            $site->update([
-                'status' => 'failed',
-                'last_error' => $e->getMessage(),
-            ]);
-
-            $this->audit($site, 'site.provision.start', 'failed', $e->getMessage(), []);
-
+            $site->update(['status' => 'failed', 'last_error' => $e->getMessage()]);
+            $this->audit($site, 'acm.request', 'failed', $e->getMessage(), []);
             throw $e;
         }
     }

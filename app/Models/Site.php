@@ -16,6 +16,7 @@ class Site extends Model
         'name',
         'display_name',
         'apex_domain',
+        'www_enabled',
         'www_domain',
         'origin_type',
         'origin_url',
@@ -23,12 +24,12 @@ class Site extends Model
         'status',
         'last_error',
         'last_provisioned_at',
+        'acm_certificate_arn',
         'cloudfront_distribution_id',
         'cloudfront_domain_name',
         'waf_web_acl_arn',
-        'acm_certificate_arn',
         'required_dns_records',
-        'under_attack_mode_enabled',
+        'under_attack',
     ];
 
     protected static function booted(): void
@@ -41,14 +42,23 @@ class Site extends Model
             if (! $site->name && $site->display_name) {
                 $site->name = $site->display_name;
             }
+
+            if ($site->www_enabled && ! $site->www_domain) {
+                $site->www_domain = 'www.'.$site->apex_domain;
+            }
+
+            if (! $site->www_enabled) {
+                $site->www_domain = null;
+            }
         });
     }
 
     protected function casts(): array
     {
         return [
+            'www_enabled' => 'boolean',
             'required_dns_records' => 'array',
-            'under_attack_mode_enabled' => 'boolean',
+            'under_attack' => 'boolean',
             'last_provisioned_at' => 'datetime',
         ];
     }
