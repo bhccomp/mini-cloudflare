@@ -2,6 +2,11 @@
 
 namespace App\Filament\App\Pages;
 
+use App\Filament\App\Widgets\CacheDistributionChart;
+use App\Filament\App\Widgets\SiteSignalsStats;
+use App\Filament\App\Widgets\TrafficRegionsWidget;
+use App\Filament\App\Widgets\TrafficTrendChart;
+
 class Dashboard extends BaseProtectionPage
 {
     protected static ?string $slug = 'overview';
@@ -15,4 +20,26 @@ class Dashboard extends BaseProtectionPage
     protected static ?string $title = 'Overview';
 
     protected string $view = 'filament.app.pages.dashboard';
+
+    protected function getHeaderWidgets(): array
+    {
+        if (! $this->site) {
+            return [];
+        }
+
+        return [
+            SiteSignalsStats::class,
+            TrafficTrendChart::class,
+            CacheDistributionChart::class,
+            TrafficRegionsWidget::class,
+        ];
+    }
+
+    public function getHeaderWidgetsColumns(): int|array
+    {
+        return [
+            'md' => 2,
+            'xl' => 4,
+        ];
+    }
 }

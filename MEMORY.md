@@ -218,3 +218,21 @@
 - Removed middle hero/domain blocks from Overview and all protection pages.
 - Kept only widget/section cards visible on each page.
 - Site switcher remains as Filament teleported dropdown (overlay behavior fixed).
+
+## Dashboard Widget Upgrade (Latest)
+- `/app/overview` now uses native Filament widgets (not plain inline stat blocks):
+  - `SiteSignalsStats` (stats overview)
+  - `TrafficTrendChart` (line chart)
+  - `CacheDistributionChart` (doughnut chart)
+  - `TrafficRegionsWidget` (map-style regional distribution card)
+- `Dashboard.php` now registers `getHeaderWidgets()` + responsive widget columns.
+- Added widget concern:
+  - `app/Filament/App/Widgets/Concerns/ResolvesSelectedSite.php`
+  - Ensures widgets render only when a valid selected site exists.
+- Added widget view:
+  - `resources/views/filament/app/widgets/traffic-regions-widget.blade.php`
+- Section pages (SSL/CDN/Cache/Firewall/Origin/Analytics/Logs) were refactored to richer card-based layouts with better spacing and visual hierarchy.
+- Validation snapshot after update:
+  - `./vendor/bin/pint` passed
+  - `php artisan test` passed (9 tests)
+  - `php artisan optimize` passed
