@@ -1,0 +1,97 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Filament\App\Pages\Dashboard;
+use App\Filament\App\Resources\SiteResource\Pages\CreateSite;
+use App\Models\Organization;
+use App\Models\Site;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
+use Tests\TestCase;
+
+class AppProtectionNavigationTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_user_with_no_sites_can_open_protection_pages(): void
+    {
+        $org = Organization::create(['name' => 'Org', 'slug' => 'org']);
+
+        $user = User::factory()->create([
+            'is_super_admin' => false,
+            'current_organization_id' => $org->id,
+        ]);
+        $user->organizations()->attach($org->id, ['role' => 'owner']);
+
+        $this->actingAs($user);
+
+        foreach (['/app/overview', '/app/ssl', '/app/cdn', '/app/cache', '/app/firewall', '/app/origin'] as $path) {
+            $this->get($path)
+                ->assertOk()
+                ->assertSee('No sites connected to this account yet');
+        }
+    }
+
+    public function test_selected_site_context_is_visible_across_protection_pages(): void
+    {
+        $org = Organization::create(['name' => 'Org', 'slug' => 'org']);
+
+        $user = User::factory()->create([
+            'is_super_admin' => false,
+            'current_organization_id' => $org->id,
+        ]);
+        $user->organizations()->attach($org->id, ['role' => 'owner']);
+
+        $site = Site::create([
+            'organization_id' => $org->id,
+            'display_name' => 'Main Site',
+            'name' => 'Main Site',
+            'apex_domain' => 'example.com',
+            'origin_type' => 'url',
+            'origin_url' => 'https://origin.example.com',
+            'status' => 'draft',
+        ]);
+
+        $this->actingAs($user)
+            ->get('/app/overview?site_id='.$site->id)
+            ->assertOk()
+            ->assertSee('Main Site')
+            ->assertSee('example.com');
+
+        foreach (['/app/ssl', '/app/cdn', '/app/cache', '/app/firewall', '/app/origin'] as $path) {
+            $this->get($path)
+                ->assertOk()
+                ->assertSee('Main Site')
+                ->assertSee('example.com');
+        }
+    }
+
+    public function test_site_creation_redirects_to_overview_and_saves_selection(): void
+    {
+        $org = Organization::create(['name' => 'Org', 'slug' => 'org']);
+
+        $user = User::factory()->create([
+            'is_super_admin' => false,
+            'current_organization_id' => $org->id,
+        ]);
+        $user->organizations()->attach($org->id, ['role' => 'owner']);
+
+        $component = Livewire::actingAs($user)
+            ->test(CreateSite::class)
+            ->set('data.organization_id', $org->id)
+            ->set('data.display_name', 'Wizard Site')
+            ->set('data.apex_domain', 'wizard-example.com')
+            ->set('data.www_enabled', false)
+            ->set('data.origin_url', 'https://origin.wizard-example.com')
+            ->call('create')
+            ->assertHasNoErrors();
+
+        $site = Site::query()->where('apex_domain', 'wizard-example.com')->firstOrFail();
+
+        $component->assertRedirect(Dashboard::getUrl(['site_id' => $site->id]));
+
+        $this->assertSame($site->id, $user->fresh()->selected_site_id);
+    }
+}

@@ -2,6 +2,7 @@
 
 namespace App\Filament\App\Resources;
 
+use App\Filament\App\Pages\Dashboard;
 use App\Filament\App\Resources\SiteResource\Pages;
 use App\Jobs\ApplySiteControlSettingJob;
 use App\Jobs\CheckAcmDnsValidationJob;
@@ -408,8 +409,9 @@ class SiteResource extends Resource
                     ->icon('heroicon-m-arrow-top-right-on-square')
                     ->action(function (Site $record): void {
                         session(['selected_site_id' => $record->id]);
-                        Notification::make()->title('Site context selected. Open Site Dashboard from navigation.')->success()->send();
-                    }),
+                        Notification::make()->title('Site selected for dashboard context.')->success()->send();
+                    })
+                    ->url(fn (Site $record): string => Dashboard::getUrl(['site_id' => $record->id])),
                 Actions\Action::make('provision')
                     ->label('Provision')
                     ->color('warning')

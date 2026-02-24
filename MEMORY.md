@@ -158,3 +158,29 @@
   - 5 stacked control cards: SSL, CDN, Cache, WAF, Origin
   - Quick actions: SSL request, purge cache, under attack toggle, placeholder control toggles
 - Edit Site page now enforces selected-site context from session and redirects to Sites list if missing/invalid selection.
+
+## Cloudflare-like /app UX Refactor
+- Added global Protection navigation pages (non-CRUD):
+  - `/app/overview`
+  - `/app/ssl`
+  - `/app/cdn`
+  - `/app/cache`
+  - `/app/firewall`
+  - `/app/origin`
+  - `/app/analytics` (placeholder)
+  - `/app/logs` (placeholder)
+- Added `SiteContext` service for per-user selected site handling:
+  - supports URL override `?site_id=...`
+  - supports `All sites` mode (`null`)
+  - persists selection in session and `users.selected_site_id`
+  - enforces org ownership for selected site
+- Added global topbar switcher (render hook `PanelsRenderHook::TOPBAR_START`) with:
+  - current site / All sites label
+  - all owned sites (`display_name + apex_domain + status`)
+  - Add site action
+- Added migration: `users.selected_site_id` (nullable FK to sites).
+- Create Site wizard now redirects to overview and auto-selects the new site context.
+- New tests in `tests/Feature/AppProtectionNavigationTest.php` cover:
+  - no-site access to protection pages
+  - selected-site visibility across pages
+  - create wizard redirect + selected-site persistence

@@ -2,9 +2,8 @@
 
 namespace App\Livewire\Filament\App;
 
-use App\Filament\App\Pages\Dashboard;
-use App\Filament\App\Resources\SiteResource;
 use App\Models\Site;
+use App\Services\SiteContext;
 use Illuminate\Support\Collection;
 use Livewire\Component;
 
@@ -12,18 +11,15 @@ class SiteSwitcher extends Component
 {
     public ?int $selectedSiteId = null;
 
-    public function mount(): void
+    public function mount(SiteContext $siteContext): void
     {
-        $selected = (int) session('selected_site_id');
+        $user = auth()->user();
 
-        if ($selected > 0 && $this->sites()->contains(fn (Site $site): bool => $site->id === $selected)) {
-            $this->selectedSiteId = $selected;
-
+        if (! $user) {
             return;
         }
 
-        $this->selectedSiteId = null;
-        session()->forget('selected_site_id');
+        $this->selectedSiteId = $siteContext->getSelectedSiteId($user, request());
     }
 
     public function sites(): Collection
@@ -40,40 +36,37 @@ class SiteSwitcher extends Component
             ->get(['id', 'display_name', 'apex_domain', 'status']);
     }
 
-    public function selectSite(int $siteId): void
+    public function selectSite(string $siteId, SiteContext $siteContext): void
     {
-        $site = $this->sites()->firstWhere('id', $siteId);
+        $user = auth()->user();
 
-        if (! $site) {
+        if (! $user) {
             return;
         }
 
-        session(['selected_site_id' => $site->id]);
-        $this->selectedSiteId = $site->id;
+        $this->selectedSiteId = $siteContext->setSelectedSiteId($user, $siteId === 'all' ? null : (int) $siteId);
 
-        $this->redirect(Dashboard::getUrl(), navigate: true);
-    }
-
-    public function clearSelectedSite(): void
-    {
-        session()->forget('selected_site_id');
-        $this->selectedSiteId = null;
-
-        $this->redirect(SiteResource::getUrl('index'), navigate: true);
+        $this->redirect(request()->fullUrlWithoutQuery(['site_id']).($this->selectedSiteId ? '?site_id='.$this->selectedSiteId : ''), navigate: true);
     }
 
     public function addSiteUrl(): string
     {
-        return SiteResource::getUrl('create');
+        return \App\Filament\App\Resources\SiteResource::getUrl('create');
     }
 
-    public function getSelectedSiteProperty(): ?Site
+    public function getSelectedLabelProperty(): string
     {
         if (! $this->selectedSiteId) {
-            return null;
+            return 'All sites';
         }
 
-        return $this->sites()->firstWhere('id', $this->selectedSiteId);
+        $site = $this->sites()->firstWhere('id', $this->selectedSiteId);
+
+        if (! $site) {
+            return 'All sites';
+        }
+
+        return $site->display_name.' · '.$site->apex_domain;
     }
 
     public function statusColor(string $status): string

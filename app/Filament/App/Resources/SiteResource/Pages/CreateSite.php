@@ -2,7 +2,9 @@
 
 namespace App\Filament\App\Resources\SiteResource\Pages;
 
+use App\Filament\App\Pages\Dashboard;
 use App\Filament\App\Resources\SiteResource;
+use App\Services\SiteContext;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
@@ -27,14 +29,16 @@ class CreateSite extends CreateRecord
 
     protected function getRedirectUrl(): string
     {
-        return SiteResource::getUrl('edit', ['record' => $this->record]);
+        return Dashboard::getUrl(['site_id' => $this->record->id]);
     }
 
     protected function afterCreate(): void
     {
+        app(SiteContext::class)->setSelectedSiteId(auth()->user(), $this->record->id);
+
         Notification::make()
             ->title('Site created')
-            ->body('Next step: open Provision in the status hub to request SSL records.')
+            ->body('Your site is selected. Continue setup from the Overview section.')
             ->success()
             ->send();
     }
