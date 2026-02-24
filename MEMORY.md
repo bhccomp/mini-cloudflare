@@ -149,3 +149,12 @@
   - WAF ruleset preset selector
   - Origin protection toggle
 - Placeholder control job: `ApplySiteControlSettingJob` (audit-only for now).
+
+## Global Site Context (Topbar + Dashboard)
+- Added global topbar Site Switcher via `PanelsRenderHook::TOPBAR_START`.
+- Site switcher lists all user-owned sites with status badge, stores selection in session key `selected_site_id`, and includes `Add site` quick link.
+- New Site Dashboard at `/app` now loads selected site from session and shows:
+  - Metrics row: blocked requests (24h), cache hit ratio, certificate status, distribution health
+  - 5 stacked control cards: SSL, CDN, Cache, WAF, Origin
+  - Quick actions: SSL request, purge cache, under attack toggle, placeholder control toggles
+- Edit Site page now enforces selected-site context from session and redirects to Sites list if missing/invalid selection.

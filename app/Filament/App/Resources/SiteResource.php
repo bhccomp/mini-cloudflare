@@ -402,6 +402,14 @@ class SiteResource extends Resource
                 Tables\Columns\TextColumn::make('updated_at')->since(),
             ])
             ->actions([
+                Actions\Action::make('openDashboard')
+                    ->label('Open Dashboard')
+                    ->color('primary')
+                    ->icon('heroicon-m-arrow-top-right-on-square')
+                    ->action(function (Site $record): void {
+                        session(['selected_site_id' => $record->id]);
+                        Notification::make()->title('Site context selected. Open Site Dashboard from navigation.')->success()->send();
+                    }),
                 Actions\Action::make('provision')
                     ->label('Provision')
                     ->color('warning')
@@ -437,7 +445,6 @@ class SiteResource extends Resource
                         InvalidateCloudFrontCacheJob::dispatch($record->id, ['/*'], auth()->id());
                         Notification::make()->title('Invalidation queued')->success()->send();
                     }),
-                Actions\EditAction::make(),
             ]);
     }
 
