@@ -203,3 +203,11 @@
   - Improved spacing/alignment for Overview and section pages (SSL/CDN/Cache/Firewall/Origin/Analytics/Logs).
 - Redirect behavior remains:
   - After site create, redirect to `/app/overview?site_id=...` with context selected.
+
+## UI Hotfix + Visual Refresh (Latest)
+- Fixed site switcher dropdown clipping/expanding topbar issue by replacing custom absolute popup with Filament native `x-filament::dropdown` (`teleport=true`).
+- Switcher keeps search + quick actions + selected-state badges, now rendered in stable overlay behavior.
+- Applied additional Cloudflare-like visual polish:
+  - Overview: gradient hero, cleaner stat cards, tighter control-card rhythm.
+  - Section pages (SSL/CDN/Cache/Firewall/Origin/Analytics/Logs): consistent hero headers, spacing, and modern card-based layout.
+- Create Site UX remains simplified (single domain input, normalized, auto display name).

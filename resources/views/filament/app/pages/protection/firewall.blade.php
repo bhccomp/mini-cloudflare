@@ -3,7 +3,10 @@
         @if (! $this->site)
             @include('filament.app.pages.protection.empty-state')
         @else
-            @include('filament.app.pages.protection.site-context-header')
+            <div class="rounded-2xl bg-gradient-to-r from-red-500/20 via-red-500/10 to-transparent p-6 ring-1 ring-red-500/20 dark:from-red-500/15 dark:via-red-500/5">
+                <p class="text-xs uppercase tracking-wider text-gray-500">Firewall</p>
+                <h2 class="mt-1 text-2xl font-semibold">{{ $this->site->apex_domain }}</h2>
+            </div>
 
             <x-filament::section icon="heroicon-o-shield-check" heading="Firewall" description="Threat filtering and emergency mode controls.">
                 <div class="grid gap-4 md:grid-cols-4">
