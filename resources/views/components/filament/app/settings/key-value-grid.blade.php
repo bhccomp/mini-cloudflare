@@ -2,22 +2,20 @@
     'rows' => [],
 ])
 
-<div class="grid gap-2 sm:grid-cols-1 xl:grid-cols-2">
+<div class="grid gap-3 md:grid-cols-2">
     @foreach ($rows as $row)
         @php
             $value = data_get($row, 'value');
             $isHtml = (bool) data_get($row, 'is_html', false);
         @endphp
-        <div class="rounded-xl border border-gray-200/70 bg-gray-50/70 px-3 py-2 dark:border-gray-800 dark:bg-gray-900/60">
-            <div class="flex items-start justify-between gap-3">
-                <span class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ data_get($row, 'label') }}</span>
-                <span class="text-sm font-medium text-gray-900 dark:text-gray-100 text-right break-all">
-                    @if ($isHtml)
-                        {!! $value !!}
-                    @else
-                        {{ $value }}
-                    @endif
-                </span>
+        <div class="rounded-lg border border-gray-200 bg-white px-3 py-2.5 dark:border-gray-700 dark:bg-gray-900">
+            <p class="text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ data_get($row, 'label') }}</p>
+            <div class="mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100 break-all">
+                @if ($isHtml)
+                    {!! $value !!}
+                @else
+                    {{ $value }}
+                @endif
             </div>
         </div>
     @endforeach

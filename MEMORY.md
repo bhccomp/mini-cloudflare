@@ -275,3 +275,17 @@
   - `./vendor/bin/pint` passed
   - `php artisan test` passed
   - `php artisan optimize` passed
+
+## Settings Widget Styling Correction (Latest)
+- Adjusted shared settings UI components to restore native Filament widget feel (instead of flat/plain blocks):
+  - `resources/views/components/filament/app/settings/card.blade.php`
+  - `resources/views/components/filament/app/settings/section.blade.php`
+  - `resources/views/components/filament/app/settings/key-value-grid.blade.php`
+  - `resources/views/components/filament/app/settings/action-row.blade.php`
+- `SettingsCard` now renders as `x-filament::section` with native widget chrome.
+- `SettingsSection` now renders as a structured inner panel with clear header/body/action alignment.
+- `KeyValueGrid` now uses denser mini-cards for label/value rows (2-col desktop, 1-col mobile).
+- Validation rerun after correction:
+  - `./vendor/bin/pint` passed
+  - `php artisan test` passed
+  - `php artisan optimize` passed
