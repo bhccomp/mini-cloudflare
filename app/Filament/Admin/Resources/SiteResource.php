@@ -11,7 +11,7 @@ use App\Rules\ApexDomainRule;
 use App\Rules\SafeOriginUrlRule;
 use Filament\Actions;
 use Filament\Forms;
-use Filament\Forms\Components\Section;
+use Filament\Schemas\Components\Section;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
