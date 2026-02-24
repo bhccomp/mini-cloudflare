@@ -26,6 +26,11 @@ abstract class BaseProtectionPage extends Page
 
     public bool $hasAnySites = false;
 
+    public function getHeading(): string|\Illuminate\Contracts\Support\Htmlable|null
+    {
+        return null;
+    }
+
     public function mount(Request $request, SiteContext $siteContext): void
     {
         $user = auth()->user();

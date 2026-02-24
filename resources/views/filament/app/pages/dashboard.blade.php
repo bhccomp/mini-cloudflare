@@ -3,16 +3,6 @@
         @if (! $this->site)
             @include('filament.app.pages.protection.empty-state')
         @else
-            <div class="rounded-2xl bg-gradient-to-r from-primary-500/20 via-primary-500/10 to-transparent p-6 ring-1 ring-primary-500/20 dark:from-primary-500/15 dark:via-primary-500/5">
-                <div class="flex flex-wrap items-center justify-between gap-4">
-                    <div>
-                        <p class="text-xs uppercase tracking-wider text-gray-500">Protection Overview</p>
-                        <h2 class="mt-1 text-2xl font-semibold">{{ $this->site->apex_domain }}</h2>
-                    </div>
-                    <x-filament::badge :color="$this->badgeColor()">{{ str($this->site->status)->replace('_', ' ')->title() }}</x-filament::badge>
-                </div>
-            </div>
-
             <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <div class="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
                     <p class="text-xs uppercase tracking-wide text-gray-500">Blocked Requests (24h)</p>

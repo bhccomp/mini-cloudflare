@@ -211,3 +211,10 @@
   - Overview: gradient hero, cleaner stat cards, tighter control-card rhythm.
   - Section pages (SSL/CDN/Cache/Firewall/Origin/Analytics/Logs): consistent hero headers, spacing, and modern card-based layout.
 - Create Site UX remains simplified (single domain input, normalized, auto display name).
+
+## UI Adjustment (Latest)
+- Removed extra page-level title/domain layer outside widgets across protection pages.
+- `BaseProtectionPage::getHeading()` now returns `null`, so top page heading is hidden.
+- Removed middle hero/domain blocks from Overview and all protection pages.
+- Kept only widget/section cards visible on each page.
+- Site switcher remains as Filament teleported dropdown (overlay behavior fixed).
