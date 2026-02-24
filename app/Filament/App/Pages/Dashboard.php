@@ -22,6 +22,8 @@ class Dashboard extends BaseProtectionPage
 
     protected string $view = 'filament.app.pages.dashboard';
 
+    protected static bool $shouldRegisterNavigation = false;
+
     protected function getHeaderWidgets(): array
     {
         if (! $this->site) {
