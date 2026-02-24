@@ -46,8 +46,8 @@ class SiteResource extends Resource
             Section::make('Site onboarding')
                 ->description('Set up your site in a few guided steps.')
                 ->schema([
-                    Forms\Components\Wizard::make([
-                        Forms\Components\Wizard\Step::make('Domain')
+                    \Filament\Schemas\Components\Wizard::make([
+                        \Filament\Schemas\Components\Wizard\Step::make('Domain')
                             ->description('Choose the domain you want to protect.')
                             ->schema([
                                 Forms\Components\Hidden::make('organization_id')
@@ -69,7 +69,7 @@ class SiteResource extends Resource
                                     ->default(false)
                                     ->live(),
                             ])->columns(1),
-                        Forms\Components\Wizard\Step::make('Origin')
+                        \Filament\Schemas\Components\Wizard\Step::make('Origin')
                             ->description('Tell us where requests should be forwarded after inspection.')
                             ->schema([
                                 Forms\Components\TextInput::make('origin_url')
@@ -114,14 +114,14 @@ class SiteResource extends Resource
                                     ->label('Connectivity test')
                                     ->content(fn (Get $get): string => (string) ($get('origin_test_feedback') ?: 'Run a quick connectivity test before continuing.')),
                             ])->columns(1),
-                        Forms\Components\Wizard\Step::make('SSL')
+                        \Filament\Schemas\Components\Wizard\Step::make('SSL')
                             ->description('Your domain needs certificate validation before traffic can be routed.')
                             ->schema([
                                 Forms\Components\Placeholder::make('ssl_info')
                                     ->label('What happens next')
                                     ->content('After you create the site, click Provision in the status hub. We will generate DNS records for certificate validation and guide you through the exact DNS updates needed.'),
                             ]),
-                        Forms\Components\Wizard\Step::make('Review & Create')
+                        \Filament\Schemas\Components\Wizard\Step::make('Review & Create')
                             ->description('Confirm details and create your protection layer.')
                             ->schema([
                                 Forms\Components\Placeholder::make('review_domain')
