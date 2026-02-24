@@ -236,3 +236,16 @@
   - `./vendor/bin/pint` passed
   - `php artisan test` passed (9 tests)
   - `php artisan optimize` passed
+
+## Widget Polish Follow-up (Latest)
+- Removed custom `TrafficRegionsWidget` HTML-heavy block and replaced it with native Filament charts:
+  - `RegionalTrafficShareChart` (bar)
+  - `RegionalThreatLevelChart` (radar)
+- Dashboard widget stack now uses only native-style stats/charts for region insights.
+- Deleted old files:
+  - `app/Filament/App/Widgets/TrafficRegionsWidget.php`
+  - `resources/views/filament/app/widgets/traffic-regions-widget.blade.php`
+- Validation rerun:
+  - `./vendor/bin/pint` passed
+  - `php artisan test` passed
+  - `php artisan optimize` passed

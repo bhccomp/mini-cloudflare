@@ -3,8 +3,9 @@
 namespace App\Filament\App\Pages;
 
 use App\Filament\App\Widgets\CacheDistributionChart;
+use App\Filament\App\Widgets\RegionalThreatLevelChart;
+use App\Filament\App\Widgets\RegionalTrafficShareChart;
 use App\Filament\App\Widgets\SiteSignalsStats;
-use App\Filament\App\Widgets\TrafficRegionsWidget;
 use App\Filament\App\Widgets\TrafficTrendChart;
 
 class Dashboard extends BaseProtectionPage
@@ -31,7 +32,8 @@ class Dashboard extends BaseProtectionPage
             SiteSignalsStats::class,
             TrafficTrendChart::class,
             CacheDistributionChart::class,
-            TrafficRegionsWidget::class,
+            RegionalTrafficShareChart::class,
+            RegionalThreatLevelChart::class,
         ];
     }
 
