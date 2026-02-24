@@ -317,3 +317,110 @@
   - `./vendor/bin/pint --dirty` passed
   - `php artisan test` passed (9 tests)
   - `php artisan optimize` passed
+
+## Option A Onboarding Flow + Status Hub (Latest)
+- Provisioning flow switched to **Option A** (no traffic cutover before cert + edge):
+  - `draft`
+  - `pending_dns_validation`
+  - `deploying`
+  - `ready_for_cutover`
+  - `active`
+  - `failed`
+- Added explicit status constants + labels:
+  - `app/Models/Site.php`
+- Added migration to map legacy statuses:
+  - `database/migrations/2026_02_24_160000_update_site_statuses_option_a.php`
+- Provision action behavior updated:
+  - `RequestAcmCertificateJob` now only requests ACM + stores validation records + sets `pending_dns_validation`.
+- DNS validation check behavior updated:
+  - `CheckAcmDnsValidationJob` is status-aware.
+  - On validation success: sets `deploying` and dispatches chain:
+    - `ProvisionWafWebAclJob`
+    - `ProvisionCloudFrontDistributionJob`
+    - `AssociateWebAclToDistributionJob`
+    - `MarkSiteReadyForCutoverJob` (new)
+  - On validation pending: remains `pending_dns_validation` with friendly audit/log message.
+- Cutover check behavior updated:
+  - `CheckAcmDnsValidationJob` handles `ready_for_cutover` by running traffic DNS checks and sets `active` only when apex/www point to CloudFront.
+- New job:
+  - `app/Jobs/MarkSiteReadyForCutoverJob.php`
+- New Setup Hub page:
+  - `app/Filament/App/Pages/SiteStatusHubPage.php`
+  - `resources/views/filament/app/pages/site-status-hub.blade.php`
+  - Shows 4-step progression, contextual next action, validation DNS records, cutover DNS instructions.
+  - Includes live polling refresh and in-action loading indicator UX.
+- Wizard UX changes:
+  - Removed “Also protect www” question from main flow; default protection includes apex + www.
+  - Origin input accepts host-only and normalizes to `https://...`.
+  - Redirect after create now goes to Status Hub and selects site context.
+  - Files:
+    - `app/Filament/App/Resources/SiteResource.php`
+    - `app/Filament/App/Resources/SiteResource/Pages/CreateSite.php`
+- Sites list actions/status behavior:
+  - Primary action is Status Hub.
+  - Provision / Check DNS / Check cutover / Under Attack / Purge actions now status/resource-aware.
+  - Table row click now routes to Status Hub (not edit page).
+- Site switcher routing fix:
+  - Fixed Livewire redirect bug causing `405 Method Not Allowed` by persisting return URL in component state.
+  - File: `app/Livewire/Filament/App/SiteSwitcher.php`
+- Empty state UX for “All sites”:
+  - Now shows compact site list with inline status badges and direct domain links instead of blank state.
+  - File: `resources/views/filament/app/pages/protection/empty-state.blade.php`
+
+## Provider-Managed Analytics Pipeline (Latest)
+- Added backend metrics storage for dashboard analytics:
+  - Model: `app/Models/SiteAnalyticsMetric.php`
+  - Relation: `Site::analyticsMetric()`
+  - Migration: `database/migrations/2026_02_24_210000_create_site_analytics_metrics_table.php`
+- Added AWS analytics fetch service:
+  - `app/Services/Aws/AwsAnalyticsService.php`
+  - Pulls CloudWatch metrics for CloudFront/WAF using provider account credentials:
+    - Requests
+    - CacheHitRate
+    - BlockedRequests
+    - AllowedRequests
+  - Produces persisted 24h metrics + 7-day trend arrays + regional datasets (derived where native region splits are unavailable).
+  - Supports dry-run mode for safe local/dev behavior.
+- Added analytics sync job + scheduler:
+  - Job: `app/Jobs/SyncSiteAnalyticsMetricJob.php`
+  - Console command: `metrics:sync-sites`
+  - Schedule: every 5 minutes in `routes/console.php`
+- Dashboard widgets now consume persisted analytics metrics (instead of static chart arrays):
+  - `app/Filament/App/Widgets/SiteSignalsStats.php`
+  - `app/Filament/App/Widgets/TrafficTrendChart.php`
+  - `app/Filament/App/Widgets/CacheDistributionChart.php`
+  - `app/Filament/App/Widgets/RegionalTrafficShareChart.php`
+  - `app/Filament/App/Widgets/RegionalThreatLevelChart.php`
+- Protection page helper metrics updated to read analytics snapshots:
+  - `app/Filament/App/Pages/BaseProtectionPage.php`
+
+## Tests + Validation (Latest)
+- Added/updated tests:
+  - `tests/Feature/AppProtectionNavigationTest.php`
+  - `tests/Feature/ProvisionJobsTest.php`
+  - `tests/Feature/SiteAnalyticsSyncTest.php` (new)
+- Latest validation snapshot:
+  - `php artisan migrate --force` passed
+  - `./vendor/bin/pint --dirty` passed
+  - `php artisan test` passed (14 tests, 61 assertions)
+  - `php artisan optimize` passed
+
+## Firewall Page Upgrade (Latest)
+- `/app/firewall` was upgraded from basic control placeholders into a functional analytics view using Filament-native sections/badges/actions.
+- Added AWS firewall insights service:
+  - `app/Services/Aws/AwsFirewallInsightsService.php`
+  - Pulls sampled request data from AWS WAF (`GetSampledRequests`) when not in dry-run.
+  - Caches per-site insights for short intervals to keep page responsive.
+  - Includes dry-run synthetic insights so UI remains populated in test/dev.
+- Firewall page now shows:
+  - summary metrics (sampled total/blocked/allowed/counted + block ratio)
+  - top 10 countries by request count
+  - top 10 IPs by request count (+ blocked count)
+  - recent firewall events feed with action/rule badges
+  - request map visualization (world-style map with country request bubbles)
+- Added page logic:
+  - `app/Filament/App/Pages/FirewallPage.php`
+  - provides insights accessor, cache refresh action, and request-map point mapping.
+- Updated view:
+  - `resources/views/filament/app/pages/protection/firewall.blade.php`
+  - Uses Filament UI primitives heavily (`x-filament::section`, badges, actions, buttons) with lightweight supplemental CSS only for layout/map rendering.
