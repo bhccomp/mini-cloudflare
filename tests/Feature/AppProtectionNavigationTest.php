@@ -57,13 +57,11 @@ class AppProtectionNavigationTest extends TestCase
         $this->actingAs($user)
             ->get('/app/overview?site_id='.$site->id)
             ->assertOk()
-            ->assertSee('Main Site')
             ->assertSee('example.com');
 
         foreach (['/app/ssl', '/app/cdn', '/app/cache', '/app/firewall', '/app/origin'] as $path) {
             $this->get($path)
                 ->assertOk()
-                ->assertSee('Main Site')
                 ->assertSee('example.com');
         }
     }
@@ -81,7 +79,6 @@ class AppProtectionNavigationTest extends TestCase
         $component = Livewire::actingAs($user)
             ->test(CreateSite::class)
             ->set('data.organization_id', $org->id)
-            ->set('data.display_name', 'Wizard Site')
             ->set('data.apex_domain', 'wizard-example.com')
             ->set('data.www_enabled', false)
             ->set('data.origin_url', 'https://origin.wizard-example.com')

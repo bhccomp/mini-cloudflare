@@ -15,6 +15,11 @@ class CreateSite extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+        $domain = $this->normalizeDomainInput((string) ($data['apex_domain'] ?? ''));
+
+        $data['apex_domain'] = $domain;
+        $data['display_name'] = $domain;
+        $data['name'] = $domain;
         $data['status'] = 'draft';
         $data['origin_type'] = 'url';
 
@@ -41,5 +46,25 @@ class CreateSite extends CreateRecord
             ->body('Your site is selected. Continue setup from the Overview section.')
             ->success()
             ->send();
+    }
+
+    protected function normalizeDomainInput(string $value): string
+    {
+        $input = strtolower(trim($value));
+
+        if ($input === '') {
+            return '';
+        }
+
+        $candidate = str_contains($input, '://') ? $input : 'https://'.ltrim($input, '/');
+        $host = parse_url($candidate, PHP_URL_HOST) ?: $input;
+        $host = explode(':', $host)[0];
+        $host = trim($host, '.');
+
+        if (str_starts_with($host, 'www.')) {
+            $host = substr($host, 4);
+        }
+
+        return $host;
     }
 }

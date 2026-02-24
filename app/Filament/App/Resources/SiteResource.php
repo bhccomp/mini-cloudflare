@@ -54,17 +54,21 @@ class SiteResource extends Resource
                             ->schema([
                                 Forms\Components\Hidden::make('organization_id')
                                     ->default(fn () => auth()->user()?->current_organization_id ?: auth()->user()?->organizations()->value('organizations.id')),
-                                Forms\Components\TextInput::make('display_name')
-                                    ->label('Site name')
-                                    ->placeholder('Main store')
-                                    ->required()
-                                    ->maxLength(255),
                                 Forms\Components\TextInput::make('apex_domain')
-                                    ->label('Primary domain')
-                                    ->placeholder('example.com')
+                                    ->label('Domain')
+                                    ->placeholder('example.com or https://example.com')
                                     ->required()
-                                    ->helperText('You will point this domain in DNS in the final step.')
-                                    ->rule(new ApexDomainRule),
+                                    ->helperText('Enter your root domain. You can paste a URL and we will normalize it.')
+                                    ->rule(function (): \Closure {
+                                        return function (string $attribute, mixed $value, \Closure $fail): void {
+                                            (new ApexDomainRule)->validate(
+                                                $attribute,
+                                                static::normalizeDomainInput((string) $value),
+                                                $fail
+                                            );
+                                        };
+                                    })
+                                    ->dehydrateStateUsing(fn (?string $state): string => static::normalizeDomainInput($state)),
                                 Forms\Components\Toggle::make('www_enabled')
                                     ->label('Also protect www')
                                     ->helperText('Enable if you want to protect both example.com and www.example.com.')
@@ -496,5 +500,25 @@ class SiteResource extends Resource
             'failed' => 'Review last error and retry Provision.',
             default => 'Review site status.',
         };
+    }
+
+    protected static function normalizeDomainInput(?string $value): string
+    {
+        $input = strtolower(trim((string) $value));
+
+        if ($input === '') {
+            return '';
+        }
+
+        $candidate = str_contains($input, '://') ? $input : 'https://'.ltrim($input, '/');
+        $host = parse_url($candidate, PHP_URL_HOST) ?: $input;
+        $host = explode(':', $host)[0];
+        $host = trim($host, '.');
+
+        if (str_starts_with($host, 'www.')) {
+            $host = substr($host, 4);
+        }
+
+        return $host;
     }
 }

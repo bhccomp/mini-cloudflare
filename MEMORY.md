@@ -184,3 +184,22 @@
   - no-site access to protection pages
   - selected-site visibility across pages
   - create wizard redirect + selected-site persistence
+
+## UI Refinements (Latest)
+- Create Site wizard UX simplified:
+  - Removed separate `site name` field from UI.
+  - Single required `Domain` input now accepts apex domain or URL.
+  - Domain input is normalized (scheme/path/leading `www` stripped) before save.
+  - `display_name` and `name` are auto-generated internally from normalized apex domain.
+- Topbar Site Switcher redesigned:
+  - Removed duplicated domain labeling.
+  - Now shows apex domain + compact status badge (`Active`/`Draft`).
+  - Added quick actions at top: `All sites`, `+ Add site`.
+  - Added live search (`wire:model.live.debounce`) for large site lists.
+  - Improved spacing, separators, selected-state visibility, and dropdown width.
+- Protection pages visual polish:
+  - Added consistent `max-w-7xl` card-based layout shell.
+  - Unified site context header card and empty state card styling.
+  - Improved spacing/alignment for Overview and section pages (SSL/CDN/Cache/Firewall/Origin/Analytics/Logs).
+- Redirect behavior remains:
+  - After site create, redirect to `/app/overview?site_id=...` with context selected.

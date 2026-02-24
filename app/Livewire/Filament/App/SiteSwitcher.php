@@ -11,6 +11,8 @@ class SiteSwitcher extends Component
 {
     public ?int $selectedSiteId = null;
 
+    public string $search = '';
+
     public function mount(SiteContext $siteContext): void
     {
         $user = auth()->user();
@@ -32,7 +34,15 @@ class SiteSwitcher extends Component
 
         return Site::query()
             ->whereIn('organization_id', $user->organizations()->select('organizations.id'))
-            ->orderBy('display_name')
+            ->when($this->search !== '', function ($query): void {
+                $query->where(function ($query): void {
+                    $query
+                        ->where('apex_domain', 'like', '%'.$this->search.'%')
+                        ->orWhere('display_name', 'like', '%'.$this->search.'%');
+                });
+            })
+            ->orderBy('apex_domain')
+            ->limit(75)
             ->get(['id', 'display_name', 'apex_domain', 'status']);
     }
 
@@ -66,7 +76,12 @@ class SiteSwitcher extends Component
             return 'All sites';
         }
 
-        return $site->display_name.' · '.$site->apex_domain;
+        return $site->apex_domain;
+    }
+
+    public function shortStatusLabel(string $status): string
+    {
+        return $status === 'active' ? 'Active' : 'Draft';
     }
 
     public function statusColor(string $status): string
