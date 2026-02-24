@@ -27,17 +27,31 @@ class RegionalThreatLevelChart extends ChartWidget
 
     protected function getData(): array
     {
+        $site = $this->getSelectedSite();
+        $site?->loadMissing('analyticsMetric');
+        $regions = (array) ($site?->analyticsMetric?->regional_threat ?? []);
+
+        if ($regions === []) {
+            $regions = [
+                'North America' => 0,
+                'Europe' => 0,
+                'Asia Pacific' => 0,
+                'South America' => 0,
+                'Other' => 0,
+            ];
+        }
+
         return [
             'datasets' => [
                 [
                     'label' => 'Threat score',
-                    'data' => [22, 34, 29, 12, 41],
+                    'data' => array_values($regions),
                     'borderColor' => '#f97316',
                     'backgroundColor' => 'rgba(249, 115, 22, 0.2)',
                     'pointBackgroundColor' => '#fb923c',
                 ],
             ],
-            'labels' => ['North America', 'Europe', 'Asia Pacific', 'South America', 'Other'],
+            'labels' => array_keys($regions),
         ];
     }
 }

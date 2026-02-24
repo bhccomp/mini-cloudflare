@@ -27,11 +27,19 @@ class TrafficTrendChart extends ChartWidget
 
     protected function getData(): array
     {
+        $site = $this->getSelectedSite();
+        $site?->loadMissing('analyticsMetric');
+        $metrics = $site?->analyticsMetric;
+
+        $labels = $metrics?->trend_labels ?: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        $blocked = $metrics?->blocked_trend ?: [0, 0, 0, 0, 0, 0, 0];
+        $allowed = $metrics?->allowed_trend ?: [0, 0, 0, 0, 0, 0, 0];
+
         return [
             'datasets' => [
                 [
                     'label' => 'Blocked',
-                    'data' => [12, 16, 14, 21, 19, 26, 22],
+                    'data' => $blocked,
                     'borderColor' => '#f97316',
                     'backgroundColor' => 'rgba(249, 115, 22, 0.18)',
                     'tension' => 0.35,
@@ -39,14 +47,14 @@ class TrafficTrendChart extends ChartWidget
                 ],
                 [
                     'label' => 'Allowed',
-                    'data' => [340, 390, 372, 420, 405, 461, 438],
+                    'data' => $allowed,
                     'borderColor' => '#22d3ee',
                     'backgroundColor' => 'rgba(34, 211, 238, 0.09)',
                     'tension' => 0.35,
                     'fill' => true,
                 ],
             ],
-            'labels' => ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+            'labels' => $labels,
         ];
     }
 }

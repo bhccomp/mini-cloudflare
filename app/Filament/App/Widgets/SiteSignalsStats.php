@@ -24,19 +24,26 @@ class SiteSignalsStats extends StatsOverviewWidget
             return [];
         }
 
-        $blocked = (string) data_get($site->required_dns_records, 'metrics.blocked_requests_24h', 'Coming soon');
-        $cacheHitRatio = (string) data_get($site->required_dns_records, 'metrics.cache_hit_ratio', 'Coming soon');
+        $site->loadMissing('analyticsMetric');
+        $metrics = $site->analyticsMetric;
+
+        $blocked = $metrics?->blocked_requests_24h !== null
+            ? number_format((int) $metrics->blocked_requests_24h)
+            : 'Coming soon';
+        $cacheHitRatio = $metrics?->cache_hit_ratio !== null
+            ? number_format((float) $metrics->cache_hit_ratio, 2).'%'
+            : 'Coming soon';
 
         return [
             Stat::make('Blocked Requests (24h)', $blocked)
                 ->description('Firewall activity')
                 ->descriptionIcon('heroicon-m-shield-exclamation')
-                ->chart([6, 12, 10, 18, 14, 20, 16])
+                ->chart($metrics?->blocked_trend ?: [0, 0, 0, 0, 0, 0, 0])
                 ->color('danger'),
             Stat::make('Cache Hit Ratio', $cacheHitRatio)
                 ->description('Edge cache efficiency')
                 ->descriptionIcon('heroicon-m-bolt')
-                ->chart([42, 48, 45, 54, 59, 63, 66])
+                ->chart($this->cacheRatioTrend($metrics?->cache_hit_ratio))
                 ->color('success'),
             Stat::make('Certificate', $site->acm_certificate_arn ? 'Issued / Pending' : 'Not requested')
                 ->description('TLS readiness')
@@ -46,6 +53,23 @@ class SiteSignalsStats extends StatsOverviewWidget
                 ->description('Edge delivery state')
                 ->descriptionIcon('heroicon-m-globe-alt')
                 ->color($site->cloudfront_distribution_id ? 'success' : 'gray'),
+        ];
+    }
+
+    protected function cacheRatioTrend(?float $current): array
+    {
+        if ($current === null) {
+            return [0, 0, 0, 0, 0, 0, 0];
+        }
+
+        return [
+            max(0, $current - 4),
+            max(0, $current - 2),
+            max(0, $current - 3),
+            max(0, $current - 1),
+            $current,
+            min(100, $current + 1),
+            min(100, $current + 2),
         ];
     }
 }

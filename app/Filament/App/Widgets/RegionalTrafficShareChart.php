@@ -27,11 +27,25 @@ class RegionalTrafficShareChart extends ChartWidget
 
     protected function getData(): array
     {
+        $site = $this->getSelectedSite();
+        $site?->loadMissing('analyticsMetric');
+        $regions = (array) ($site?->analyticsMetric?->regional_traffic ?? []);
+
+        if ($regions === []) {
+            $regions = [
+                'North America' => 0,
+                'Europe' => 0,
+                'Asia Pacific' => 0,
+                'South America' => 0,
+                'Other' => 0,
+            ];
+        }
+
         return [
             'datasets' => [
                 [
                     'label' => 'Request share %',
-                    'data' => [44, 31, 19, 4, 2],
+                    'data' => array_values($regions),
                     'backgroundColor' => [
                         '#0ea5e9',
                         '#22d3ee',
@@ -42,7 +56,7 @@ class RegionalTrafficShareChart extends ChartWidget
                     'borderRadius' => 8,
                 ],
             ],
-            'labels' => ['North America', 'Europe', 'Asia Pacific', 'South America', 'Other'],
+            'labels' => array_keys($regions),
         ];
     }
 }

@@ -27,11 +27,23 @@ class CacheDistributionChart extends ChartWidget
 
     protected function getData(): array
     {
+        $site = $this->getSelectedSite();
+        $site?->loadMissing('analyticsMetric');
+        $metrics = $site?->analyticsMetric;
+
+        $cached = $metrics?->cached_requests_24h;
+        $origin = $metrics?->origin_requests_24h;
+
+        if ($cached === null || $origin === null) {
+            $cached = 0;
+            $origin = 0;
+        }
+
         return [
             'datasets' => [
                 [
                     'label' => 'Requests',
-                    'data' => [68, 32],
+                    'data' => [(int) $cached, (int) $origin],
                     'backgroundColor' => ['#14b8a6', '#6366f1'],
                     'hoverOffset' => 6,
                 ],
