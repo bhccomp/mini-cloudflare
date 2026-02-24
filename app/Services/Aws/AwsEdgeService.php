@@ -107,7 +107,7 @@ class AwsEdgeService
         }
 
         $updated = [];
-        $allValid = true;
+        $allValidDns = true;
 
         foreach ($records as $record) {
             $name = rtrim((string) Arr::get($record, 'name', ''), '.');
@@ -117,7 +117,7 @@ class AwsEdgeService
                 ->all();
 
             $valid = in_array(strtolower($expected), $actual, true);
-            $allValid = $allValid && $valid;
+            $allValidDns = $allValidDns && $valid;
 
             $updated[] = [
                 ...$record,
@@ -125,13 +125,27 @@ class AwsEdgeService
             ];
         }
 
+        $certificateIssued = $this->isAcmCertificateIssued($site);
+
+        if ($certificateIssued) {
+            $updated = array_map(function (array $record): array {
+                $record['status'] = 'verified';
+
+                return $record;
+            }, $updated);
+        }
+
         $dns = $site->required_dns_records ?? [];
         $dns['acm_validation'] = $updated;
 
+        $validated = $allValidDns || $certificateIssued;
+
         return [
-            'validated' => $allValid,
+            'validated' => $validated,
             'required_dns_records' => $dns,
-            'message' => $allValid ? 'ACM DNS validated.' : 'ACM DNS validation pending.',
+            'message' => $validated
+                ? ($certificateIssued ? 'ACM certificate is already issued.' : 'ACM DNS validated.')
+                : 'ACM DNS validation pending.',
         ];
     }
 
@@ -515,7 +529,43 @@ class AwsEdgeService
         $process->setTimeout(10);
         $process->run();
 
-        return collect(explode("\n", trim($process->getOutput())))->filter()->values()->all();
+        $records = collect(explode("\n", trim($process->getOutput())))->filter()->values()->all();
+
+        if ($records !== []) {
+            return $records;
+        }
+
+        $fallback = dns_get_record($name, DNS_CNAME);
+        if (! is_array($fallback)) {
+            return [];
+        }
+
+        return collect($fallback)
+            ->map(fn (array $record) => (string) ($record['target'] ?? ''))
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    protected function isAcmCertificateIssued(Site $site): bool
+    {
+        if (! $site->acm_certificate_arn) {
+            return false;
+        }
+
+        if ($this->dryRun()) {
+            return false;
+        }
+
+        try {
+            $result = $this->acmClient()->describeCertificate([
+                'CertificateArn' => $site->acm_certificate_arn,
+            ])->toArray();
+        } catch (\Throwable) {
+            return false;
+        }
+
+        return strtoupper((string) Arr::get($result, 'Certificate.Status')) === 'ISSUED';
     }
 
     protected function webAclIdFromArn(string $arn): string

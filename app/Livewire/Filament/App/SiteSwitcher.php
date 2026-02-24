@@ -13,6 +13,8 @@ class SiteSwitcher extends Component
 
     public string $search = '';
 
+    public string $returnUrl = '';
+
     public function mount(SiteContext $siteContext): void
     {
         $user = auth()->user();
@@ -22,6 +24,7 @@ class SiteSwitcher extends Component
         }
 
         $this->selectedSiteId = $siteContext->getSelectedSiteId($user, request());
+        $this->returnUrl = request()->url();
     }
 
     public function sites(): Collection
@@ -55,8 +58,10 @@ class SiteSwitcher extends Component
         }
 
         $this->selectedSiteId = $siteContext->setSelectedSiteId($user, $siteId === 'all' ? null : (int) $siteId);
+        $target = $this->returnUrl !== '' ? $this->returnUrl : request()->url();
+        $query = $this->selectedSiteId ? '?site_id='.$this->selectedSiteId : '';
 
-        $this->redirect(request()->fullUrlWithoutQuery(['site_id']).($this->selectedSiteId ? '?site_id='.$this->selectedSiteId : ''), navigate: true);
+        $this->redirect($target.$query, navigate: true);
     }
 
     public function addSiteUrl(): string
@@ -81,15 +86,22 @@ class SiteSwitcher extends Component
 
     public function shortStatusLabel(string $status): string
     {
-        return $status === 'active' ? 'Active' : 'Draft';
+        return match ($status) {
+            Site::STATUS_ACTIVE => 'Active',
+            Site::STATUS_PENDING_DNS_VALIDATION => 'Validating',
+            Site::STATUS_DEPLOYING => 'Deploying',
+            Site::STATUS_READY_FOR_CUTOVER => 'Cutover',
+            Site::STATUS_FAILED => 'Failed',
+            default => 'Draft',
+        };
     }
 
     public function statusColor(string $status): string
     {
         return match ($status) {
-            'active' => 'success',
-            'pending_dns', 'provisioning' => 'warning',
-            'failed' => 'danger',
+            Site::STATUS_ACTIVE => 'success',
+            Site::STATUS_PENDING_DNS_VALIDATION, Site::STATUS_DEPLOYING, Site::STATUS_READY_FOR_CUTOVER => 'warning',
+            Site::STATUS_FAILED => 'danger',
             default => 'gray',
         };
     }

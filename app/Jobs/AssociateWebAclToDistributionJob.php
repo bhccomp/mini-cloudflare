@@ -23,11 +23,11 @@ class AssociateWebAclToDistributionJob implements ShouldQueue
 
         try {
             $result = $aws->associateWebAclToDistribution($site);
-            $site->update(['status' => 'provisioning', 'last_error' => null]);
+            $site->update(['status' => Site::STATUS_DEPLOYING, 'last_error' => null]);
 
             $this->audit($site, 'waf.associate', 'success', $result['message'] ?? 'WAF associated to distribution.', $result);
         } catch (\Throwable $e) {
-            $site->update(['status' => 'failed', 'last_error' => $e->getMessage()]);
+            $site->update(['status' => Site::STATUS_FAILED, 'last_error' => $e->getMessage()]);
             $this->audit($site, 'waf.associate', 'failed', $e->getMessage(), []);
             throw $e;
         }

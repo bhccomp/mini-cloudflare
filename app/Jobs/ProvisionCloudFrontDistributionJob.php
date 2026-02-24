@@ -27,13 +27,13 @@ class ProvisionCloudFrontDistributionJob implements ShouldQueue
                 'cloudfront_distribution_id' => $result['distribution_id'] ?? $site->cloudfront_distribution_id,
                 'cloudfront_domain_name' => $result['distribution_domain_name'] ?? $site->cloudfront_domain_name,
                 'required_dns_records' => $result['required_dns_records'] ?? $site->required_dns_records,
-                'status' => 'provisioning',
+                'status' => Site::STATUS_DEPLOYING,
                 'last_error' => null,
             ]);
 
             $this->audit($site, 'cloudfront.provision', 'success', $result['message'] ?? 'CloudFront provisioned.', $result);
         } catch (\Throwable $e) {
-            $site->update(['status' => 'failed', 'last_error' => $e->getMessage()]);
+            $site->update(['status' => Site::STATUS_FAILED, 'last_error' => $e->getMessage()]);
             $this->audit($site, 'cloudfront.provision', 'failed', $e->getMessage(), []);
             throw $e;
         }

@@ -25,13 +25,13 @@ class ProvisionWafWebAclJob implements ShouldQueue
             $result = $aws->provisionWafWebAcl($site, strict: (bool) $site->under_attack);
             $site->update([
                 'waf_web_acl_arn' => $result['web_acl_arn'] ?? $site->waf_web_acl_arn,
-                'status' => 'provisioning',
+                'status' => Site::STATUS_DEPLOYING,
                 'last_error' => null,
             ]);
 
             $this->audit($site, 'waf.provision', 'success', $result['message'] ?? 'WAF provisioned.', $result);
         } catch (\Throwable $e) {
-            $site->update(['status' => 'failed', 'last_error' => $e->getMessage()]);
+            $site->update(['status' => Site::STATUS_FAILED, 'last_error' => $e->getMessage()]);
             $this->audit($site, 'waf.provision', 'failed', $e->getMessage(), []);
             throw $e;
         }

@@ -2,7 +2,7 @@
 
 namespace App\Filament\App\Resources;
 
-use App\Filament\App\Pages\Dashboard;
+use App\Filament\App\Pages\SiteStatusHubPage;
 use App\Filament\App\Resources\SiteResource\Pages;
 use App\Jobs\ApplySiteControlSettingJob;
 use App\Jobs\CheckAcmDnsValidationJob;
@@ -54,6 +54,8 @@ class SiteResource extends Resource
                             ->schema([
                                 Forms\Components\Hidden::make('organization_id')
                                     ->default(fn () => auth()->user()?->current_organization_id ?: auth()->user()?->organizations()->value('organizations.id')),
+                                Forms\Components\Hidden::make('www_enabled')
+                                    ->default(true),
                                 Forms\Components\TextInput::make('apex_domain')
                                     ->label('Domain')
                                     ->placeholder('example.com or https://example.com')
@@ -68,12 +70,16 @@ class SiteResource extends Resource
                                             );
                                         };
                                     })
-                                    ->dehydrateStateUsing(fn (?string $state): string => static::normalizeDomainInput($state)),
-                                Forms\Components\Toggle::make('www_enabled')
-                                    ->label('Also protect www')
-                                    ->helperText('Enable if you want to protect both example.com and www.example.com.')
-                                    ->default(false)
-                                    ->live(),
+                                    ->dehydrateStateUsing(fn (?string $state): string => static::normalizeDomainInput($state))
+                                    ->live(onBlur: true)
+                                    ->afterStateUpdated(function (Set $set, Get $get, ?string $state): void {
+                                        $domain = static::normalizeDomainInput($state);
+                                        $currentOrigin = trim((string) $get('origin_url'));
+
+                                        if ($domain !== '' && $currentOrigin === '') {
+                                            $set('origin_url', 'https://'.$domain);
+                                        }
+                                    }),
                             ])->columns(1),
                         \Filament\Schemas\Components\Wizard\Step::make('Origin')
                             ->description('Tell us where requests should be forwarded after inspection.')
@@ -81,15 +87,24 @@ class SiteResource extends Resource
                                 Forms\Components\TextInput::make('origin_url')
                                     ->label('Origin URL')
                                     ->required()
-                                    ->placeholder('https://origin.example.com')
-                                    ->helperText('This should be your website origin URL. Private and local addresses are blocked for safety.')
-                                    ->rule(new SafeOriginUrlRule)
+                                    ->placeholder('origin.example.com or https://origin.example.com')
+                                    ->helperText('Host-only values are accepted and normalized to https://. Private and local addresses are blocked for safety.')
+                                    ->rule(function (): \Closure {
+                                        return function (string $attribute, mixed $value, \Closure $fail): void {
+                                            (new SafeOriginUrlRule)->validate(
+                                                $attribute,
+                                                static::normalizeOriginInput((string) $value),
+                                                $fail
+                                            );
+                                        };
+                                    })
+                                    ->dehydrateStateUsing(fn (?string $state): string => static::normalizeOriginInput((string) $state))
                                     ->suffixAction(
                                         Actions\Action::make('testOrigin')
                                             ->label('Test')
                                             ->icon('heroicon-m-signal')
                                             ->action(function (Get $get, Set $set): void {
-                                                $originUrl = trim((string) $get('origin_url'));
+                                                $originUrl = static::normalizeOriginInput((string) $get('origin_url'));
 
                                                 if ($originUrl === '') {
                                                     $set('origin_test_feedback', 'Enter an origin URL before running a test.');
@@ -135,7 +150,7 @@ class SiteResource extends Resource
                                     ->content(function (Get $get): string {
                                         $apex = (string) ($get('apex_domain') ?: 'Not set');
 
-                                        if (! $get('www_enabled')) {
+                                        if ($apex === 'Not set') {
                                             return $apex;
                                         }
 
@@ -220,7 +235,7 @@ class SiteResource extends Resource
                                 return 'Needs setup';
                             }
 
-                            return $record->status === 'active' ? 'Healthy' : 'Provisioning';
+                            return $record->status === Site::STATUS_ACTIVE ? 'Healthy' : 'Provisioning';
                         }),
                 ])
                 ->columns(2)
@@ -381,6 +396,7 @@ class SiteResource extends Resource
     {
         return $table
             ->defaultSort('updated_at', 'desc')
+            ->recordUrl(fn (Site $record): string => SiteStatusHubPage::getUrl(['site_id' => $record->id]))
             ->headerActions([
                 Actions\Action::make('addSiteSecondary')
                     ->label('Add Site')
@@ -403,19 +419,23 @@ class SiteResource extends Resource
                 Tables\Columns\TextColumn::make('status')->badge(),
                 Tables\Columns\IconColumn::make('under_attack')->label('Under Attack')->boolean(),
                 Tables\Columns\TextColumn::make('cloudfront_domain_name')->label('CloudFront')->toggleable(),
-                Tables\Columns\TextColumn::make('next_step')->state(fn (Site $record) => static::nextStep($record))->wrap(),
+                Tables\Columns\TextColumn::make('step')
+                    ->label('Step')
+                    ->state(fn (Site $record) => static::nextStepLabel($record))
+                    ->badge()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('updated_at')->since(),
             ])
             ->actions([
                 Actions\Action::make('openDashboard')
-                    ->label('Open Dashboard')
+                    ->label('Open status hub')
                     ->color('primary')
                     ->icon('heroicon-m-arrow-top-right-on-square')
                     ->action(function (Site $record): void {
                         session(['selected_site_id' => $record->id]);
-                        Notification::make()->title('Site selected for dashboard context.')->success()->send();
+                        Notification::make()->title('Site selected for status hub context.')->success()->send();
                     })
-                    ->url(fn (Site $record): string => Dashboard::getUrl(['site_id' => $record->id])),
+                    ->url(fn (Site $record): string => SiteStatusHubPage::getUrl(['site_id' => $record->id])),
                 Actions\Action::make('provision')
                     ->label('Provision')
                     ->color('warning')
@@ -424,15 +444,26 @@ class SiteResource extends Resource
                         static::throttle($record, 'provision');
                         RequestAcmCertificateJob::dispatch($record->id, auth()->id());
                         Notification::make()->title('Provision request queued')->success()->send();
-                    }),
+                    })
+                    ->visible(fn (Site $record): bool => in_array($record->status, [Site::STATUS_DRAFT, Site::STATUS_FAILED], true)),
                 Actions\Action::make('checkDns')
-                    ->label('Check DNS')
+                    ->label('Check DNS (validation)')
                     ->color('info')
                     ->action(function (Site $record): void {
                         static::throttle($record, 'check-dns');
                         CheckAcmDnsValidationJob::dispatch($record->id, auth()->id());
                         Notification::make()->title('DNS check queued')->success()->send();
-                    }),
+                    })
+                    ->visible(fn (Site $record): bool => $record->status === Site::STATUS_PENDING_DNS_VALIDATION),
+                Actions\Action::make('checkCutover')
+                    ->label('Check cutover')
+                    ->color('info')
+                    ->action(function (Site $record): void {
+                        static::throttle($record, 'check-cutover');
+                        CheckAcmDnsValidationJob::dispatch($record->id, auth()->id());
+                        Notification::make()->title('Cutover check queued')->success()->send();
+                    })
+                    ->visible(fn (Site $record): bool => $record->status === Site::STATUS_READY_FOR_CUTOVER),
                 Actions\Action::make('underAttack')
                     ->label(fn (Site $record): string => $record->under_attack ? 'Disable Under Attack' : 'Enable Under Attack')
                     ->color('danger')
@@ -441,7 +472,8 @@ class SiteResource extends Resource
                         static::throttle($record, 'under-attack');
                         ToggleUnderAttackModeJob::dispatch($record->id, ! $record->under_attack, auth()->id());
                         Notification::make()->title('Under attack update queued')->success()->send();
-                    }),
+                    })
+                    ->visible(fn (Site $record): bool => filled($record->waf_web_acl_arn)),
                 Actions\Action::make('purgeCache')
                     ->label('Purge cache')
                     ->color('gray')
@@ -450,7 +482,8 @@ class SiteResource extends Resource
                         static::throttle($record, 'purge-cache');
                         InvalidateCloudFrontCacheJob::dispatch($record->id, ['/*'], auth()->id());
                         Notification::make()->title('Invalidation queued')->success()->send();
-                    }),
+                    })
+                    ->visible(fn (Site $record): bool => filled($record->cloudfront_distribution_id)),
             ]);
     }
 
@@ -493,12 +526,26 @@ class SiteResource extends Resource
     protected static function nextStep(Site $site): string
     {
         return match ($site->status) {
-            'draft' => 'Click Provision to generate SSL validation DNS records.',
-            'pending_dns' => 'Add validation DNS records, then click Check DNS.',
-            'provisioning' => 'Provisioning in progress. Follow DNS target instructions and check again.',
-            'active' => 'Site is active and protected.',
-            'failed' => 'Review last error and retry Provision.',
+            Site::STATUS_DRAFT => 'Click Provision to generate SSL validation DNS records.',
+            Site::STATUS_PENDING_DNS_VALIDATION => 'Add validation DNS records, then click Check DNS.',
+            Site::STATUS_DEPLOYING => 'Deploying WAF and CloudFront. Wait until ready for cutover.',
+            Site::STATUS_READY_FOR_CUTOVER => 'Update apex/www traffic DNS to CloudFront, then click Check cutover.',
+            Site::STATUS_ACTIVE => 'Site is active and protected.',
+            Site::STATUS_FAILED => 'Review last error and retry Provision.',
             default => 'Review site status.',
+        };
+    }
+
+    protected static function nextStepLabel(Site $site): string
+    {
+        return match ($site->status) {
+            Site::STATUS_DRAFT => 'Provision',
+            Site::STATUS_PENDING_DNS_VALIDATION => 'Validate DNS',
+            Site::STATUS_DEPLOYING => 'Deploying',
+            Site::STATUS_READY_FOR_CUTOVER => 'Cutover DNS',
+            Site::STATUS_ACTIVE => 'Active',
+            Site::STATUS_FAILED => 'Retry',
+            default => 'Review',
         };
     }
 
@@ -520,5 +567,32 @@ class SiteResource extends Resource
         }
 
         return $host;
+    }
+
+    protected static function normalizeOriginInput(?string $value): string
+    {
+        $input = trim((string) $value);
+
+        if ($input === '') {
+            return '';
+        }
+
+        if (! str_contains($input, '://')) {
+            $input = 'https://'.$input;
+        }
+
+        $parts = parse_url($input);
+        if (! is_array($parts) || blank($parts['host'] ?? null)) {
+            return $input;
+        }
+
+        $scheme = strtolower((string) ($parts['scheme'] ?? 'https'));
+        $host = strtolower((string) $parts['host']);
+        $path = (string) ($parts['path'] ?? '');
+        $query = isset($parts['query']) ? '?'.$parts['query'] : '';
+        $fragment = isset($parts['fragment']) ? '#'.$parts['fragment'] : '';
+        $port = isset($parts['port']) ? ':'.$parts['port'] : '';
+
+        return sprintf('%s://%s%s%s%s%s', $scheme, $host, $port, $path, $query, $fragment);
     }
 }

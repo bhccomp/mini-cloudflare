@@ -2,7 +2,7 @@
 
 namespace App\Filament\App\Resources\SiteResource\Pages;
 
-use App\Filament\App\Pages\Dashboard;
+use App\Filament\App\Pages\SiteStatusHubPage;
 use App\Filament\App\Resources\SiteResource;
 use App\Services\SiteContext;
 use Filament\Actions\Action;
@@ -16,12 +16,15 @@ class CreateSite extends CreateRecord
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $domain = $this->normalizeDomainInput((string) ($data['apex_domain'] ?? ''));
+        $origin = $this->normalizeOriginInput((string) ($data['origin_url'] ?? ''));
 
         $data['apex_domain'] = $domain;
         $data['display_name'] = $domain;
         $data['name'] = $domain;
         $data['status'] = 'draft';
         $data['origin_type'] = 'url';
+        $data['www_enabled'] = (bool) ($data['www_enabled'] ?? true);
+        $data['origin_url'] = $origin !== '' ? $origin : 'https://'.$domain;
 
         return $data;
     }
@@ -34,7 +37,7 @@ class CreateSite extends CreateRecord
 
     protected function getRedirectUrl(): string
     {
-        return Dashboard::getUrl(['site_id' => $this->record->id]);
+        return SiteStatusHubPage::getUrl(['site_id' => $this->record->id]);
     }
 
     protected function afterCreate(): void
@@ -43,7 +46,7 @@ class CreateSite extends CreateRecord
 
         Notification::make()
             ->title('Site created')
-            ->body('Your site is selected. Continue setup from the Overview section.')
+            ->body('Your site is selected. Continue setup in the Site Status Hub.')
             ->success()
             ->send();
     }
@@ -66,5 +69,32 @@ class CreateSite extends CreateRecord
         }
 
         return $host;
+    }
+
+    protected function normalizeOriginInput(string $value): string
+    {
+        $input = trim($value);
+
+        if ($input === '') {
+            return '';
+        }
+
+        if (! str_contains($input, '://')) {
+            $input = 'https://'.$input;
+        }
+
+        $parts = parse_url($input);
+        if (! is_array($parts) || blank($parts['host'] ?? null)) {
+            return $input;
+        }
+
+        $scheme = strtolower((string) ($parts['scheme'] ?? 'https'));
+        $host = strtolower((string) $parts['host']);
+        $path = (string) ($parts['path'] ?? '');
+        $query = isset($parts['query']) ? '?'.$parts['query'] : '';
+        $fragment = isset($parts['fragment']) ? '#'.$parts['fragment'] : '';
+        $port = isset($parts['port']) ? ':'.$parts['port'] : '';
+
+        return sprintf('%s://%s%s%s%s%s', $scheme, $host, $port, $path, $query, $fragment);
     }
 }

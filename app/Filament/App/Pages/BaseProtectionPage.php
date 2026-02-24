@@ -4,6 +4,7 @@ namespace App\Filament\App\Pages;
 
 use App\Filament\App\Resources\SiteResource;
 use App\Jobs\ApplySiteControlSettingJob;
+use App\Jobs\CheckAcmDnsValidationJob;
 use App\Jobs\InvalidateCloudFrontCacheJob;
 use App\Jobs\RequestAcmCertificateJob;
 use App\Jobs\ToggleUnderAttackModeJob;
@@ -14,6 +15,7 @@ use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 abstract class BaseProtectionPage extends Page
@@ -25,6 +27,11 @@ abstract class BaseProtectionPage extends Page
     public ?int $selectedSiteId = null;
 
     public bool $hasAnySites = false;
+
+    public bool $pollingEnabled = false;
+
+    /** @var Collection<int, Site> */
+    public Collection $availableSites;
 
     public function getHeading(): string|\Illuminate\Contracts\Support\Htmlable|null
     {
@@ -44,6 +51,11 @@ abstract class BaseProtectionPage extends Page
         $this->hasAnySites = Site::query()
             ->whereIn('organization_id', $user->organizations()->select('organizations.id'))
             ->exists();
+        $this->availableSites = Site::query()
+            ->whereIn('organization_id', $user->organizations()->select('organizations.id'))
+            ->orderBy('apex_domain')
+            ->get(['id', 'apex_domain', 'display_name', 'status']);
+        $this->pollingEnabled = $this->shouldAutoPollByStatus();
     }
 
     protected function getHeaderActions(): array
@@ -85,8 +97,34 @@ abstract class BaseProtectionPage extends Page
             return;
         }
 
+        $this->pollingEnabled = true;
+        $this->throttle('provision');
         RequestAcmCertificateJob::dispatch($this->site->id, auth()->id());
-        $this->notify('SSL request queued');
+        $this->notify('Provision request queued');
+    }
+
+    public function checkDnsValidation(): void
+    {
+        if (! $this->site) {
+            return;
+        }
+
+        $this->pollingEnabled = true;
+        $this->throttle('check-dns-validation');
+        CheckAcmDnsValidationJob::dispatch($this->site->id, auth()->id());
+        $this->notify('Validation check queued');
+    }
+
+    public function checkCutover(): void
+    {
+        if (! $this->site) {
+            return;
+        }
+
+        $this->pollingEnabled = true;
+        $this->throttle('check-cutover');
+        CheckAcmDnsValidationJob::dispatch($this->site->id, auth()->id());
+        $this->notify('Cutover check queued');
     }
 
     public function purgeCache(): void
@@ -148,7 +186,7 @@ abstract class BaseProtectionPage extends Page
             return 'Not requested';
         }
 
-        return $this->site->status === 'active' ? 'Issued' : 'Pending validation';
+        return $this->site->status === Site::STATUS_ACTIVE ? 'Issued' : 'Pending validation';
     }
 
     public function distributionHealth(): string
@@ -157,7 +195,7 @@ abstract class BaseProtectionPage extends Page
             return 'Not deployed';
         }
 
-        return $this->site->status === 'active' ? 'Healthy' : 'Provisioning';
+        return $this->site->status === Site::STATUS_ACTIVE ? 'Healthy' : 'Provisioning';
     }
 
     public function cacheMode(): string
@@ -167,12 +205,18 @@ abstract class BaseProtectionPage extends Page
 
     public function metricBlockedRequests(): string
     {
-        return (string) data_get($this->site?->required_dns_records, 'metrics.blocked_requests_24h', 'Coming soon');
+        $value = $this->site?->analyticsMetric?->blocked_requests_24h
+            ?? data_get($this->site?->required_dns_records, 'metrics.blocked_requests_24h');
+
+        return $value !== null ? number_format((int) $value) : 'Coming soon';
     }
 
     public function metricCacheHitRatio(): string
     {
-        return (string) data_get($this->site?->required_dns_records, 'metrics.cache_hit_ratio', 'Coming soon');
+        $value = $this->site?->analyticsMetric?->cache_hit_ratio
+            ?? data_get($this->site?->required_dns_records, 'metrics.cache_hit_ratio');
+
+        return $value !== null ? number_format((float) $value, 2).'%' : 'Coming soon';
     }
 
     public function lastAction(string $startsWith): string
@@ -199,11 +243,36 @@ abstract class BaseProtectionPage extends Page
         $status ??= $this->site?->status;
 
         return match ($status) {
-            'active' => 'success',
-            'pending_dns', 'provisioning' => 'warning',
-            'failed' => 'danger',
+            Site::STATUS_ACTIVE => 'success',
+            Site::STATUS_PENDING_DNS_VALIDATION, Site::STATUS_DEPLOYING, Site::STATUS_READY_FOR_CUTOVER => 'warning',
+            Site::STATUS_FAILED => 'danger',
             default => 'gray',
         };
+    }
+
+    public function statusLabel(?string $status = null): string
+    {
+        $status ??= $this->site?->status;
+
+        return Site::statuses()[$status] ?? str($status)->replace('_', ' ')->title()->toString();
+    }
+
+    public function currentPageBaseUrl(): string
+    {
+        return request()->url();
+    }
+
+    protected function throttle(string $action): void
+    {
+        if (! $this->site || ! auth()->check()) {
+            return;
+        }
+
+        $key = sprintf('site-action:%s:%s:%s', auth()->id(), $this->site->id, $action);
+
+        if (! \Illuminate\Support\Facades\RateLimiter::attempt($key, maxAttempts: 3, callback: static fn () => true, decaySeconds: 60)) {
+            abort(429, 'Too many sensitive requests. Please retry in a minute.');
+        }
     }
 
     protected function notify(string $message): void
@@ -213,6 +282,17 @@ abstract class BaseProtectionPage extends Page
         $this->refreshSite();
     }
 
+    public function pollStatus(): void
+    {
+        $this->refreshSite();
+        $this->pollingEnabled = $this->shouldAutoPollByStatus() || $this->pollingEnabled;
+    }
+
+    public function shouldPollStatus(): bool
+    {
+        return $this->pollingEnabled || $this->shouldAutoPollByStatus();
+    }
+
     protected function refreshSite(): void
     {
         if (! $this->site) {
@@ -220,5 +300,18 @@ abstract class BaseProtectionPage extends Page
         }
 
         $this->site = Site::query()->find($this->site->id);
+
+        if ($this->site) {
+            $this->site->loadMissing('analyticsMetric');
+        }
+    }
+
+    protected function shouldAutoPollByStatus(): bool
+    {
+        return in_array($this->site?->status, [
+            Site::STATUS_PENDING_DNS_VALIDATION,
+            Site::STATUS_DEPLOYING,
+            Site::STATUS_READY_FOR_CUTOVER,
+        ], true);
     }
 }

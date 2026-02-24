@@ -9,7 +9,7 @@
                 title="Protection Control Stack"
                 description="Operate SSL, CDN, cache, firewall, and origin controls for the selected site."
                 icon="heroicon-o-shield-check"
-                :status="str($this->site->status)->replace('_', ' ')->title()"
+                :status="$this->statusLabel()"
                 :status-color="$this->badgeColor()"
             >
                 <x-filament.app.settings.section

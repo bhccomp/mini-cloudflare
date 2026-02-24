@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Filament\App\Pages\Dashboard;
+use App\Filament\App\Pages\SiteStatusHubPage;
 use App\Filament\App\Resources\SiteResource\Pages\CreateSite;
 use App\Models\Organization;
 use App\Models\Site;
@@ -27,7 +27,7 @@ class AppProtectionNavigationTest extends TestCase
 
         $this->actingAs($user);
 
-        foreach (['/app/overview', '/app/ssl', '/app/cdn', '/app/cache', '/app/firewall', '/app/origin'] as $path) {
+        foreach (['/app/status-hub', '/app/overview', '/app/ssl', '/app/cdn', '/app/cache', '/app/firewall', '/app/origin'] as $path) {
             $this->get($path)
                 ->assertOk()
                 ->assertSee('No sites connected to this account yet');
@@ -59,14 +59,14 @@ class AppProtectionNavigationTest extends TestCase
             ->assertOk()
             ->assertSee('example.com');
 
-        foreach (['/app/ssl', '/app/cdn', '/app/cache', '/app/firewall', '/app/origin'] as $path) {
+        foreach (['/app/status-hub', '/app/ssl', '/app/cdn', '/app/cache', '/app/firewall', '/app/origin'] as $path) {
             $this->get($path)
                 ->assertOk()
                 ->assertSee('example.com');
         }
     }
 
-    public function test_site_creation_redirects_to_overview_and_saves_selection(): void
+    public function test_site_creation_redirects_to_status_hub_and_saves_selection(): void
     {
         $org = Organization::create(['name' => 'Org', 'slug' => 'org']);
 
@@ -80,15 +80,16 @@ class AppProtectionNavigationTest extends TestCase
             ->test(CreateSite::class)
             ->set('data.organization_id', $org->id)
             ->set('data.apex_domain', 'wizard-example.com')
-            ->set('data.www_enabled', false)
-            ->set('data.origin_url', 'https://origin.wizard-example.com')
+            ->set('data.origin_url', 'origin.wizard-example.com')
             ->call('create')
             ->assertHasNoErrors();
 
         $site = Site::query()->where('apex_domain', 'wizard-example.com')->firstOrFail();
 
-        $component->assertRedirect(Dashboard::getUrl(['site_id' => $site->id]));
+        $component->assertRedirect(SiteStatusHubPage::getUrl(['site_id' => $site->id]));
 
         $this->assertSame($site->id, $user->fresh()->selected_site_id);
+        $this->assertSame('https://origin.wizard-example.com', $site->origin_url);
+        $this->assertTrue($site->www_enabled);
     }
 }

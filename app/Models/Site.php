@@ -6,10 +6,23 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Site extends Model
 {
     use HasFactory;
+
+    public const STATUS_DRAFT = 'draft';
+
+    public const STATUS_PENDING_DNS_VALIDATION = 'pending_dns_validation';
+
+    public const STATUS_DEPLOYING = 'deploying';
+
+    public const STATUS_READY_FOR_CUTOVER = 'ready_for_cutover';
+
+    public const STATUS_ACTIVE = 'active';
+
+    public const STATUS_FAILED = 'failed';
 
     protected $fillable = [
         'organization_id',
@@ -86,5 +99,22 @@ class Site extends Model
     public function events(): HasMany
     {
         return $this->hasMany(SiteEvent::class);
+    }
+
+    public function analyticsMetric(): HasOne
+    {
+        return $this->hasOne(SiteAnalyticsMetric::class);
+    }
+
+    public static function statuses(): array
+    {
+        return [
+            self::STATUS_DRAFT => 'Draft',
+            self::STATUS_PENDING_DNS_VALIDATION => 'Pending DNS Validation',
+            self::STATUS_DEPLOYING => 'Deploying',
+            self::STATUS_READY_FOR_CUTOVER => 'Ready for Cutover',
+            self::STATUS_ACTIVE => 'Active',
+            self::STATUS_FAILED => 'Failed',
+        ];
     }
 }

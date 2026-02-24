@@ -21,13 +21,11 @@ class RequestAcmCertificateJob implements ShouldQueue
     {
         $site = Site::query()->findOrFail($this->siteId);
 
-        if ($site->status === 'active' && $site->acm_certificate_arn) {
+        if ($site->status === Site::STATUS_ACTIVE && $site->acm_certificate_arn) {
             $this->audit($site, 'acm.request', 'info', 'Certificate already exists.', []);
 
             return;
         }
-
-        $site->update(['status' => 'provisioning', 'last_error' => null]);
 
         try {
             $result = $aws->requestAcmCertificate($site);
@@ -35,7 +33,7 @@ class RequestAcmCertificateJob implements ShouldQueue
             $site->update([
                 'acm_certificate_arn' => $result['certificate_arn'] ?? $site->acm_certificate_arn,
                 'required_dns_records' => $result['required_dns_records'] ?? $site->required_dns_records,
-                'status' => 'pending_dns',
+                'status' => Site::STATUS_PENDING_DNS_VALIDATION,
                 'last_error' => null,
             ]);
 
