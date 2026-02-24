@@ -29,18 +29,22 @@
 
 ## Important Models/Tables
 - `sites` key fields:
-  - `display_name`, `apex_domain`, `www_domain`
+  - `display_name`, `apex_domain`, `www_enabled`, `www_domain`
   - `origin_type`, `origin_url`, `origin_host`
-  - `status`, `last_error`, `last_provisioned_at`
+  - `status`, `under_attack`, `last_error`, `last_provisioned_at`
   - `acm_certificate_arn`, `cloudfront_distribution_id`, `cloudfront_domain_name`, `waf_web_acl_arn`
   - `required_dns_records` (JSON)
 - `audit_logs`: `actor_id`, `organization_id`, `site_id`, `action`, `status`, `meta`
 
 ## Jobs (Active)
-- `StartSiteProvisioningJob`
+- `RequestAcmCertificateJob`
+- `CheckAcmDnsValidationJob`
+- `ProvisionCloudFrontDistributionJob`
+- `ProvisionWafWebAclJob`
+- `AssociateWebAclToDistributionJob`
 - `CheckSiteDnsAndFinalizeProvisioningJob`
 - `ToggleUnderAttackModeJob`
-- `InvalidateCacheJob`
+- `InvalidateCloudFrontCacheJob`
 
 ## AWS Service
 - `App\Services\Aws\AwsEdgeService`
@@ -59,19 +63,30 @@
 - Rate-limit sensitive site actions in app Site resource
 - Idempotent job behavior + audit entries
 
-## Recent Fixes
-- Resolved page 500s caused by Filament v5 namespace mismatch.
-- Replaced `Filament\Tables\Actions\...` with `Filament\Actions\...` in resources.
-- Verified `/admin/*` and `/app/*` routes return login redirects/200 (no 500).
+## UX Update (Latest)
+- `/app` dashboard now has header CTA: **Add Site**.
+- Sites list now has:
+  - primary header CTA: **Add Site**
+  - secondary table CTA above rows
+  - friendly empty-state copy + **Add your first protected site** CTA
+- Site create flow is now a 4-step wizard:
+  - Domain
+  - Origin (with inline origin connectivity test)
+  - SSL explanation
+  - Review & Create
+- Create action label changed to **Create protection layer**.
+- After creation, user is redirected to site edit/status hub.
 
 ## Key Files
 - Panel providers:
   - `app/Providers/Filament/AdminPanelProvider.php`
   - `app/Providers/Filament/UserPanelProvider.php`
-- User access logic:
-  - `app/Models/User.php`
+- App dashboard:
+  - `app/Filament/App/Pages/Dashboard.php`
 - App site workflow:
   - `app/Filament/App/Resources/SiteResource.php`
+  - `app/Filament/App/Resources/SiteResource/Pages/ListSites.php`
+  - `app/Filament/App/Resources/SiteResource/Pages/CreateSite.php`
 - Admin site override:
   - `app/Filament/Admin/Resources/SiteResource.php`
 - AWS orchestration:
@@ -92,7 +107,6 @@
   - `STRIPE_PRICE_BUSINESS_MONTHLY`
 
 ## Test/Health Snapshot
-- `php artisan migrate --force` passes
 - `php artisan test` passes
 - `php artisan optimize` passes
 

@@ -15,10 +15,13 @@ use Filament\Forms;
 use Filament\Forms\Components\Section;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter;
 
 class SiteResource extends Resource
@@ -40,54 +43,120 @@ class SiteResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->schema([
-            Section::make('Site Onboarding Wizard')
+            Section::make('Site onboarding')
+                ->description('Set up your site in a few guided steps.')
                 ->schema([
                     Forms\Components\Wizard::make([
                         Forms\Components\Wizard\Step::make('Domain')
+                            ->description('Choose the domain you want to protect.')
                             ->schema([
                                 Forms\Components\Hidden::make('organization_id')
                                     ->default(fn () => auth()->user()?->current_organization_id ?: auth()->user()?->organizations()->value('organizations.id')),
-                                Forms\Components\TextInput::make('display_name')->required()->maxLength(255),
-                                Forms\Components\TextInput::make('apex_domain')->required()->rule(new ApexDomainRule),
-                                Forms\Components\Toggle::make('www_enabled')->label('Also protect www')->default(false),
-                            ]),
+                                Forms\Components\TextInput::make('display_name')
+                                    ->label('Site name')
+                                    ->placeholder('Main store')
+                                    ->required()
+                                    ->maxLength(255),
+                                Forms\Components\TextInput::make('apex_domain')
+                                    ->label('Primary domain')
+                                    ->placeholder('example.com')
+                                    ->required()
+                                    ->helperText('You will point this domain in DNS in the final step.')
+                                    ->rule(new ApexDomainRule),
+                                Forms\Components\Toggle::make('www_enabled')
+                                    ->label('Also protect www')
+                                    ->helperText('Enable if you want to protect both example.com and www.example.com.')
+                                    ->default(false)
+                                    ->live(),
+                            ])->columns(1),
                         Forms\Components\Wizard\Step::make('Origin')
+                            ->description('Tell us where requests should be forwarded after inspection.')
                             ->schema([
                                 Forms\Components\TextInput::make('origin_url')
                                     ->label('Origin URL')
                                     ->required()
                                     ->placeholder('https://origin.example.com')
-                                    ->rule(new SafeOriginUrlRule),
-                            ]),
-                        Forms\Components\Wizard\Step::make('Request SSL')
+                                    ->helperText('This should be your website origin URL. Private and local addresses are blocked for safety.')
+                                    ->rule(new SafeOriginUrlRule)
+                                    ->suffixAction(
+                                        Actions\Action::make('testOrigin')
+                                            ->label('Test')
+                                            ->icon('heroicon-m-signal')
+                                            ->action(function (Get $get, Set $set): void {
+                                                $originUrl = trim((string) $get('origin_url'));
+
+                                                if ($originUrl === '') {
+                                                    $set('origin_test_feedback', 'Enter an origin URL before running a test.');
+
+                                                    return;
+                                                }
+
+                                                try {
+                                                    $response = Http::timeout(8)
+                                                        ->withoutRedirecting()
+                                                        ->get($originUrl);
+
+                                                    if ($response->successful() || in_array($response->status(), [301, 302, 307, 308, 401, 403], true)) {
+                                                        $set('origin_test_feedback', 'Origin reachable. Connection check succeeded.');
+
+                                                        return;
+                                                    }
+
+                                                    $set('origin_test_feedback', "Origin responded with status {$response->status()}. Please verify the URL.");
+                                                } catch (\Throwable $exception) {
+                                                    $set('origin_test_feedback', 'Could not connect to origin. Check DNS, SSL, and firewall rules.');
+                                                }
+                                            })
+                                    ),
+                                Forms\Components\Hidden::make('origin_test_feedback')
+                                    ->dehydrated(false),
+                                Forms\Components\Placeholder::make('origin_test_result')
+                                    ->label('Connectivity test')
+                                    ->content(fn (Get $get): string => (string) ($get('origin_test_feedback') ?: 'Run a quick connectivity test before continuing.')),
+                            ])->columns(1),
+                        Forms\Components\Wizard\Step::make('SSL')
+                            ->description('Your domain needs certificate validation before traffic can be routed.')
                             ->schema([
-                                Forms\Components\Placeholder::make('ssl_step')
-                                    ->content('After saving, click Provision to request ACM certificate and get DNS validation records.'),
+                                Forms\Components\Placeholder::make('ssl_info')
+                                    ->label('What happens next')
+                                    ->content('After you create the site, click Provision in the status hub. We will generate DNS records for certificate validation and guide you through the exact DNS updates needed.'),
                             ]),
-                        Forms\Components\Wizard\Step::make('Provision Protection')
+                        Forms\Components\Wizard\Step::make('Review & Create')
+                            ->description('Confirm details and create your protection layer.')
                             ->schema([
-                                Forms\Components\Placeholder::make('protect_step')
-                                    ->content('After certificate validation, click Check DNS to provision CloudFront + AWS WAF.'),
-                            ]),
-                        Forms\Components\Wizard\Step::make('Activate')
-                            ->schema([
-                                Forms\Components\Placeholder::make('activate_step')
-                                    ->content('Final step: point your domain to CloudFront and use Check DNS to mark site active.'),
-                            ]),
+                                Forms\Components\Placeholder::make('review_domain')
+                                    ->label('Domain')
+                                    ->content(function (Get $get): string {
+                                        $apex = (string) ($get('apex_domain') ?: 'Not set');
+
+                                        if (! $get('www_enabled')) {
+                                            return $apex;
+                                        }
+
+                                        return $apex.' and www.'.$apex;
+                                    }),
+                                Forms\Components\Placeholder::make('review_origin')
+                                    ->label('Origin URL')
+                                    ->content(fn (Get $get): string => (string) ($get('origin_url') ?: 'Not set')),
+                                Forms\Components\Placeholder::make('review_note')
+                                    ->label('Next action after creation')
+                                    ->content('Open the site status hub, click Provision, and follow DNS instructions until the site becomes active.'),
+                            ])->columns(1),
                     ])->columnSpanFull(),
                 ]),
-            Section::make('Status Hub')
+            Section::make('Status hub')
+                ->description('Track provisioning state and follow the next required action.')
                 ->schema([
                     Forms\Components\Placeholder::make('status_badge')
                         ->label('Status')
                         ->content(fn (?Site $record) => $record?->status ?? 'draft'),
                     Forms\Components\Placeholder::make('next_step')
                         ->label('Next step')
-                        ->content(fn (?Site $record) => $record ? static::nextStep($record) : 'Complete wizard and create the site.'),
+                        ->content(fn (?Site $record) => $record ? static::nextStep($record) : 'Complete the onboarding wizard first.'),
                     Forms\Components\Textarea::make('required_dns_records')
-                        ->label('DNS Instructions')
+                        ->label('DNS instructions')
                         ->rows(12)
-                        ->formatStateUsing(fn (?array $state) => $state ? json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) : 'Coming soon')
+                        ->formatStateUsing(fn (?array $state) => $state ? json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) : 'No DNS records yet. Click Provision to generate them.')
                         ->dehydrated(false)
                         ->disabled()
                         ->columnSpanFull(),
@@ -106,6 +175,22 @@ class SiteResource extends Resource
     {
         return $table
             ->defaultSort('updated_at', 'desc')
+            ->headerActions([
+                Actions\Action::make('addSiteSecondary')
+                    ->label('Add Site')
+                    ->icon('heroicon-m-plus')
+                    ->color('gray')
+                    ->url(static::getUrl('create')),
+            ])
+            ->emptyStateHeading('Protect your first site')
+            ->emptyStateDescription('Add your first protected site to start guided onboarding, DNS setup, and traffic protection.')
+            ->emptyStateActions([
+                Actions\Action::make('addFirstSite')
+                    ->label('Add your first protected site')
+                    ->icon('heroicon-m-plus')
+                    ->button()
+                    ->url(static::getUrl('create')),
+            ])
             ->columns([
                 Tables\Columns\TextColumn::make('display_name')->searchable(),
                 Tables\Columns\TextColumn::make('apex_domain')->searchable(),
@@ -123,7 +208,7 @@ class SiteResource extends Resource
                     ->action(function (Site $record): void {
                         static::throttle($record, 'provision');
                         RequestAcmCertificateJob::dispatch($record->id, auth()->id());
-                        Notification::make()->title('ACM request queued')->success()->send();
+                        Notification::make()->title('Provision request queued')->success()->send();
                     }),
                 Actions\Action::make('checkDns')
                     ->label('Check DNS')
@@ -176,9 +261,9 @@ class SiteResource extends Resource
     protected static function nextStep(Site $site): string
     {
         return match ($site->status) {
-            'draft' => 'Click Provision to request ACM certificate.',
-            'pending_dns' => 'Add ACM validation DNS records, then click Check DNS.',
-            'provisioning' => 'Provisioning resources. After DNS points to CloudFront, click Check DNS again.',
+            'draft' => 'Click Provision to generate SSL validation DNS records.',
+            'pending_dns' => 'Add validation DNS records, then click Check DNS.',
+            'provisioning' => 'Provisioning in progress. Follow DNS target instructions and check again.',
             'active' => 'Site is active and protected.',
             'failed' => 'Review last error and retry Provision.',
             default => 'Review site status.',

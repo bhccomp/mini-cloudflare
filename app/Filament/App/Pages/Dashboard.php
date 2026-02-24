@@ -1,15 +1,13 @@
 <?php
 
-namespace App\Filament\App\Resources\SiteResource\Pages;
+namespace App\Filament\App\Pages;
 
 use App\Filament\App\Resources\SiteResource;
 use Filament\Actions\Action;
-use Filament\Resources\Pages\ListRecords;
+use Filament\Pages\Dashboard as BaseDashboard;
 
-class ListSites extends ListRecords
+class Dashboard extends BaseDashboard
 {
-    protected static string $resource = SiteResource::class;
-
     protected function getHeaderActions(): array
     {
         return [
