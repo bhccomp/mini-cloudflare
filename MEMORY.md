@@ -468,3 +468,18 @@
 - Validation run:
   - `php artisan migrate --force` passed
   - `php artisan test tests/Feature/ProvisionJobsTest.php tests/Unit/AwsCdnProviderTest.php tests/Unit/BunnyCdnProviderTest.php` passed (8 tests, 29 assertions)
+
+## Git Remote Sync Process (Latest)
+- Remote repository:
+  - `origin = https://github.com/bhccomp/mini-cloudflare.git`
+- Local repo identity:
+  - `user.name = bhccomp`
+  - `user.email = bhccomp@gmail.com`
+- Persistent auth is configured on this machine through git credential storage for GitHub.
+- Required sync routine for every work session:
+  1. `git checkout master`
+  2. `git pull --rebase origin master`
+  3. Implement changes and commit in logical commits.
+  4. `git push origin master`
+- Operational rule:
+  - Keep local and remote in sync continuously by pushing after each completed task and pulling before new changes.
