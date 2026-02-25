@@ -8,7 +8,7 @@ use App\Services\Edge\EdgeProviderManager;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
-class AssociateWebAclToDistributionJob implements ShouldQueue
+class ProvisionEdgeDeploymentJob implements ShouldQueue
 {
     use Queueable;
 
@@ -24,19 +24,23 @@ class AssociateWebAclToDistributionJob implements ShouldQueue
 
         try {
             $result = $provider->createDeployment($site);
+
             $site->update([
                 'provider' => $provider->key(),
                 'provider_resource_id' => $result['provider_resource_id'] ?? $site->provider_resource_id,
                 'provider_meta' => $result['provider_meta'] ?? $site->provider_meta,
+                'cloudfront_distribution_id' => $result['distribution_id'] ?? $site->cloudfront_distribution_id,
+                'cloudfront_domain_name' => $result['distribution_domain_name'] ?? $site->cloudfront_domain_name,
                 'waf_web_acl_arn' => $result['web_acl_arn'] ?? $site->waf_web_acl_arn,
+                'required_dns_records' => $result['required_dns_records'] ?? $site->required_dns_records,
                 'status' => Site::STATUS_DEPLOYING,
                 'last_error' => null,
             ]);
 
-            $this->audit($site, 'waf.associate', 'success', $result['message'] ?? 'Edge protection association applied.', $result + ['provider' => $provider->key()]);
+            $this->audit($site, 'edge.deploy', 'success', $result['message'] ?? 'Edge deployment provisioned.', $result + ['provider' => $provider->key()]);
         } catch (\Throwable $e) {
             $site->update(['status' => Site::STATUS_FAILED, 'last_error' => $e->getMessage()]);
-            $this->audit($site, 'waf.associate', 'failed', $e->getMessage(), ['provider' => $provider->key()]);
+            $this->audit($site, 'edge.deploy', 'failed', $e->getMessage(), ['provider' => $provider->key()]);
             throw $e;
         }
     }

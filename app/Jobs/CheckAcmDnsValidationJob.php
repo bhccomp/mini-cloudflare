@@ -4,7 +4,7 @@ namespace App\Jobs;
 
 use App\Models\AuditLog;
 use App\Models\Site;
-use App\Services\Aws\AwsEdgeService;
+use App\Services\Edge\EdgeProviderManager;
 use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -22,17 +22,18 @@ class CheckAcmDnsValidationJob implements ShouldQueue
         $this->onQueue('default');
     }
 
-    public function handle(AwsEdgeService $aws): void
+    public function handle(EdgeProviderManager $providers): void
     {
         $site = Site::query()->findOrFail($this->siteId);
+        $provider = $providers->forSite($site);
 
         if ($site->status === Site::STATUS_PENDING_DNS_VALIDATION) {
-            $dns = $aws->checkAcmDnsValidation($site);
+            $dns = $provider->checkCertificateValidation($site);
             $site->update(['required_dns_records' => $dns['required_dns_records'] ?? $site->required_dns_records]);
 
             if (! ($dns['validated'] ?? false)) {
                 $site->update(['status' => Site::STATUS_PENDING_DNS_VALIDATION]);
-                $this->audit($site, 'acm.check_dns', 'info', $dns['message'] ?? 'DNS validation is still pending.', $dns);
+                $this->audit($site, 'acm.check_dns', 'info', $dns['message'] ?? 'DNS validation is still pending.', $dns + ['provider' => $provider->key()]);
 
                 return;
             }
@@ -43,19 +44,17 @@ class CheckAcmDnsValidationJob implements ShouldQueue
             ]);
 
             Bus::chain([
-                new ProvisionWafWebAclJob($site->id, $this->actorId),
-                new ProvisionCloudFrontDistributionJob($site->id, $this->actorId),
-                new AssociateWebAclToDistributionJob($site->id, $this->actorId),
+                new ProvisionEdgeDeploymentJob($site->id, $this->actorId),
                 new MarkSiteReadyForCutoverJob($site->id, $this->actorId),
             ])->dispatch();
 
-            $this->audit($site, 'acm.check_dns', 'success', 'Certificate validated; edge deployment started.', $dns);
+            $this->audit($site, 'acm.check_dns', 'success', 'Validation complete; edge deployment started.', $dns + ['provider' => $provider->key()]);
 
             return;
         }
 
         if ($site->status === Site::STATUS_READY_FOR_CUTOVER || $site->status === Site::STATUS_ACTIVE) {
-            $traffic = $aws->checkTrafficDns($site);
+            $traffic = $provider->checkDns($site);
             $site->update(['required_dns_records' => $traffic['required_dns_records'] ?? $site->required_dns_records]);
 
             if ($traffic['validated'] ?? false) {
@@ -65,24 +64,24 @@ class CheckAcmDnsValidationJob implements ShouldQueue
                     'last_provisioned_at' => now(),
                 ]);
 
-                $this->audit($site, 'traffic.check_cutover', 'success', $traffic['message'] ?? 'DNS cutover verified.', $traffic);
+                $this->audit($site, 'traffic.check_cutover', 'success', $traffic['message'] ?? 'DNS cutover verified.', $traffic + ['provider' => $provider->key()]);
 
                 return;
             }
 
             $site->update(['status' => Site::STATUS_READY_FOR_CUTOVER]);
-            $this->audit($site, 'traffic.check_cutover', 'info', $traffic['message'] ?? 'DNS cutover still pending.', $traffic);
+            $this->audit($site, 'traffic.check_cutover', 'info', $traffic['message'] ?? 'DNS cutover still pending.', $traffic + ['provider' => $provider->key()]);
 
             return;
         }
 
         if ($site->status === Site::STATUS_DEPLOYING) {
-            $this->audit($site, 'acm.check_dns', 'info', 'Edge deployment is still in progress.', []);
+            $this->audit($site, 'acm.check_dns', 'info', 'Edge deployment is still in progress.', ['provider' => $provider->key()]);
 
             return;
         }
 
-        $this->audit($site, 'acm.check_dns', 'info', 'Site is not ready for DNS validation yet.', []);
+        $this->audit($site, 'acm.check_dns', 'info', 'Site is not ready for DNS validation yet.', ['provider' => $provider->key()]);
     }
 
     protected function audit(Site $site, string $action, string $status, string $message, array $meta): void

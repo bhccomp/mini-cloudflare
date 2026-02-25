@@ -4,7 +4,7 @@ namespace App\Jobs;
 
 use App\Models\AuditLog;
 use App\Models\Site;
-use App\Services\Aws\AwsEdgeService;
+use App\Services\Edge\EdgeProviderManager;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
@@ -17,13 +17,17 @@ class ProvisionCloudFrontDistributionJob implements ShouldQueue
         $this->onQueue('default');
     }
 
-    public function handle(AwsEdgeService $aws): void
+    public function handle(EdgeProviderManager $providers): void
     {
         $site = Site::query()->findOrFail($this->siteId);
+        $provider = $providers->forSite($site);
 
         try {
-            $result = $aws->provisionCloudFrontDistribution($site);
+            $result = $provider->createDeployment($site);
             $site->update([
+                'provider' => $provider->key(),
+                'provider_resource_id' => $result['provider_resource_id'] ?? $site->provider_resource_id,
+                'provider_meta' => $result['provider_meta'] ?? $site->provider_meta,
                 'cloudfront_distribution_id' => $result['distribution_id'] ?? $site->cloudfront_distribution_id,
                 'cloudfront_domain_name' => $result['distribution_domain_name'] ?? $site->cloudfront_domain_name,
                 'required_dns_records' => $result['required_dns_records'] ?? $site->required_dns_records,
@@ -31,10 +35,10 @@ class ProvisionCloudFrontDistributionJob implements ShouldQueue
                 'last_error' => null,
             ]);
 
-            $this->audit($site, 'cloudfront.provision', 'success', $result['message'] ?? 'CloudFront provisioned.', $result);
+            $this->audit($site, 'cloudfront.provision', 'success', $result['message'] ?? 'Edge distribution provisioned.', $result + ['provider' => $provider->key()]);
         } catch (\Throwable $e) {
             $site->update(['status' => Site::STATUS_FAILED, 'last_error' => $e->getMessage()]);
-            $this->audit($site, 'cloudfront.provision', 'failed', $e->getMessage(), []);
+            $this->audit($site, 'cloudfront.provision', 'failed', $e->getMessage(), ['provider' => $provider->key()]);
             throw $e;
         }
     }

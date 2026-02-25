@@ -4,7 +4,7 @@ namespace App\Jobs;
 
 use App\Models\AuditLog;
 use App\Models\Site;
-use App\Services\Aws\AwsEdgeService;
+use App\Services\Edge\EdgeProviderManager;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
@@ -17,30 +17,36 @@ class RequestAcmCertificateJob implements ShouldQueue
         $this->onQueue('default');
     }
 
-    public function handle(AwsEdgeService $aws): void
+    public function handle(EdgeProviderManager $providers): void
     {
         $site = Site::query()->findOrFail($this->siteId);
+        $provider = $providers->forSite($site);
 
-        if ($site->status === Site::STATUS_ACTIVE && $site->acm_certificate_arn) {
-            $this->audit($site, 'acm.request', 'info', 'Certificate already exists.', []);
+        if (
+            $provider->requiresCertificateValidation()
+            && $site->status === Site::STATUS_ACTIVE
+            && $site->acm_certificate_arn
+        ) {
+            $this->audit($site, 'acm.request', 'info', 'Certificate already exists.', ['provider' => $provider->key()]);
 
             return;
         }
 
         try {
-            $result = $aws->requestAcmCertificate($site);
+            $result = $provider->requestCertificate($site);
 
             $site->update([
-                'acm_certificate_arn' => $result['certificate_arn'] ?? $site->acm_certificate_arn,
+                'provider' => $site->provider ?: $provider->key(),
                 'required_dns_records' => $result['required_dns_records'] ?? $site->required_dns_records,
+                'acm_certificate_arn' => $result['certificate_arn'] ?? $site->acm_certificate_arn,
                 'status' => Site::STATUS_PENDING_DNS_VALIDATION,
                 'last_error' => null,
             ]);
 
-            $this->audit($site, 'acm.request', 'success', $result['message'] ?? 'ACM requested.', $result);
+            $this->audit($site, 'acm.request', 'success', $result['message'] ?? 'Edge provisioning request submitted.', $result + ['provider' => $provider->key()]);
         } catch (\Throwable $e) {
-            $site->update(['status' => 'failed', 'last_error' => $e->getMessage()]);
-            $this->audit($site, 'acm.request', 'failed', $e->getMessage(), []);
+            $site->update(['status' => Site::STATUS_FAILED, 'last_error' => $e->getMessage()]);
+            $this->audit($site, 'acm.request', 'failed', $e->getMessage(), ['provider' => $provider->key()]);
             throw $e;
         }
     }

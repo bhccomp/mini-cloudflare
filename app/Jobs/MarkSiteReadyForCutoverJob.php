@@ -24,10 +24,7 @@ class MarkSiteReadyForCutoverJob implements ShouldQueue
             return;
         }
 
-        $isReady = filled($site->acm_certificate_arn)
-            && filled($site->cloudfront_distribution_id)
-            && filled($site->cloudfront_domain_name)
-            && filled($site->waf_web_acl_arn);
+        $isReady = $this->isReadyForProvider($site);
 
         if (! $isReady) {
             $message = 'Deployment did not complete all edge prerequisites.';
@@ -47,6 +44,21 @@ class MarkSiteReadyForCutoverJob implements ShouldQueue
         ]);
 
         $this->audit($site, 'edge.deploy', 'success', 'Edge deployment complete; ready for DNS cutover.', []);
+    }
+
+    protected function isReadyForProvider(Site $site): bool
+    {
+        $provider = strtolower((string) ($site->provider ?: config('edge.default_provider', Site::PROVIDER_AWS)));
+
+        if ($provider === Site::PROVIDER_AWS) {
+            return filled($site->acm_certificate_arn)
+                && filled($site->cloudfront_distribution_id)
+                && filled($site->cloudfront_domain_name)
+                && filled($site->waf_web_acl_arn);
+        }
+
+        return filled($site->provider_resource_id)
+            && filled($site->cloudfront_domain_name);
     }
 
     protected function audit(Site $site, string $action, string $status, string $message, array $meta): void

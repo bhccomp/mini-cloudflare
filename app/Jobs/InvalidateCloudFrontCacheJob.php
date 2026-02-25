@@ -4,7 +4,7 @@ namespace App\Jobs;
 
 use App\Models\AuditLog;
 use App\Models\Site;
-use App\Services\Aws\AwsEdgeService;
+use App\Services\Edge\EdgeProviderManager;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
@@ -17,10 +17,11 @@ class InvalidateCloudFrontCacheJob implements ShouldQueue
         $this->onQueue('default');
     }
 
-    public function handle(AwsEdgeService $aws): void
+    public function handle(EdgeProviderManager $providers): void
     {
         $site = Site::query()->findOrFail($this->siteId);
-        $result = $aws->invalidateCloudFrontCache($site, $this->paths);
+        $provider = $providers->forSite($site);
+        $result = $provider->purgeCache($site, $this->paths);
 
         AuditLog::create([
             'actor_id' => $this->actorId,
@@ -28,8 +29,8 @@ class InvalidateCloudFrontCacheJob implements ShouldQueue
             'site_id' => $site->id,
             'action' => 'cloudfront.invalidate',
             'status' => ($result['changed'] ?? false) ? 'success' : 'info',
-            'message' => $result['message'] ?? 'Cache invalidation requested.',
-            'meta' => $result,
+            'message' => $result['message'] ?? 'Cache purge requested.',
+            'meta' => $result + ['provider' => $provider->key()],
         ]);
     }
 }

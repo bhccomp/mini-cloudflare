@@ -4,7 +4,7 @@ namespace App\Jobs;
 
 use App\Models\AuditLog;
 use App\Models\Site;
-use App\Services\Aws\AwsEdgeService;
+use App\Services\Edge\EdgeProviderManager;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
@@ -17,10 +17,11 @@ class ToggleUnderAttackModeJob implements ShouldQueue
         $this->onQueue('default');
     }
 
-    public function handle(AwsEdgeService $aws): void
+    public function handle(EdgeProviderManager $providers): void
     {
         $site = Site::query()->findOrFail($this->siteId);
-        $result = $aws->setUnderAttackMode($site, $this->enabled);
+        $provider = $providers->forSite($site);
+        $result = $provider->setUnderAttackMode($site, $this->enabled);
 
         if ($result['changed'] ?? false) {
             $site->update(['under_attack' => $this->enabled]);
@@ -32,8 +33,8 @@ class ToggleUnderAttackModeJob implements ShouldQueue
             'site_id' => $site->id,
             'action' => 'waf.under_attack',
             'status' => 'success',
-            'message' => $result['message'] ?? 'Under-attack updated.',
-            'meta' => ['enabled' => $this->enabled] + $result,
+            'message' => $result['message'] ?? 'Under-attack mode updated.',
+            'meta' => ['enabled' => $this->enabled, 'provider' => $provider->key()] + $result,
         ]);
     }
 }
