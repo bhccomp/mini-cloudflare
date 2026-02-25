@@ -536,3 +536,40 @@
 - Validation snapshot:
   - `php artisan migrate --force` passed
   - targeted provisioning/provider tests passing after refactor and UX hardening.
+
+## Bunny Data Integration for Existing Protection Tabs (Latest)
+- Goal completed: kept existing tab structure (`CDN`, `Firewall`, `Logs`, `Analytics`) and wired backend to provider-aware data paths.
+- Added Bunny service layer:
+  - `app/Services/Bunny/BunnyApiService.php`
+  - `app/Services/Bunny/BunnyLogsService.php`
+  - `app/Services/Bunny/BunnyFirewallInsightsService.php`
+  - `app/Services/Bunny/BunnyAnalyticsService.php`
+- Added analytics provider resolver:
+  - `app/Services/Analytics/AnalyticsSyncManager.php`
+- Updated analytics sync job to route by `site.provider`:
+  - `app/Jobs/SyncSiteAnalyticsMetricJob.php`
+  - AWS sites -> `AwsAnalyticsService`
+  - Bunny sites -> `BunnyAnalyticsService`
+- Updated pages to use provider-aware data sources without renaming tabs:
+  - `app/Filament/App/Pages/FirewallPage.php`
+    - AWS -> `AwsFirewallInsightsService`
+    - Bunny -> `BunnyFirewallInsightsService`
+  - `app/Filament/App/Pages/LogsPage.php`
+    - Bunny -> Bunny edge logs
+    - AWS -> platform audit stream fallback
+  - `app/Filament/App/Pages/CdnPage.php`
+    - refresh action now syncs provider-aware analytics snapshot
+  - `app/Filament/App/Pages/AnalyticsPage.php`
+    - refresh action now syncs provider-aware analytics snapshot
+- Replaced placeholder views with live provider-aware renderers:
+  - `resources/views/filament/app/pages/protection/analytics.blade.php`
+  - `resources/views/filament/app/pages/protection/cdn.blade.php`
+  - `resources/views/filament/app/pages/protection/logs.blade.php`
+  - `resources/views/filament/app/pages/protection/firewall.blade.php` copy adjusted for generic provider wording.
+- Bunny DNS checker reliability hardening remains in place (CNAME/A/AAAA + SSL fallback) and cutover checks are crash-guarded.
+- Validation snapshot after integration:
+  - syntax checks passed for all new/updated service/page/job files
+  - targeted tests passed:
+    - `tests/Unit/BunnyCdnProviderTest.php`
+    - `tests/Unit/SiteProviderSelectionTest.php`
+    - `tests/Feature/ProvisionJobsTest.php`

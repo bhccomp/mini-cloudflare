@@ -132,7 +132,7 @@
                 </x-slot>
 
                 <x-filament.app.settings.key-value-grid :rows="[
-                    ['label' => 'WAF Status', 'value' => $this->site->waf_web_acl_arn ? 'Active' : 'Pending setup'],
+                    ['label' => 'Protection Status', 'value' => $this->site->provider === 'bunny' ? ($this->site->cloudfront_distribution_id ? 'Active via Bunny edge' : 'Pending setup') : ($this->site->waf_web_acl_arn ? 'Active' : 'Pending setup')],
                     ['label' => 'Total Requests (sample)', 'value' => number_format((int) ($summary['total'] ?? 0))],
                     ['label' => 'Blocked Requests', 'value' => number_format((int) ($summary['blocked'] ?? 0))],
                     ['label' => 'Allowed Requests', 'value' => number_format((int) ($summary['allowed'] ?? 0))],
@@ -238,7 +238,7 @@
                 </x-filament::section>
             </div>
 
-            <x-filament::section heading="Recent Firewall Events" description="Sampled request decisions from AWS WAF." icon="heroicon-o-clock">
+            <x-filament::section heading="Recent Firewall Events" description="Sampled request decisions from the active edge provider." icon="heroicon-o-clock">
                 @if (empty($insights['events'] ?? []))
                     <p class="text-sm opacity-75">{{ $insights['message'] ?? 'No event data available yet.' }}</p>
                 @else

@@ -4,7 +4,7 @@ namespace App\Jobs;
 
 use App\Models\AuditLog;
 use App\Models\Site;
-use App\Services\Aws\AwsAnalyticsService;
+use App\Services\Analytics\AnalyticsSyncManager;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Queue\Queueable;
@@ -19,7 +19,7 @@ class SyncSiteAnalyticsMetricJob implements ShouldQueue
         $this->onQueue('default');
     }
 
-    public function handle(AwsAnalyticsService $analytics): void
+    public function handle(AnalyticsSyncManager $analytics): void
     {
         $site = Site::query()->find($this->siteId);
 

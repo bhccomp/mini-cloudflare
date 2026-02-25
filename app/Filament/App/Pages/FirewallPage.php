@@ -2,7 +2,9 @@
 
 namespace App\Filament\App\Pages;
 
+use App\Models\Site;
 use App\Services\Aws\AwsFirewallInsightsService;
+use App\Services\Bunny\BunnyFirewallInsightsService;
 
 class FirewallPage extends BaseProtectionPage
 {
@@ -24,6 +26,10 @@ class FirewallPage extends BaseProtectionPage
             return [];
         }
 
+        if ($this->site->provider === Site::PROVIDER_BUNNY) {
+            return app(BunnyFirewallInsightsService::class)->getSiteInsights($this->site);
+        }
+
         return app(AwsFirewallInsightsService::class)->getSiteInsights($this->site);
     }
 
@@ -33,7 +39,12 @@ class FirewallPage extends BaseProtectionPage
             return;
         }
 
-        app(AwsFirewallInsightsService::class)->forgetSiteInsightsCache($this->site->id);
+        if ($this->site->provider === Site::PROVIDER_BUNNY) {
+            app(BunnyFirewallInsightsService::class)->forgetSiteInsightsCache($this->site->id);
+        } else {
+            app(AwsFirewallInsightsService::class)->forgetSiteInsightsCache($this->site->id);
+        }
+
         $this->notify('Refreshing firewall insights...');
     }
 

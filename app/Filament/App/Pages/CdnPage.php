@@ -2,6 +2,8 @@
 
 namespace App\Filament\App\Pages;
 
+use App\Services\Analytics\AnalyticsSyncManager;
+
 class CdnPage extends BaseProtectionPage
 {
     protected static ?string $slug = 'cdn';
@@ -15,4 +17,20 @@ class CdnPage extends BaseProtectionPage
     protected static ?string $title = 'CDN';
 
     protected string $view = 'filament.app.pages.protection.cdn';
+
+    public function refreshCdnMetrics(): void
+    {
+        if (! $this->site) {
+            return;
+        }
+
+        app(AnalyticsSyncManager::class)->syncSiteMetrics($this->site);
+        $this->refreshSite();
+        $this->notify('CDN metrics refreshed');
+    }
+
+    public function cdnActionPrefix(): string
+    {
+        return $this->site?->provider === \App\Models\Site::PROVIDER_BUNNY ? 'edge.' : 'cloudfront.';
+    }
 }

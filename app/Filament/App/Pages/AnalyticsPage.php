@@ -2,6 +2,8 @@
 
 namespace App\Filament\App\Pages;
 
+use App\Services\Analytics\AnalyticsSyncManager;
+
 class AnalyticsPage extends BaseProtectionPage
 {
     protected static ?string $slug = 'analytics';
@@ -15,4 +17,15 @@ class AnalyticsPage extends BaseProtectionPage
     protected static ?string $title = 'Analytics';
 
     protected string $view = 'filament.app.pages.protection.analytics';
+
+    public function refreshAnalytics(): void
+    {
+        if (! $this->site) {
+            return;
+        }
+
+        app(AnalyticsSyncManager::class)->syncSiteMetrics($this->site);
+        $this->refreshSite();
+        $this->notify('Analytics refreshed');
+    }
 }
