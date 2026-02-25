@@ -4,6 +4,7 @@ namespace App\Filament\App\Resources\SiteResource\Pages;
 
 use App\Filament\App\Pages\SiteStatusHubPage;
 use App\Filament\App\Resources\SiteResource;
+use App\Models\Site;
 use App\Services\SiteContext;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -21,7 +22,8 @@ class CreateSite extends CreateRecord
         $data['apex_domain'] = $domain;
         $data['display_name'] = $domain;
         $data['name'] = $domain;
-        $data['status'] = 'draft';
+        $data['status'] = Site::STATUS_DRAFT;
+        $data['provider'] = (string) config('edge.default_provider', Site::PROVIDER_AWS);
         $data['origin_type'] = 'url';
         $data['www_enabled'] = (bool) ($data['www_enabled'] ?? true);
         $data['origin_url'] = $origin !== '' ? $origin : 'https://'.$domain;

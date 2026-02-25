@@ -24,11 +24,18 @@ class Site extends Model
 
     public const STATUS_FAILED = 'failed';
 
+    public const PROVIDER_AWS = 'aws';
+
+    public const PROVIDER_BUNNY = 'bunny';
+
     protected $fillable = [
         'organization_id',
         'name',
         'display_name',
         'apex_domain',
+        'provider',
+        'provider_resource_id',
+        'provider_meta',
         'www_enabled',
         'www_domain',
         'origin_type',
@@ -56,6 +63,10 @@ class Site extends Model
                 $site->name = $site->display_name;
             }
 
+            if (! $site->provider) {
+                $site->provider = (string) config('edge.default_provider', self::PROVIDER_AWS);
+            }
+
             if ($site->www_enabled && ! $site->www_domain) {
                 $site->www_domain = 'www.'.$site->apex_domain;
             }
@@ -71,6 +82,7 @@ class Site extends Model
         return [
             'www_enabled' => 'boolean',
             'required_dns_records' => 'array',
+            'provider_meta' => 'array',
             'under_attack' => 'boolean',
             'last_provisioned_at' => 'datetime',
         ];
@@ -115,6 +127,14 @@ class Site extends Model
             self::STATUS_READY_FOR_CUTOVER => 'Ready for Cutover',
             self::STATUS_ACTIVE => 'Active',
             self::STATUS_FAILED => 'Failed',
+        ];
+    }
+
+    public static function providers(): array
+    {
+        return [
+            self::PROVIDER_AWS => 'AWS',
+            self::PROVIDER_BUNNY => 'Bunny.net',
         ];
     }
 }

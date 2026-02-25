@@ -1,0 +1,24 @@
+<?php
+
+namespace App\Services\Edge;
+
+use App\Models\Site;
+
+interface EdgeProviderInterface
+{
+    public function key(): string;
+
+    public function requiresCertificateValidation(): bool;
+
+    public function requestCertificate(Site $site): array;
+
+    public function checkCertificateValidation(Site $site): array;
+
+    public function createDeployment(Site $site): array;
+
+    public function checkDns(Site $site): array;
+
+    public function purgeCache(Site $site, array $paths = ['/*']): array;
+
+    public function setUnderAttackMode(Site $site, bool $enabled): array;
+}
