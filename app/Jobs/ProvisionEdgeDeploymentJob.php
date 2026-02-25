@@ -23,7 +23,7 @@ class ProvisionEdgeDeploymentJob implements ShouldQueue
         $provider = $providers->forSite($site);
 
         try {
-            $result = $provider->createDeployment($site);
+            $result = $provider->provision($site);
 
             $site->update([
                 'provider' => $provider->key(),
@@ -34,12 +34,18 @@ class ProvisionEdgeDeploymentJob implements ShouldQueue
                 'waf_web_acl_arn' => $result['web_acl_arn'] ?? $site->waf_web_acl_arn,
                 'required_dns_records' => $result['required_dns_records'] ?? $site->required_dns_records,
                 'status' => Site::STATUS_DEPLOYING,
+                'onboarding_status' => Site::ONBOARDING_PENDING_DNS_CUTOVER,
                 'last_error' => null,
             ]);
 
             $this->audit($site, 'edge.deploy', 'success', $result['message'] ?? 'Edge deployment provisioned.', $result + ['provider' => $provider->key()]);
         } catch (\Throwable $e) {
-            $site->update(['status' => Site::STATUS_FAILED, 'last_error' => $e->getMessage()]);
+            $site->update([
+                'status' => Site::STATUS_FAILED,
+                'onboarding_status' => Site::ONBOARDING_FAILED,
+                'last_error' => $e->getMessage(),
+                'last_checked_at' => now(),
+            ]);
             $this->audit($site, 'edge.deploy', 'failed', $e->getMessage(), ['provider' => $provider->key()]);
             throw $e;
         }

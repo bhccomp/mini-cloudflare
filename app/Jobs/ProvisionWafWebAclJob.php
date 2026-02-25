@@ -23,7 +23,7 @@ class ProvisionWafWebAclJob implements ShouldQueue
         $provider = $providers->forSite($site);
 
         try {
-            $result = $provider->createDeployment($site);
+            $result = $provider->provision($site);
 
             $site->update([
                 'provider' => $provider->key(),

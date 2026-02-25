@@ -14,15 +14,14 @@ class BunnyCdnProviderTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_create_deployment_creates_pull_zone_and_returns_dns_records(): void
+    public function test_provision_creates_pull_zone_and_returns_dns_records(): void
     {
         config()->set('edge.bunny.base_url', 'https://api.bunny.net');
 
-        SystemSetting::create([
-            'key' => 'bunny',
-            'value' => ['api_key' => 'test-key'],
-            'is_encrypted' => false,
-        ]);
+        SystemSetting::query()->updateOrCreate(
+            ['key' => 'bunny'],
+            ['value' => ['api_key' => 'test-key'], 'is_encrypted' => false]
+        );
 
         $org = Organization::create(['name' => 'Org A', 'slug' => 'org-a']);
         $site = Site::create([
@@ -43,7 +42,7 @@ class BunnyCdnProviderTest extends TestCase
         ]);
 
         $provider = new BunnyCdnProvider;
-        $result = $provider->createDeployment($site);
+        $result = $provider->provision($site);
 
         $this->assertTrue($result['ok']);
         $this->assertSame(Site::PROVIDER_BUNNY, $result['provider']);
@@ -59,11 +58,10 @@ class BunnyCdnProviderTest extends TestCase
     {
         config()->set('edge.bunny.base_url', 'https://api.bunny.net');
 
-        SystemSetting::create([
-            'key' => 'bunny',
-            'value' => ['api_key' => 'test-key'],
-            'is_encrypted' => false,
-        ]);
+        SystemSetting::query()->updateOrCreate(
+            ['key' => 'bunny'],
+            ['value' => ['api_key' => 'test-key'], 'is_encrypted' => false]
+        );
 
         $org = Organization::create(['name' => 'Org A', 'slug' => 'org-a']);
         $site = Site::create([

@@ -14,7 +14,7 @@ class AwsCdnProviderTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_create_deployment_wraps_aws_logic_and_returns_unified_payload(): void
+    public function test_provision_wraps_aws_logic_and_returns_unified_payload(): void
     {
         $org = Organization::create(['name' => 'Org A', 'slug' => 'org-a']);
         $site = Site::create([
@@ -61,7 +61,7 @@ class AwsCdnProviderTest extends TestCase
             ]);
 
         $provider = new AwsCdnProvider($aws);
-        $result = $provider->createDeployment($site);
+        $result = $provider->provision($site);
 
         $site->refresh();
 

@@ -24,11 +24,11 @@ class EdgeProviderManager
 
     public function defaultKey(): string
     {
-        $key = strtolower((string) config('edge.default_provider', Site::PROVIDER_AWS));
+        $key = strtolower((string) config('edge.default_provider', Site::PROVIDER_BUNNY));
 
         return array_key_exists($key, $this->providers)
             ? $key
-            : Site::PROVIDER_AWS;
+            : Site::PROVIDER_BUNNY;
     }
 
     public function forSite(Site $site): EdgeProviderInterface

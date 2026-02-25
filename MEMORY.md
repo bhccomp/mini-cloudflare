@@ -483,3 +483,56 @@
   4. `git push origin master`
 - Operational rule:
   - Keep local and remote in sync continuously by pushing after each completed task and pulling before new changes.
+
+## Bunny-First Onboarding + Cutover UX Hardening (Latest)
+- Implemented Bunny-first onboarding flow while preserving AWS compatibility paths.
+- Added site-level onboarding state model:
+  - `onboarding_status` values include:
+    - `draft`
+    - `pending_dns_validation`
+    - `provisioning_edge`
+    - `pending_dns_cutover`
+    - `dns_verified_ssl_pending`
+    - `live`
+    - `failed`
+  - `last_checked_at` timestamp added.
+- Added migration:
+  - `database/migrations/2026_02_25_010000_add_onboarding_columns_to_sites_table.php`
+- Provider defaults/config:
+  - `DEFAULT_EDGE_PROVIDER=bunny`
+  - `FEATURE_AWS_ONBOARDING=false`
+  - `BUNNY_API_BASE_URL` retained
+  - files: `config/edge.php`, `.env.example`
+- Provider contract extended and normalized:
+  - `EdgeProviderInterface`: `provision()`, `checkDns()`, `checkSsl()`, `purgeCache()`
+  - AWS and Bunny providers updated accordingly.
+- Create Site wizard updated:
+  - Bunny-first copy and flow
+  - Provider persisted per-site on create
+  - Advanced provider selection available (AWS retained as advanced path)
+  - files: `app/Filament/App/Resources/SiteResource.php`, `CreateSite.php`
+- Status Hub updated to provider-aware flows:
+  - Bunny stepper:
+    1. Create site
+    2. Provision edge
+    3. Update DNS
+    4. Verify cutover
+    5. Protection active
+  - AWS legacy branch kept for provider=aws
+  - file: `resources/views/filament/app/pages/site-status-hub.blade.php`
+- Runtime UX fixes:
+  - Bunny checks now run synchronously from UI actions (`Check now`) with friendly status messages.
+  - Avoided stuck state by forcing `onboarding_status=failed` on provisioning exceptions.
+  - Added guarded exception handling to avoid generic “Error while loading page” crash during Bunny checks.
+  - Added robust copy-to-clipboard helper with fallback for DNS target copy buttons.
+- DNS check hardening for Bunny:
+  - `checkDns()` now evaluates CNAME + A + AAAA lookup results.
+  - Added SSL-state fallback to reduce false negatives with flattened/proxied DNS.
+- Tests updated/added:
+  - `tests/Feature/ProvisionJobsTest.php`
+  - `tests/Unit/AwsCdnProviderTest.php`
+  - `tests/Unit/BunnyCdnProviderTest.php`
+  - `tests/Unit/SiteProviderSelectionTest.php` (new)
+- Validation snapshot:
+  - `php artisan migrate --force` passed
+  - targeted provisioning/provider tests passing after refactor and UX hardening.

@@ -41,7 +41,7 @@ class BunnyCdnProvider implements EdgeProviderInterface
         ];
     }
 
-    public function createDeployment(Site $site): array
+    public function provision(Site $site): array
     {
         $existingId = (int) ($site->provider_resource_id ?: 0);
         $zoneId = $existingId;
@@ -122,9 +122,12 @@ class BunnyCdnProvider implements EdgeProviderInterface
         $allValid = true;
         $dns = $site->required_dns_records ?? [];
         $traffic = Arr::get($dns, 'traffic', []);
+        $resolved = [];
 
         foreach ($domains as $domain) {
-            $valid = $this->domainPointsToTarget($domain, $target);
+            $lookup = $this->resolveDns($domain);
+            $resolved[$domain] = $lookup;
+            $valid = $this->domainPointsToTarget($lookup, $target);
             $allValid = $allValid && $valid;
 
             foreach ($traffic as &$record) {
@@ -137,13 +140,84 @@ class BunnyCdnProvider implements EdgeProviderInterface
 
         $dns['traffic'] = $traffic;
 
+        $message = $allValid
+            ? 'Traffic DNS is pointed to Bunny edge target.'
+            : 'Point your domain to the Bunny edge target and retry.';
+
+        if (! $allValid) {
+            $ssl = $this->checkSsl($site);
+
+            if (in_array(($ssl['status'] ?? ''), ['pending', 'active'], true)) {
+                $allValid = true;
+                $message = 'Bunny detected your hostname. DNS is accepted and SSL is provisioning.';
+            }
+        }
+
         return [
             'validated' => $allValid,
+            'ok' => $allValid,
+            'resolved_targets' => $resolved,
+            'expected_target' => $target,
             'required_dns_records' => $dns,
-            'message' => $allValid
-                ? 'Traffic DNS is pointed to Bunny edge target.'
-                : 'Point your domain to the Bunny edge target and retry.',
+            'message' => $message,
         ];
+    }
+
+    public function checkSsl(Site $site): array
+    {
+        $zoneId = (int) ($site->provider_resource_id ?: data_get($site->provider_meta, 'zone_id', 0));
+        if ($zoneId <= 0) {
+            return ['status' => 'error', 'message' => 'Bunny pull zone is missing.'];
+        }
+
+        $response = $this->client()->get("/pullzone/{$zoneId}");
+
+        if (! $response->successful()) {
+            return ['status' => 'pending', 'message' => 'Unable to read Bunny SSL state yet.'];
+        }
+
+        $payload = $response->json();
+        $hostnames = collect(Arr::get($payload, 'Hostnames', Arr::get($payload, 'hostnames', [])));
+
+        if ($hostnames->isEmpty()) {
+            return ['status' => 'pending', 'message' => 'Waiting for Bunny hostname certificate state.'];
+        }
+
+        $domains = collect([$site->apex_domain, $site->www_enabled ? $site->www_domain : null])
+            ->filter()
+            ->values();
+
+        $tracked = $hostnames->filter(function ($row) use ($domains) {
+            $value = strtolower((string) Arr::get($row, 'Value', Arr::get($row, 'value', Arr::get($row, 'Hostname', Arr::get($row, 'hostname', '')))));
+
+            return $domains->contains($value);
+        });
+
+        if ($tracked->isEmpty()) {
+            $tracked = $hostnames;
+        }
+
+        $allActive = $tracked->every(function ($row) {
+            $status = strtolower((string) Arr::get($row, 'CertificateStatus', Arr::get($row, 'certificateStatus', '')));
+            $isValid = Arr::get($row, 'IsCertificateValid', Arr::get($row, 'isCertificateValid'));
+            $hasCertificate = Arr::get($row, 'HasCertificate', Arr::get($row, 'hasCertificate'));
+
+            if (is_bool($isValid)) {
+                return $isValid;
+            }
+
+            if (is_bool($hasCertificate) && $hasCertificate === true) {
+                return true;
+            }
+
+            return in_array($status, ['active', 'valid', 'issued', 'enabled'], true);
+        });
+
+        if ($allActive) {
+            return ['status' => 'active', 'message' => 'Bunny SSL certificate is active.'];
+        }
+
+        return ['status' => 'pending', 'message' => 'DNS is detected. Waiting for Bunny SSL certificate issuance.'];
     }
 
     public function purgeCache(Site $site, array $paths = ['/*']): array
@@ -264,12 +338,11 @@ class BunnyCdnProvider implements EdgeProviderInterface
         return $records;
     }
 
-    protected function domainPointsToTarget(string $domain, string $target): bool
+    protected function domainPointsToTarget(array $resolved, string $target): bool
     {
-        $domain = rtrim(strtolower($domain), '.');
         $target = rtrim(strtolower($target), '.');
 
-        $cname = collect($this->lookupCname($domain))
+        $cname = collect((array) ($resolved['cname'] ?? []))
             ->map(fn (string $value) => rtrim(strtolower($value), '.'))
             ->contains($target);
 
@@ -277,14 +350,29 @@ class BunnyCdnProvider implements EdgeProviderInterface
             return true;
         }
 
-        $domainIps = gethostbynamel($domain) ?: [];
         $targetIps = gethostbynamel($target) ?: [];
+        $domainIps = array_values(array_unique(array_merge(
+            (array) ($resolved['a'] ?? []),
+            (array) ($resolved['aaaa'] ?? [])
+        )));
 
         if ($domainIps === [] || $targetIps === []) {
             return false;
         }
 
         return count(array_intersect($domainIps, $targetIps)) > 0;
+    }
+
+    /**
+     * @return array{cname: array<int, string>, a: array<int, string>, aaaa: array<int, string>}
+     */
+    protected function resolveDns(string $domain): array
+    {
+        return [
+            'cname' => $this->lookupCname($domain),
+            'a' => $this->lookupByType($domain, 'A'),
+            'aaaa' => $this->lookupByType($domain, 'AAAA'),
+        ];
     }
 
     /**
@@ -313,6 +401,44 @@ class BunnyCdnProvider implements EdgeProviderInterface
 
         return collect($fallback)
             ->map(fn (array $record) => (string) ($record['target'] ?? ''))
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function lookupByType(string $name, string $type): array
+    {
+        if (! preg_match('/^[A-Za-z0-9._-]+$/', $name)) {
+            return [];
+        }
+
+        $process = new Process(['dig', '+short', strtoupper($type), $name]);
+        $process->setTimeout(10);
+        $process->run();
+
+        $records = collect(explode("\n", trim($process->getOutput())))
+            ->map(fn (string $line) => trim($line))
+            ->filter()
+            ->values()
+            ->all();
+
+        if ($records !== []) {
+            return $records;
+        }
+
+        $dnsType = strtoupper($type) === 'AAAA' ? DNS_AAAA : DNS_A;
+        $fallback = dns_get_record($name, $dnsType);
+        if (! is_array($fallback)) {
+            return [];
+        }
+
+        return collect($fallback)
+            ->map(function (array $record) use ($type): string {
+                return (string) ($type === 'AAAA' ? ($record['ipv6'] ?? '') : ($record['ip'] ?? ''));
+            })
             ->filter()
             ->values()
             ->all();

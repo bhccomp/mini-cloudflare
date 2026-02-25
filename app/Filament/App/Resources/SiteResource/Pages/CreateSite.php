@@ -4,7 +4,10 @@ namespace App\Filament\App\Resources\SiteResource\Pages;
 
 use App\Filament\App\Pages\SiteStatusHubPage;
 use App\Filament\App\Resources\SiteResource;
+use App\Jobs\MarkSiteReadyForCutoverJob;
+use App\Jobs\ProvisionEdgeDeploymentJob;
 use App\Models\Site;
+use App\Services\Edge\EdgeProviderManager;
 use App\Services\SiteContext;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -23,7 +26,13 @@ class CreateSite extends CreateRecord
         $data['display_name'] = $domain;
         $data['name'] = $domain;
         $data['status'] = Site::STATUS_DRAFT;
-        $data['provider'] = (string) config('edge.default_provider', Site::PROVIDER_AWS);
+        $provider = strtolower((string) ($data['provider'] ?? config('edge.default_provider', Site::PROVIDER_BUNNY)));
+        if (! array_key_exists($provider, Site::providers())) {
+            $provider = Site::PROVIDER_BUNNY;
+        }
+
+        $data['provider'] = $provider;
+        $data['onboarding_status'] = Site::ONBOARDING_DRAFT;
         $data['origin_type'] = 'url';
         $data['www_enabled'] = (bool) ($data['www_enabled'] ?? true);
         $data['origin_url'] = $origin !== '' ? $origin : 'https://'.$domain;
@@ -46,9 +55,23 @@ class CreateSite extends CreateRecord
     {
         app(SiteContext::class)->setSelectedSiteId(auth()->user(), $this->record->id);
 
+        $body = 'Your site is selected. Continue setup in the Site Status Hub.';
+
+        if ($this->record->provider === Site::PROVIDER_BUNNY) {
+            try {
+                (new ProvisionEdgeDeploymentJob($this->record->id, auth()->id()))
+                    ->handle(app(EdgeProviderManager::class));
+                (new MarkSiteReadyForCutoverJob($this->record->id, auth()->id()))
+                    ->handle();
+                $body = 'Bunny edge provisioning started automatically. Continue DNS setup in the Site Status Hub.';
+            } catch (\Throwable $e) {
+                $body = 'Site created, but Bunny provisioning failed. Open Status Hub for details and retry.';
+            }
+        }
+
         Notification::make()
             ->title('Site created')
-            ->body('Your site is selected. Continue setup in the Site Status Hub.')
+            ->body($body)
             ->success()
             ->send();
     }

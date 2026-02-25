@@ -40,6 +40,7 @@ class RequestAcmCertificateJob implements ShouldQueue
                 'required_dns_records' => $result['required_dns_records'] ?? $site->required_dns_records,
                 'acm_certificate_arn' => $result['certificate_arn'] ?? $site->acm_certificate_arn,
                 'status' => Site::STATUS_PENDING_DNS_VALIDATION,
+                'onboarding_status' => Site::ONBOARDING_PENDING_DNS_VALIDATION,
                 'last_error' => null,
             ]);
 

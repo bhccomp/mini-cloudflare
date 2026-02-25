@@ -30,6 +30,7 @@ class MarkSiteReadyForCutoverJob implements ShouldQueue
             $message = 'Deployment did not complete all edge prerequisites.';
             $site->update([
                 'status' => Site::STATUS_FAILED,
+                'onboarding_status' => Site::ONBOARDING_FAILED,
                 'last_error' => $message,
             ]);
 
@@ -40,6 +41,7 @@ class MarkSiteReadyForCutoverJob implements ShouldQueue
 
         $site->update([
             'status' => Site::STATUS_READY_FOR_CUTOVER,
+            'onboarding_status' => Site::ONBOARDING_PENDING_DNS_CUTOVER,
             'last_error' => null,
         ]);
 

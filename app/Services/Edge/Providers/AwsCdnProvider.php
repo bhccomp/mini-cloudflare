@@ -30,7 +30,7 @@ class AwsCdnProvider implements EdgeProviderInterface
         return $this->aws->checkAcmDnsValidation($site);
     }
 
-    public function createDeployment(Site $site): array
+    public function provision(Site $site): array
     {
         $waf = $this->aws->provisionWafWebAcl($site, strict: (bool) $site->under_attack);
 
@@ -74,6 +74,19 @@ class AwsCdnProvider implements EdgeProviderInterface
     public function checkDns(Site $site): array
     {
         return $this->aws->checkTrafficDns($site);
+    }
+
+    public function checkSsl(Site $site): array
+    {
+        if ($site->status === Site::STATUS_ACTIVE) {
+            return ['status' => 'active', 'message' => 'SSL is active.'];
+        }
+
+        if (! $site->acm_certificate_arn) {
+            return ['status' => 'error', 'message' => 'ACM certificate is missing.'];
+        }
+
+        return ['status' => 'pending', 'message' => 'SSL will become active after AWS onboarding completes.'];
     }
 
     public function purgeCache(Site $site, array $paths = ['/*']): array

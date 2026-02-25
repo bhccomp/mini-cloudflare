@@ -6,15 +6,19 @@ use App\Filament\App\Resources\SiteResource;
 use App\Jobs\ApplySiteControlSettingJob;
 use App\Jobs\CheckAcmDnsValidationJob;
 use App\Jobs\InvalidateCloudFrontCacheJob;
+use App\Jobs\MarkSiteReadyForCutoverJob;
+use App\Jobs\ProvisionEdgeDeploymentJob;
 use App\Jobs\RequestAcmCertificateJob;
 use App\Jobs\ToggleUnderAttackModeJob;
 use App\Models\AuditLog;
 use App\Models\Site;
+use App\Services\Edge\EdgeProviderManager;
 use App\Services\SiteContext;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -99,6 +103,24 @@ abstract class BaseProtectionPage extends Page
 
         $this->pollingEnabled = true;
         $this->throttle('provision');
+
+        if ($this->site->provider === Site::PROVIDER_BUNNY) {
+            $this->site->update([
+                'status' => Site::STATUS_DEPLOYING,
+                'onboarding_status' => Site::ONBOARDING_PROVISIONING_EDGE,
+                'last_error' => null,
+            ]);
+
+            Bus::chain([
+                new ProvisionEdgeDeploymentJob($this->site->id, auth()->id()),
+                new MarkSiteReadyForCutoverJob($this->site->id, auth()->id()),
+            ])->dispatch();
+
+            $this->notify('Edge provisioning queued');
+
+            return;
+        }
+
         RequestAcmCertificateJob::dispatch($this->site->id, auth()->id());
         $this->notify('Provision request queued');
     }
@@ -111,6 +133,13 @@ abstract class BaseProtectionPage extends Page
 
         $this->pollingEnabled = true;
         $this->throttle('check-dns-validation');
+        if ($this->site->provider === Site::PROVIDER_BUNNY) {
+            $this->runBunnyDnsCheckNow();
+            $this->notify($this->bunnyCheckMessage());
+
+            return;
+        }
+
         CheckAcmDnsValidationJob::dispatch($this->site->id, auth()->id());
         $this->notify('Validation check queued');
     }
@@ -123,6 +152,13 @@ abstract class BaseProtectionPage extends Page
 
         $this->pollingEnabled = true;
         $this->throttle('check-cutover');
+        if ($this->site->provider === Site::PROVIDER_BUNNY) {
+            $this->runBunnyDnsCheckNow();
+            $this->notify($this->bunnyCheckMessage());
+
+            return;
+        }
+
         CheckAcmDnsValidationJob::dispatch($this->site->id, auth()->id());
         $this->notify('Cutover check queued');
     }
@@ -182,6 +218,14 @@ abstract class BaseProtectionPage extends Page
 
     public function certificateStatus(): string
     {
+        if ($this->site?->provider === Site::PROVIDER_BUNNY) {
+            return match ($this->site->onboarding_status) {
+                Site::ONBOARDING_DNS_VERIFIED_SSL_PENDING => 'DNS OK, SSL pending',
+                Site::ONBOARDING_LIVE => 'Active',
+                default => 'Pending',
+            };
+        }
+
         if (! $this->site?->acm_certificate_arn) {
             return 'Not requested';
         }
@@ -313,5 +357,37 @@ abstract class BaseProtectionPage extends Page
             Site::STATUS_DEPLOYING,
             Site::STATUS_READY_FOR_CUTOVER,
         ], true);
+    }
+
+    protected function runBunnyDnsCheckNow(): void
+    {
+        if (! $this->site) {
+            return;
+        }
+
+        try {
+            $job = new CheckAcmDnsValidationJob($this->site->id, auth()->id());
+            $job->handle(app(EdgeProviderManager::class));
+        } catch (\Throwable $e) {
+            $this->site->update([
+                'status' => Site::STATUS_FAILED,
+                'onboarding_status' => Site::ONBOARDING_FAILED,
+                'last_error' => $e->getMessage(),
+                'last_checked_at' => now(),
+            ]);
+        } finally {
+            $this->refreshSite();
+        }
+    }
+
+    protected function bunnyCheckMessage(): string
+    {
+        return match ($this->site?->onboarding_status) {
+            Site::ONBOARDING_LIVE => 'DNS and SSL are active. Protection is live.',
+            Site::ONBOARDING_DNS_VERIFIED_SSL_PENDING => 'DNS looks correct. SSL is still issuing, we will keep checking.',
+            Site::ONBOARDING_PENDING_DNS_CUTOVER => 'DNS does not point to Bunny yet. Update records and check again.',
+            Site::ONBOARDING_FAILED => 'Check failed. Review the latest error and retry.',
+            default => 'DNS check completed.',
+        };
     }
 }

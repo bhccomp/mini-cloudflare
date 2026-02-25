@@ -14,9 +14,11 @@ interface EdgeProviderInterface
 
     public function checkCertificateValidation(Site $site): array;
 
-    public function createDeployment(Site $site): array;
+    public function provision(Site $site): array;
 
     public function checkDns(Site $site): array;
+
+    public function checkSsl(Site $site): array;
 
     public function purgeCache(Site $site, array $paths = ['/*']): array;
 

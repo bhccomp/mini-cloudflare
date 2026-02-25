@@ -50,7 +50,7 @@ class SiteResource extends Resource
                 ->schema([
                     \Filament\Schemas\Components\Wizard::make([
                         \Filament\Schemas\Components\Wizard\Step::make('Domain')
-                            ->description('Choose the domain you want to protect.')
+                            ->description('Choose the domain you want to protect with Bunny edge by default.')
                             ->schema([
                                 Forms\Components\Hidden::make('organization_id')
                                     ->default(fn () => auth()->user()?->current_organization_id ?: auth()->user()?->organizations()->value('organizations.id')),
@@ -135,12 +135,24 @@ class SiteResource extends Resource
                                     ->label('Connectivity test')
                                     ->content(fn (Get $get): string => (string) ($get('origin_test_feedback') ?: 'Run a quick connectivity test before continuing.')),
                             ])->columns(1),
-                        \Filament\Schemas\Components\Wizard\Step::make('SSL')
-                            ->description('Your domain needs certificate validation before traffic can be routed.')
+                        \Filament\Schemas\Components\Wizard\Step::make('Advanced')
+                            ->description('Optional controls for provider selection and rollout behavior.')
                             ->schema([
-                                Forms\Components\Placeholder::make('ssl_info')
-                                    ->label('What happens next')
-                                    ->content('After you create the site, click Provision in the status hub. We will generate DNS records for certificate validation and guide you through the exact DNS updates needed.'),
+                                Forms\Components\Toggle::make('show_advanced_provider')
+                                    ->label('I want to choose provider manually')
+                                    ->dehydrated(false)
+                                    ->default(false),
+                                Forms\Components\Select::make('provider')
+                                    ->label('Edge provider')
+                                    ->options([
+                                        Site::PROVIDER_BUNNY => 'Bunny.net (Recommended)',
+                                        Site::PROVIDER_AWS => 'AWS (Advanced)',
+                                    ])
+                                    ->default((string) config('edge.default_provider', Site::PROVIDER_BUNNY))
+                                    ->visible(fn (Get $get): bool => (bool) config('edge.feature_aws_onboarding', false) || (bool) $get('show_advanced_provider')),
+                                Forms\Components\Placeholder::make('advanced_note')
+                                    ->label('Onboarding mode')
+                                    ->content('Bunny flow skips pre-validation and activates SSL after DNS cutover. AWS flow remains available for advanced users.'),
                             ]),
                         \Filament\Schemas\Components\Wizard\Step::make('Review & Create')
                             ->description('Confirm details and create your protection layer.')
@@ -161,7 +173,7 @@ class SiteResource extends Resource
                                     ->content(fn (Get $get): string => (string) ($get('origin_url') ?: 'Not set')),
                                 Forms\Components\Placeholder::make('review_note')
                                     ->label('Next action after creation')
-                                    ->content('Open the site status hub, click Provision, and follow DNS instructions until the site becomes active.'),
+                                    ->content('Open the Site Status Hub, provision edge, update DNS, and verify cutover until protection is live.'),
                             ])->columns(1),
                     ])->columnSpanFull(),
                 ])

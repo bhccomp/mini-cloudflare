@@ -2,6 +2,7 @@
 
 namespace App\Filament\App\Pages;
 
+use App\Jobs\CheckAcmDnsValidationJob;
 use App\Models\Site;
 
 class SiteStatusHubPage extends BaseProtectionPage
@@ -18,8 +19,45 @@ class SiteStatusHubPage extends BaseProtectionPage
 
     protected string $view = 'filament.app.pages.site-status-hub';
 
+    public function isBunnyFlow(): bool
+    {
+        return ($this->site?->provider ?? '') === Site::PROVIDER_BUNNY;
+    }
+
+    public function steps(): array
+    {
+        if ($this->isBunnyFlow()) {
+            return [
+                1 => 'Create site',
+                2 => 'Provision edge',
+                3 => 'Update DNS',
+                4 => 'Verify cutover',
+                5 => 'Protection active',
+            ];
+        }
+
+        return [
+            1 => 'Create',
+            2 => 'Validate domain',
+            3 => 'Deploy edge',
+            4 => 'Cutover DNS',
+        ];
+    }
+
     public function currentStep(): int
     {
+        if ($this->isBunnyFlow()) {
+            return match ($this->site?->onboarding_status) {
+                Site::ONBOARDING_DRAFT => 1,
+                Site::ONBOARDING_PROVISIONING_EDGE => 2,
+                Site::ONBOARDING_PENDING_DNS_CUTOVER => 3,
+                Site::ONBOARDING_DNS_VERIFIED_SSL_PENDING => 4,
+                Site::ONBOARDING_LIVE => 5,
+                Site::ONBOARDING_FAILED => 2,
+                default => 1,
+            };
+        }
+
         return match ($this->site?->status) {
             Site::STATUS_DRAFT => 1,
             Site::STATUS_PENDING_DNS_VALIDATION => 2,
@@ -33,6 +71,17 @@ class SiteStatusHubPage extends BaseProtectionPage
     public function acmValidationRecords(): array
     {
         return (array) data_get($this->site?->required_dns_records, 'acm_validation', []);
+    }
+
+    public function trafficDnsRecords(): array
+    {
+        $records = (array) data_get($this->site?->required_dns_records, 'traffic', []);
+
+        if ($records !== []) {
+            return $records;
+        }
+
+        return $this->cutoverRecords();
     }
 
     public function cutoverRecords(): array
@@ -49,7 +98,7 @@ class SiteStatusHubPage extends BaseProtectionPage
                 'type' => 'CNAME',
                 'value' => $target,
                 'ttl' => 'Auto',
-                'note' => 'Point www directly to your CloudFront domain.',
+                'note' => 'Point www directly to the edge domain.',
             ],
             [
                 'host' => $this->site->apex_domain,
@@ -59,5 +108,43 @@ class SiteStatusHubPage extends BaseProtectionPage
                 'note' => 'Use provider flattening/aliasing for apex records.',
             ],
         ];
+    }
+
+    public function onboardingLabel(): string
+    {
+        $status = $this->site?->onboarding_status;
+
+        return Site::onboardingStatuses()[$status] ?? 'Draft';
+    }
+
+    public function autoCheckBunnyCutover(): void
+    {
+        $this->refreshSite();
+
+        if (! $this->site || ! $this->isBunnyFlow()) {
+            return;
+        }
+
+        if (! in_array($this->site->onboarding_status, [
+            Site::ONBOARDING_PENDING_DNS_CUTOVER,
+            Site::ONBOARDING_DNS_VERIFIED_SSL_PENDING,
+        ], true)) {
+            return;
+        }
+
+        if ($this->site->last_checked_at && $this->site->last_checked_at->gt(now()->subSeconds(10))) {
+            return;
+        }
+
+        CheckAcmDnsValidationJob::dispatch($this->site->id, auth()->id());
+    }
+
+    public function pollStatus(): void
+    {
+        parent::pollStatus();
+
+        if ($this->isBunnyFlow()) {
+            $this->autoCheckBunnyCutover();
+        }
     }
 }

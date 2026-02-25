@@ -23,7 +23,7 @@ class AssociateWebAclToDistributionJob implements ShouldQueue
         $provider = $providers->forSite($site);
 
         try {
-            $result = $provider->createDeployment($site);
+            $result = $provider->provision($site);
             $site->update([
                 'provider' => $provider->key(),
                 'provider_resource_id' => $result['provider_resource_id'] ?? $site->provider_resource_id,

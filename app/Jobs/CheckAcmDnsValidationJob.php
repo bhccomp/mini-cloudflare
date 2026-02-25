@@ -29,10 +29,16 @@ class CheckAcmDnsValidationJob implements ShouldQueue
 
         if ($site->status === Site::STATUS_PENDING_DNS_VALIDATION) {
             $dns = $provider->checkCertificateValidation($site);
-            $site->update(['required_dns_records' => $dns['required_dns_records'] ?? $site->required_dns_records]);
+            $site->update([
+                'required_dns_records' => $dns['required_dns_records'] ?? $site->required_dns_records,
+                'last_checked_at' => now(),
+            ]);
 
             if (! ($dns['validated'] ?? false)) {
-                $site->update(['status' => Site::STATUS_PENDING_DNS_VALIDATION]);
+                $site->update([
+                    'status' => Site::STATUS_PENDING_DNS_VALIDATION,
+                    'onboarding_status' => Site::ONBOARDING_PENDING_DNS_VALIDATION,
+                ]);
                 $this->audit($site, 'acm.check_dns', 'info', $dns['message'] ?? 'DNS validation is still pending.', $dns + ['provider' => $provider->key()]);
 
                 return;
@@ -40,6 +46,7 @@ class CheckAcmDnsValidationJob implements ShouldQueue
 
             $site->update([
                 'status' => Site::STATUS_DEPLOYING,
+                'onboarding_status' => Site::ONBOARDING_PROVISIONING_EDGE,
                 'last_error' => null,
             ]);
 
@@ -55,11 +62,72 @@ class CheckAcmDnsValidationJob implements ShouldQueue
 
         if ($site->status === Site::STATUS_READY_FOR_CUTOVER || $site->status === Site::STATUS_ACTIVE) {
             $traffic = $provider->checkDns($site);
-            $site->update(['required_dns_records' => $traffic['required_dns_records'] ?? $site->required_dns_records]);
+            $site->update([
+                'required_dns_records' => $traffic['required_dns_records'] ?? $site->required_dns_records,
+                'last_checked_at' => now(),
+            ]);
 
             if ($traffic['validated'] ?? false) {
+                if ($provider->key() === Site::PROVIDER_BUNNY) {
+                    $ssl = $provider->checkSsl($site->fresh());
+
+                    if (($ssl['status'] ?? 'pending') === 'active') {
+                        $site->update([
+                            'status' => Site::STATUS_ACTIVE,
+                            'onboarding_status' => Site::ONBOARDING_LIVE,
+                            'last_error' => null,
+                            'last_provisioned_at' => now(),
+                        ]);
+
+                        $this->audit(
+                            $site,
+                            'traffic.check_cutover',
+                            'success',
+                            $ssl['message'] ?? 'DNS and SSL verification complete.',
+                            $traffic + ['provider' => $provider->key(), 'ssl' => $ssl]
+                        );
+
+                        return;
+                    }
+
+                    if (($ssl['status'] ?? 'pending') === 'error') {
+                        $site->update([
+                            'status' => Site::STATUS_FAILED,
+                            'onboarding_status' => Site::ONBOARDING_FAILED,
+                            'last_error' => $ssl['message'] ?? 'SSL check failed.',
+                        ]);
+
+                        $this->audit(
+                            $site,
+                            'traffic.check_cutover',
+                            'failed',
+                            $ssl['message'] ?? 'SSL check failed.',
+                            $traffic + ['provider' => $provider->key(), 'ssl' => $ssl]
+                        );
+
+                        return;
+                    }
+
+                    $site->update([
+                        'status' => Site::STATUS_READY_FOR_CUTOVER,
+                        'onboarding_status' => Site::ONBOARDING_DNS_VERIFIED_SSL_PENDING,
+                        'last_error' => null,
+                    ]);
+
+                    $this->audit(
+                        $site,
+                        'traffic.check_cutover',
+                        'info',
+                        $ssl['message'] ?? 'DNS is verified and SSL is still pending.',
+                        $traffic + ['provider' => $provider->key(), 'ssl' => $ssl]
+                    );
+
+                    return;
+                }
+
                 $site->update([
                     'status' => Site::STATUS_ACTIVE,
+                    'onboarding_status' => Site::ONBOARDING_LIVE,
                     'last_error' => null,
                     'last_provisioned_at' => now(),
                 ]);
@@ -69,7 +137,10 @@ class CheckAcmDnsValidationJob implements ShouldQueue
                 return;
             }
 
-            $site->update(['status' => Site::STATUS_READY_FOR_CUTOVER]);
+            $site->update([
+                'status' => Site::STATUS_READY_FOR_CUTOVER,
+                'onboarding_status' => Site::ONBOARDING_PENDING_DNS_CUTOVER,
+            ]);
             $this->audit($site, 'traffic.check_cutover', 'info', $traffic['message'] ?? 'DNS cutover still pending.', $traffic + ['provider' => $provider->key()]);
 
             return;
