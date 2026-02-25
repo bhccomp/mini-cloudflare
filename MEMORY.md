@@ -424,3 +424,47 @@
 - Updated view:
   - `resources/views/filament/app/pages/protection/firewall.blade.php`
   - Uses Filament UI primitives heavily (`x-filament::section`, badges, actions, buttons) with lightweight supplemental CSS only for layout/map rendering.
+
+## Multi-Provider Edge Refactor (AWS + Bunny) (Latest)
+- Added edge provider abstraction and resolver:
+  - `app/Services/Edge/EdgeProviderInterface.php`
+  - `app/Services/Edge/EdgeProviderManager.php`
+- Added provider implementations:
+  - `app/Services/Edge/Providers/AwsCdnProvider.php` (wraps existing `AwsEdgeService`)
+  - `app/Services/Edge/Providers/BunnyCdnProvider.php` (Bunny Pull Zone create + hostname attach + DNS check + cache purge)
+- Added provider persistence fields on sites:
+  - migration: `database/migrations/2026_02_24_231000_add_edge_provider_columns_to_sites_table.php`
+  - model updates: `provider`, `provider_resource_id`, `provider_meta`
+  - default provider fallback set from config in `Site` model.
+- Added provider config:
+  - `config/edge.php`
+  - `.env.example` keys:
+    - `EDGE_PROVIDER=aws`
+    - `BUNNY_API_BASE_URL=https://api.bunny.net`
+- Refactored provisioning and runtime jobs to resolve provider per site (default AWS):
+  - `RequestAcmCertificateJob`
+  - `CheckAcmDnsValidationJob`
+  - `InvalidateCloudFrontCacheJob`
+  - `ToggleUnderAttackModeJob`
+  - legacy jobs (`ProvisionWafWebAclJob`, `ProvisionCloudFrontDistributionJob`, `AssociateWebAclToDistributionJob`) no longer call AWS service directly
+- Added unified deployment job:
+  - `app/Jobs/ProvisionEdgeDeploymentJob.php`
+  - `CheckAcmDnsValidationJob` now chains:
+    - `ProvisionEdgeDeploymentJob`
+    - `MarkSiteReadyForCutoverJob`
+- Updated readiness checks:
+  - `MarkSiteReadyForCutoverJob` now validates prerequisites per provider (AWS vs Bunny).
+- Create-site flow now stamps default provider:
+  - `app/Filament/App/Resources/SiteResource/Pages/CreateSite.php`
+- App service container registers resolver singleton:
+  - `app/Providers/AppServiceProvider.php`
+- Docs updated:
+  - `README.md` now includes multi-provider usage + Bunny system setting format
+- New tests:
+  - `tests/Unit/AwsCdnProviderTest.php`
+  - `tests/Unit/BunnyCdnProviderTest.php`
+- Updated tests:
+  - `tests/Feature/ProvisionJobsTest.php` migrated to provider-manager workflow
+- Validation run:
+  - `php artisan migrate --force` passed
+  - `php artisan test tests/Feature/ProvisionJobsTest.php tests/Unit/AwsCdnProviderTest.php tests/Unit/BunnyCdnProviderTest.php` passed (8 tests, 29 assertions)

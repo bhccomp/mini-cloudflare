@@ -2,17 +2,18 @@
 
 namespace Tests\Feature;
 
-use App\Jobs\AssociateWebAclToDistributionJob;
 use App\Jobs\CheckAcmDnsValidationJob;
 use App\Jobs\MarkSiteReadyForCutoverJob;
-use App\Jobs\ProvisionCloudFrontDistributionJob;
-use App\Jobs\ProvisionWafWebAclJob;
+use App\Jobs\ProvisionEdgeDeploymentJob;
 use App\Jobs\RequestAcmCertificateJob;
 use App\Models\Organization;
 use App\Models\Site;
 use App\Models\User;
-use App\Services\Aws\AwsEdgeService;
+use App\Services\Edge\EdgeProviderInterface;
+use App\Services\Edge\EdgeProviderManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
+use Mockery;
 use Tests\TestCase;
 
 class ProvisionJobsTest extends TestCase
@@ -23,9 +24,19 @@ class ProvisionJobsTest extends TestCase
     {
         [$site, $user] = $this->newSiteAndUser();
 
-        $aws = new class extends AwsEdgeService
+        $provider = new class implements EdgeProviderInterface
         {
-            public function requestAcmCertificate(Site $site): array
+            public function key(): string
+            {
+                return Site::PROVIDER_AWS;
+            }
+
+            public function requiresCertificateValidation(): bool
+            {
+                return true;
+            }
+
+            public function requestCertificate(Site $site): array
             {
                 return [
                     'changed' => true,
@@ -40,9 +51,34 @@ class ProvisionJobsTest extends TestCase
                     ],
                 ];
             }
+
+            public function checkCertificateValidation(Site $site): array
+            {
+                return ['validated' => false];
+            }
+
+            public function createDeployment(Site $site): array
+            {
+                return [];
+            }
+
+            public function checkDns(Site $site): array
+            {
+                return ['validated' => false];
+            }
+
+            public function purgeCache(Site $site, array $paths = ['/*']): array
+            {
+                return ['changed' => false];
+            }
+
+            public function setUnderAttackMode(Site $site, bool $enabled): array
+            {
+                return ['changed' => false, 'enabled' => $enabled];
+            }
         };
 
-        (new RequestAcmCertificateJob($site->id, $user->id))->handle($aws);
+        (new RequestAcmCertificateJob($site->id, $user->id))->handle($this->managerFor($provider));
 
         $site->refresh();
 
@@ -64,9 +100,24 @@ class ProvisionJobsTest extends TestCase
             ],
         ]);
 
-        $aws = new class extends AwsEdgeService
+        $provider = new class implements EdgeProviderInterface
         {
-            public function checkAcmDnsValidation(Site $site): array
+            public function key(): string
+            {
+                return Site::PROVIDER_AWS;
+            }
+
+            public function requiresCertificateValidation(): bool
+            {
+                return true;
+            }
+
+            public function requestCertificate(Site $site): array
+            {
+                return [];
+            }
+
+            public function checkCertificateValidation(Site $site): array
             {
                 return [
                     'validated' => false,
@@ -74,9 +125,29 @@ class ProvisionJobsTest extends TestCase
                     'required_dns_records' => $site->required_dns_records,
                 ];
             }
+
+            public function createDeployment(Site $site): array
+            {
+                return [];
+            }
+
+            public function checkDns(Site $site): array
+            {
+                return ['validated' => false];
+            }
+
+            public function purgeCache(Site $site, array $paths = ['/*']): array
+            {
+                return ['changed' => false];
+            }
+
+            public function setUnderAttackMode(Site $site, bool $enabled): array
+            {
+                return ['changed' => false, 'enabled' => $enabled];
+            }
         };
 
-        (new CheckAcmDnsValidationJob($site->id, $user->id))->handle($aws);
+        (new CheckAcmDnsValidationJob($site->id, $user->id))->handle($this->managerFor($provider));
 
         $site->refresh();
 
@@ -98,9 +169,26 @@ class ProvisionJobsTest extends TestCase
             ],
         ]);
 
-        $aws = new class extends AwsEdgeService
+        Bus::fake();
+
+        $provider = new class implements EdgeProviderInterface
         {
-            public function checkAcmDnsValidation(Site $site): array
+            public function key(): string
+            {
+                return Site::PROVIDER_AWS;
+            }
+
+            public function requiresCertificateValidation(): bool
+            {
+                return true;
+            }
+
+            public function requestCertificate(Site $site): array
+            {
+                return [];
+            }
+
+            public function checkCertificateValidation(Site $site): array
             {
                 return [
                     'validated' => true,
@@ -108,34 +196,48 @@ class ProvisionJobsTest extends TestCase
                 ];
             }
 
-            public function provisionWafWebAcl(Site $site, bool $strict = false): array
+            public function createDeployment(Site $site): array
             {
                 return [
-                    'changed' => true,
-                    'web_acl_arn' => 'arn:aws:wafv2:us-east-1:000000000000:global/webacl/site/123',
-                ];
-            }
-
-            public function provisionCloudFrontDistribution(Site $site): array
-            {
-                return [
-                    'changed' => true,
+                    'provider_resource_id' => 'E12345',
                     'distribution_id' => 'E12345',
                     'distribution_domain_name' => 'd111111abcdef8.cloudfront.net',
-                    'required_dns_records' => $site->required_dns_records,
+                    'web_acl_arn' => 'arn:aws:wafv2:us-east-1:000000000000:global/webacl/site/123',
+                    'required_dns_records' => [
+                        'traffic' => [[
+                            'type' => 'CNAME',
+                            'name' => 'www.example.com',
+                            'value' => 'd111111abcdef8.cloudfront.net',
+                            'status' => 'pending',
+                        ]],
+                    ],
                 ];
             }
 
-            public function associateWebAclToDistribution(Site $site): array
+            public function checkDns(Site $site): array
             {
-                return ['changed' => true];
+                return ['validated' => false];
+            }
+
+            public function purgeCache(Site $site, array $paths = ['/*']): array
+            {
+                return ['changed' => false];
+            }
+
+            public function setUnderAttackMode(Site $site, bool $enabled): array
+            {
+                return ['changed' => false, 'enabled' => $enabled];
             }
         };
 
-        (new CheckAcmDnsValidationJob($site->id, $user->id))->handle($aws);
-        (new ProvisionWafWebAclJob($site->id, $user->id))->handle($aws);
-        (new ProvisionCloudFrontDistributionJob($site->id, $user->id))->handle($aws);
-        (new AssociateWebAclToDistributionJob($site->id, $user->id))->handle($aws);
+        (new CheckAcmDnsValidationJob($site->id, $user->id))->handle($this->managerFor($provider));
+
+        Bus::assertChained([
+            ProvisionEdgeDeploymentJob::class,
+            MarkSiteReadyForCutoverJob::class,
+        ]);
+
+        (new ProvisionEdgeDeploymentJob($site->id, $user->id))->handle($this->managerFor($provider));
         (new MarkSiteReadyForCutoverJob($site->id, $user->id))->handle();
 
         $site->refresh();
@@ -153,19 +255,54 @@ class ProvisionJobsTest extends TestCase
             'cloudfront_domain_name' => 'd111111abcdef8.cloudfront.net',
         ]);
 
-        $aws = new class extends AwsEdgeService
+        $provider = new class implements EdgeProviderInterface
         {
-            public function checkTrafficDns(Site $site): array
+            public function key(): string
+            {
+                return Site::PROVIDER_AWS;
+            }
+
+            public function requiresCertificateValidation(): bool
+            {
+                return true;
+            }
+
+            public function requestCertificate(Site $site): array
+            {
+                return [];
+            }
+
+            public function checkCertificateValidation(Site $site): array
+            {
+                return ['validated' => false];
+            }
+
+            public function createDeployment(Site $site): array
+            {
+                return [];
+            }
+
+            public function checkDns(Site $site): array
             {
                 return [
                     'validated' => false,
-                    'message' => 'Point your domain to CloudFront target and retry.',
+                    'message' => 'Point your domain to edge target and retry.',
                     'required_dns_records' => $site->required_dns_records,
                 ];
             }
+
+            public function purgeCache(Site $site, array $paths = ['/*']): array
+            {
+                return ['changed' => false];
+            }
+
+            public function setUnderAttackMode(Site $site, bool $enabled): array
+            {
+                return ['changed' => false, 'enabled' => $enabled];
+            }
         };
 
-        (new CheckAcmDnsValidationJob($site->id, $user->id))->handle($aws);
+        (new CheckAcmDnsValidationJob($site->id, $user->id))->handle($this->managerFor($provider));
 
         $site->refresh();
 
@@ -179,19 +316,54 @@ class ProvisionJobsTest extends TestCase
             'cloudfront_domain_name' => 'd111111abcdef8.cloudfront.net',
         ]);
 
-        $aws = new class extends AwsEdgeService
+        $provider = new class implements EdgeProviderInterface
         {
-            public function checkTrafficDns(Site $site): array
+            public function key(): string
+            {
+                return Site::PROVIDER_AWS;
+            }
+
+            public function requiresCertificateValidation(): bool
+            {
+                return true;
+            }
+
+            public function requestCertificate(Site $site): array
+            {
+                return [];
+            }
+
+            public function checkCertificateValidation(Site $site): array
+            {
+                return ['validated' => false];
+            }
+
+            public function createDeployment(Site $site): array
+            {
+                return [];
+            }
+
+            public function checkDns(Site $site): array
             {
                 return [
                     'validated' => true,
-                    'message' => 'Traffic DNS is pointed to CloudFront.',
+                    'message' => 'Traffic DNS is pointed to edge target.',
                     'required_dns_records' => $site->required_dns_records,
                 ];
             }
+
+            public function purgeCache(Site $site, array $paths = ['/*']): array
+            {
+                return ['changed' => false];
+            }
+
+            public function setUnderAttackMode(Site $site, bool $enabled): array
+            {
+                return ['changed' => false, 'enabled' => $enabled];
+            }
         };
 
-        (new CheckAcmDnsValidationJob($site->id, $user->id))->handle($aws);
+        (new CheckAcmDnsValidationJob($site->id, $user->id))->handle($this->managerFor($provider));
 
         $site->refresh();
 
@@ -209,6 +381,7 @@ class ProvisionJobsTest extends TestCase
             'display_name' => 'Main Site',
             'name' => 'Main Site',
             'apex_domain' => 'example.com',
+            'provider' => Site::PROVIDER_AWS,
             'www_enabled' => true,
             'origin_type' => 'url',
             'origin_url' => 'https://origin.example.com',
@@ -216,5 +389,14 @@ class ProvisionJobsTest extends TestCase
         ], $siteOverrides));
 
         return [$site, $user];
+    }
+
+    protected function managerFor(EdgeProviderInterface $provider): EdgeProviderManager
+    {
+        $manager = Mockery::mock(EdgeProviderManager::class);
+        $manager->shouldReceive('forSite')
+            ->andReturn($provider);
+
+        return $manager;
     }
 }
