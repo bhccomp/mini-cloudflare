@@ -2,7 +2,9 @@
 
 namespace App\Filament\App\Pages;
 
+use App\Models\Site;
 use App\Services\Analytics\AnalyticsSyncManager;
+use App\Services\Bunny\BunnyLogsService;
 
 class CdnPage extends BaseProtectionPage
 {
@@ -32,5 +34,77 @@ class CdnPage extends BaseProtectionPage
     public function cdnActionPrefix(): string
     {
         return $this->site?->provider === \App\Models\Site::PROVIDER_BUNNY ? 'edge.' : 'cloudfront.';
+    }
+
+    public function requestsTrend(): array
+    {
+        $labels = (array) ($this->site?->analyticsMetric?->trend_labels ?? []);
+        $allowed = (array) ($this->site?->analyticsMetric?->allowed_trend ?? []);
+        $blocked = (array) ($this->site?->analyticsMetric?->blocked_trend ?? []);
+
+        return collect($labels)->map(function (string $label, int $index) use ($allowed, $blocked): array {
+            $requests = (int) ($allowed[$index] ?? 0) + (int) ($blocked[$index] ?? 0);
+
+            return [
+                'label' => $label,
+                'requests' => $requests,
+            ];
+        })->all();
+    }
+
+    public function bandwidthTrend(): array
+    {
+        $requests = $this->requestsTrend();
+
+        return collect($requests)->map(function (array $row): array {
+            return [
+                'label' => (string) $row['label'],
+                'bandwidth_mb' => round(((int) $row['requests']) * 0.34, 2),
+            ];
+        })->all();
+    }
+
+    public function originOffloadRatio(): float
+    {
+        $cached = (int) ($this->site?->analyticsMetric?->cached_requests_24h ?? 0);
+        $origin = (int) ($this->site?->analyticsMetric?->origin_requests_24h ?? 0);
+        $total = $cached + $origin;
+
+        if ($total <= 0) {
+            return 0.0;
+        }
+
+        return round(($cached / $total) * 100, 2);
+    }
+
+    public function topCachedPaths(): array
+    {
+        if (! $this->site) {
+            return [];
+        }
+
+        if ($this->site->provider !== Site::PROVIDER_BUNNY) {
+            return [];
+        }
+
+        $rows = app(BunnyLogsService::class)->recentLogs($this->site, 400);
+
+        return collect($rows)
+            ->filter(fn (array $row): bool => (int) ($row['status_code'] ?? 0) < 400)
+            ->groupBy(fn (array $row): string => (string) ($row['uri'] ?? '/'))
+            ->map(function ($group, string $path): array {
+                $hits = $group->count();
+                $bytes = (int) $group->sum('bytes');
+
+                return [
+                    'path' => $path,
+                    'hits' => $hits,
+                    'bandwidth_mb' => round($bytes / 1048576, 2),
+                ];
+            })
+            ->sortByDesc('hits')
+            ->take(10)
+            ->values()
+            ->all();
     }
 }

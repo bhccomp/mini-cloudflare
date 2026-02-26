@@ -359,6 +359,31 @@ abstract class BaseProtectionPage extends Page
         ], true);
     }
 
+    public function diagnosticsDetails(): array
+    {
+        if (! $this->site) {
+            return [];
+        }
+
+        $lastSync = $this->site->analyticsMetric?->captured_at
+            ?? $this->site->last_checked_at
+            ?? $this->site->updated_at;
+
+        $apiStatus = $this->site->last_error ? 'Error' : 'OK';
+        $apiLatency = data_get($this->site->provider_meta, 'api_response_time_ms')
+            ?? data_get($this->site->analyticsMetric?->source ?? [], 'response_time_ms');
+
+        return [
+            'edge_provider' => (string) ($this->site->provider ?? 'unknown'),
+            'zone_id' => (string) ($this->site->provider_resource_id ?? data_get($this->site->provider_meta, 'zone_id', 'n/a')),
+            'site_id' => (string) $this->site->id,
+            'last_sync' => $lastSync?->toDateTimeString() ?? 'n/a',
+            'api_status' => $apiStatus,
+            'api_response_time' => $apiLatency !== null ? $apiLatency.' ms' : 'n/a',
+            'raw_health' => (string) ($this->site->onboarding_status ?: $this->site->status ?: 'unknown'),
+        ];
+    }
+
     protected function runBunnyDnsCheckNow(): void
     {
         if (! $this->site) {
@@ -385,7 +410,7 @@ abstract class BaseProtectionPage extends Page
         return match ($this->site?->onboarding_status) {
             Site::ONBOARDING_LIVE => 'DNS and SSL are active. Protection is live.',
             Site::ONBOARDING_DNS_VERIFIED_SSL_PENDING => 'DNS looks correct. SSL is still issuing, we will keep checking.',
-            Site::ONBOARDING_PENDING_DNS_CUTOVER => 'DNS does not point to Bunny yet. Update records and check again.',
+            Site::ONBOARDING_PENDING_DNS_CUTOVER => 'DNS does not point to the Edge Network yet. Update records and check again.',
             Site::ONBOARDING_FAILED => 'Check failed. Review the latest error and retry.',
             default => 'DNS check completed.',
         };
