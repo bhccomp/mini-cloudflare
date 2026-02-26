@@ -1,49 +1,84 @@
 <x-filament-panels::page>
     <x-filament.app.settings.layout-styles />
+
+    @php($m = $this->site?->analyticsMetric)
+    @php($requestsTrend = $this->requestsTrend())
+    @php($bandwidthTrend = $this->bandwidthTrend())
+    @php($topPaths = $this->topCachedPaths())
+    @php($requestsMax = max(1, (int) collect($requestsTrend)->max('requests')))
+
     <div class="fp-protection-shell">
+        @include('filament.app.pages.protection.technical-details')
+
         @if (! $this->site)
             @include('filament.app.pages.protection.empty-state')
         @else
-            @php($m = $this->site->analyticsMetric)
-            <div class="fp-protection-grid">
-                <div>
-                    <x-filament.app.settings.card
-                        title="CDN Settings"
-                        description="Distribution health and edge routing controls."
-                        icon="heroicon-o-globe-alt"
-                        :status="$this->site->cloudfront_distribution_id ? 'Connected' : 'Not deployed'"
-                        :status-color="$this->site->cloudfront_distribution_id ? 'success' : 'gray'"
-                    >
-                        <x-filament.app.settings.section title="Edge Delivery" description="Provider-aware edge delivery posture">
-                            <x-filament.app.settings.key-value-grid :rows="[
-                                ['label' => 'Provider', 'value' => strtoupper((string) $this->site->provider)],
-                                ['label' => 'Status', 'value' => $this->site->cloudfront_distribution_id ? 'Provisioned' : 'Not deployed'],
-                                ['label' => 'Health', 'value' => $this->distributionHealth()],
-                                ['label' => 'Edge Target', 'value' => $this->site->cloudfront_domain_name ?: 'Not assigned yet'],
-                                ['label' => 'Total Requests (24h)', 'value' => number_format((int) ($m->total_requests_24h ?? 0))],
-                                ['label' => 'Cache Hit Ratio', 'value' => $m && $m->cache_hit_ratio !== null ? number_format((float) $m->cache_hit_ratio, 2) . '%' : 'N/A'],
-                                ['label' => 'Last action', 'value' => $this->lastAction($this->cdnActionPrefix())],
-                            ]" />
+            <x-filament::section heading="Edge Delivery" description="Live edge traffic and caching posture." icon="heroicon-o-globe-alt">
+                <x-slot name="footer">
+                    <x-filament::actions alignment="end">
+                        <x-filament::button color="gray" wire:click="refreshCdnMetrics" wire:loading.attr="disabled" wire:target="refreshCdnMetrics">Refresh metrics</x-filament::button>
+                        <x-filament::button color="gray" wire:click="purgeCache" wire:loading.attr="disabled" wire:target="purgeCache">Purge cache</x-filament::button>
+                    </x-filament::actions>
+                </x-slot>
 
-                            <x-slot name="actions">
-                                <x-filament.app.settings.action-row>
-                                    <x-filament::button color="gray" wire:click="refreshCdnMetrics">Refresh metrics</x-filament::button>
-                                    <x-filament::button color="gray" wire:click="purgeCache">Purge cache</x-filament::button>
-                                </x-filament.app.settings.action-row>
-                            </x-slot>
-                        </x-filament.app.settings.section>
-                    </x-filament.app.settings.card>
-                </div>
+                <x-filament.app.settings.key-value-grid :rows="[
+                    ['label' => 'Edge Network', 'value' => $this->site->cloudfront_distribution_id ? 'Connected' : 'Pending setup'],
+                    ['label' => 'Edge Status', 'value' => $this->distributionHealth() === 'Healthy' ? 'Healthy' : 'Provisioning'],
+                    ['label' => 'Requests (24h)', 'value' => number_format((int) ($m->total_requests_24h ?? 0))],
+                    ['label' => 'Bandwidth (24h)', 'value' => number_format((((int) ($m->cached_requests_24h ?? 0) + (int) ($m->origin_requests_24h ?? 0)) * 0.34), 2) . ' MB'],
+                    ['label' => 'Cache Hit %', 'value' => $m && $m->cache_hit_ratio !== null ? number_format((float) $m->cache_hit_ratio, 2) . '%' : 'No telemetry yet'],
+                    ['label' => 'Origin Offload %', 'value' => number_format($this->originOffloadRatio(), 2) . '%'],
+                    ['label' => 'Last Sync', 'value' => $m?->captured_at?->diffForHumans() ?: 'Not synced yet'],
+                ]" />
+            </x-filament::section>
 
-                <x-filament.app.settings.card title="Recent Action" description="Latest edge operation" icon="heroicon-o-clock">
-                    <x-filament.app.settings.section title="Operational Events" description="Recent deployment and cache activity">
-                        <x-filament.app.settings.key-value-grid :rows="[
-                            ['label' => 'Most recent event', 'value' => $this->lastAction($this->cdnActionPrefix())],
-                            ['label' => 'Captured metrics', 'value' => $m?->captured_at?->diffForHumans() ?: 'Not captured'],
-                        ]" />
-                    </x-filament.app.settings.section>
-                </x-filament.app.settings.card>
-            </div>
+            <x-filament::section heading="7-Day Trend" description="Requests and estimated bandwidth over the last 7 days." icon="heroicon-o-arrow-trending-up">
+                @if (empty($requestsTrend))
+                    <p class="text-sm opacity-75">No trend data yet. Refresh after live traffic reaches the edge network.</p>
+                @else
+                    <div class="grid gap-2">
+                        @foreach ($requestsTrend as $idx => $point)
+                            @php($width = max(3, (int) round(($point['requests'] / $requestsMax) * 100)))
+                            <div class="grid gap-1">
+                                <div class="flex items-center justify-between text-xs">
+                                    <span>{{ $point['label'] }}</span>
+                                    <span>{{ number_format((int) $point['requests']) }} req · {{ number_format((float) ($bandwidthTrend[$idx]['bandwidth_mb'] ?? 0), 2) }} MB</span>
+                                </div>
+                                <div class="h-2 rounded-full bg-gray-100 dark:bg-gray-800">
+                                    <div class="h-2 rounded-full bg-primary-500" style="width: {{ $width }}%"></div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+            </x-filament::section>
+
+            <x-filament::section heading="Top Cached Paths" description="Most requested edge-cached paths in the current sample window." icon="heroicon-o-document-duplicate">
+                @if (empty($topPaths))
+                    <p class="text-sm opacity-75">No cached path telemetry yet.</p>
+                @else
+                    <div class="fi-ta-content-ctn overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800">
+                        <table class="fi-ta-table w-full text-sm">
+                            <thead>
+                                <tr class="fi-ta-header-row">
+                                    <th class="fi-ta-header-cell">Path</th>
+                                    <th class="fi-ta-header-cell fi-align-end">Requests</th>
+                                    <th class="fi-ta-header-cell fi-align-end">Bandwidth</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($topPaths as $row)
+                                    <tr class="fi-ta-row">
+                                        <td class="fi-ta-cell">{{ $row['path'] }}</td>
+                                        <td class="fi-ta-cell fi-align-end">{{ number_format((int) $row['hits']) }}</td>
+                                        <td class="fi-ta-cell fi-align-end">{{ number_format((float) $row['bandwidth_mb'], 2) }} MB</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
+            </x-filament::section>
         @endif
     </div>
 </x-filament-panels::page>
