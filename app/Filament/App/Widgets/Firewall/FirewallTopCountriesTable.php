@@ -25,10 +25,13 @@ class FirewallTopCountriesTable extends TableWidget
             ->columns([
                 Tables\Columns\TextColumn::make('country')
                     ->label('Country')
-                    ->badge(),
+                    ->badge()
+                    ->formatStateUsing(fn (string $state): string => $this->formatCountryLabel($state))
+                    ->extraAttributes(['class' => 'py-1 text-xs']),
                 Tables\Columns\TextColumn::make('requests')
                     ->label('Requests')
-                    ->numeric(),
+                    ->numeric()
+                    ->extraAttributes(['class' => 'py-1 text-xs']),
             ])
             ->emptyStateHeading('No telemetry yet')
             ->emptyStateDescription('Traffic must flow through protection before country statistics appear.');
@@ -50,5 +53,34 @@ class FirewallTopCountriesTable extends TableWidget
         return collect((array) data_get($insights, 'top_countries', []))
             ->values()
             ->all();
+    }
+
+    protected function formatCountryLabel(string $code): string
+    {
+        $country = strtoupper(trim($code));
+
+        if ($country === '' || strlen($country) !== 2) {
+            return $country;
+        }
+
+        $flag = $this->countryFlagEmoji($country);
+
+        return trim($flag.' '.$country);
+    }
+
+    protected function countryFlagEmoji(string $country): string
+    {
+        if (strlen($country) !== 2 || ! function_exists('mb_chr')) {
+            return '';
+        }
+
+        $first = ord($country[0]) - 65 + 127462;
+        $second = ord($country[1]) - 65 + 127462;
+
+        if ($first < 127462 || $second < 127462) {
+            return '';
+        }
+
+        return mb_chr($first, 'UTF-8').mb_chr($second, 'UTF-8');
     }
 }

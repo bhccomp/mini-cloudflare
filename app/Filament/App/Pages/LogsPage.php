@@ -19,6 +19,7 @@ class LogsPage extends BaseProtectionPage
     public int $logsPage = 1;
 
     public int $logsPerPage = 25;
+
     protected static ?string $slug = 'logs';
 
     protected static ?int $navigationSort = 5;

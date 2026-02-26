@@ -25,16 +25,19 @@ class FirewallTopIpsTable extends TableWidget
             ->columns([
                 Tables\Columns\TextColumn::make('ip')
                     ->label('IP')
-                    ->copyable(),
+                    ->copyable()
+                    ->extraAttributes(['class' => 'py-1 text-xs']),
                 Tables\Columns\TextColumn::make('requests')
                     ->label('Requests')
-                    ->numeric(),
+                    ->numeric()
+                    ->extraAttributes(['class' => 'py-1 text-xs']),
                 Tables\Columns\TextColumn::make('blocked')
                     ->label('Blocked')
-                    ->numeric(),
+                    ->numeric()
+                    ->extraAttributes(['class' => 'py-1 text-xs']),
             ])
             ->emptyStateHeading('No telemetry yet')
-            ->emptyStateDescription('Traffic must flow through protection before IP statistics appear.');
+            ->emptyStateDescription('Top IPs require detailed request logs. Traffic totals can still appear from edge analytics.');
     }
 
     /**

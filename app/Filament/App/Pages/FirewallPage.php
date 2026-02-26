@@ -10,6 +10,7 @@ use App\Filament\App\Widgets\Firewall\FirewallTopCountriesTable;
 use App\Filament\App\Widgets\Firewall\FirewallTopIpsTable;
 use App\Models\Site;
 use App\Services\Analytics\AnalyticsSyncManager;
+use App\Services\Bunny\BunnyLogsService;
 use App\Services\Firewall\FirewallInsightsPresenter;
 use Filament\Actions\Action;
 
@@ -86,13 +87,18 @@ class FirewallPage extends BaseProtectionPage
 
         app(FirewallInsightsPresenter::class)->forget($this->site);
         app(AnalyticsSyncManager::class)->syncSiteMetrics($this->site);
+        if ($this->site->provider === Site::PROVIDER_BUNNY) {
+            app(BunnyLogsService::class)->syncToLocalStore($this->site, 500);
+        }
 
         $this->refreshSite();
         $this->dispatch('firewall-sync-widgets');
 
         $insights = app(FirewallInsightsPresenter::class)->insights($this->site);
-        $total = (int) data_get($insights, 'summary.total', 0);
-        $blocked = (int) data_get($insights, 'summary.blocked', 0);
+        $total = (int) ($this->site->analyticsMetric?->total_requests_24h
+            ?? data_get($insights, 'summary.total', 0));
+        $blocked = (int) ($this->site->analyticsMetric?->blocked_requests_24h
+            ?? data_get($insights, 'summary.blocked', 0));
 
         if ($total === 0) {
             $this->notify('Sync complete. Edge telemetry reports 0 requests in the selected time range.');

@@ -19,8 +19,11 @@ class BunnyAnalyticsService
 
         $stats = $this->fetchStats($zoneId);
         $events = collect($this->logs->recentLogs($site, 400));
+        $requestsSeries = $this->chartSeries($stats, ['RequestsServedChart']);
+        $error4xxSeries = $this->chartSeries($stats, ['Error4xxChart']);
+        $error5xxSeries = $this->chartSeries($stats, ['Error5xxChart']);
 
-        $total24h = (int) ($this->readNumber($stats, ['requests', 'Requests', 'totalRequests', 'TotalRequests']) ?? $events->count());
+        $total24h = (int) ($this->readNumber($stats, ['requests', 'Requests', 'totalRequests', 'TotalRequests', 'TotalRequestsServed']) ?? $events->count());
         $cacheHitRatio = (float) ($this->readNumber($stats, ['cacheHitRate', 'CacheHitRate', 'cacheHitRatio', 'CacheHitRatio']) ?? 0);
         $cached24h = (int) round($total24h * max(0, min($cacheHitRatio, 100)) / 100);
         $origin24h = max(0, $total24h - $cached24h);
@@ -30,6 +33,11 @@ class BunnyAnalyticsService
                 || (int) ($event['status_code'] ?? 200) === 403;
         })->count();
 
+        if ($events->isEmpty()) {
+            $blockedFromErrors = (int) round(array_sum($error4xxSeries) + array_sum($error5xxSeries));
+            $blocked24h = min($total24h, max(0, $blockedFromErrors));
+        }
+
         $allowed24h = max(0, $total24h - $blocked24h);
 
         $trendLabels = collect(range(6, 0))
@@ -37,8 +45,13 @@ class BunnyAnalyticsService
             ->values()
             ->all();
 
-        $blockedTrend = $this->trendFromEvents($events, true);
-        $allowedTrend = $this->trendFromEvents($events, false);
+        $blockedTrend = $events->isNotEmpty()
+            ? $this->trendFromEvents($events, true)
+            : $this->trendFromStatsSeries($error4xxSeries, $error5xxSeries);
+
+        $allowedTrend = $events->isNotEmpty()
+            ? $this->trendFromEvents($events, false)
+            : $this->trendFromRequestsSeries($requestsSeries, $blockedTrend);
 
         $regionalTraffic = $events->groupBy(fn (array $event) => $this->regionForCountry((string) ($event['country'] ?? '')))
             ->map(fn ($group) => $group->count())
@@ -138,6 +151,64 @@ class BunnyAnalyticsService
             })
             ->values()
             ->all();
+    }
+
+    protected function trendFromStatsSeries(array $seriesA, array $seriesB = []): array
+    {
+        return collect(range(6, 0))
+            ->map(function (int $days) use ($seriesA, $seriesB): int {
+                $day = now()->subDays($days)->format('Y-m-d');
+
+                return (int) round(($seriesA[$day] ?? 0) + ($seriesB[$day] ?? 0));
+            })
+            ->values()
+            ->all();
+    }
+
+    protected function trendFromRequestsSeries(array $requestsSeries, array $blockedTrend): array
+    {
+        return collect(range(6, 0))
+            ->map(function (int $days, int $index) use ($requestsSeries, $blockedTrend): int {
+                $day = now()->subDays($days)->format('Y-m-d');
+                $total = (int) round($requestsSeries[$day] ?? 0);
+
+                return max(0, $total - (int) ($blockedTrend[$index] ?? 0));
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $stats
+     * @param  array<int, string>  $keys
+     * @return array<string, float>
+     */
+    protected function chartSeries(array $stats, array $keys): array
+    {
+        foreach ($keys as $key) {
+            $value = Arr::get($stats, $key);
+
+            if (! is_array($value)) {
+                continue;
+            }
+
+            $series = [];
+
+            foreach ($value as $timestamp => $number) {
+                if (! is_numeric($number)) {
+                    continue;
+                }
+
+                $date = substr((string) $timestamp, 0, 10);
+                $series[$date] = (float) $number;
+            }
+
+            if ($series !== []) {
+                return $series;
+            }
+        }
+
+        return [];
     }
 
     protected function regionForCountry(string $country): string

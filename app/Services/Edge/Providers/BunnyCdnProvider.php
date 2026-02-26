@@ -45,6 +45,7 @@ class BunnyCdnProvider implements EdgeProviderInterface
     {
         $originUrl = $this->resolvePreferredOriginUrl($site);
         $originHostHeader = strtolower((string) $site->apex_domain);
+        $logging = $this->loggingSettingsPayload();
 
         $existingId = (int) ($site->provider_resource_id ?: 0);
         $zoneId = $existingId;
@@ -60,7 +61,7 @@ class BunnyCdnProvider implements EdgeProviderInterface
                 'AddHostHeader' => true,
                 'EnableAutoSSL' => true,
                 'Type' => 0,
-            ])->throw()->json();
+            ] + $logging)->throw()->json();
 
             $zoneId = (int) (Arr::get($created, 'Id') ?? Arr::get($created, 'id') ?? 0);
             $zoneName = (string) (Arr::get($created, 'Name') ?? $zoneName);
@@ -105,6 +106,9 @@ class BunnyCdnProvider implements EdgeProviderInterface
                 'edge_domain' => $edgeDomain,
                 'origin_url' => $originUrl,
                 'origin_host_header' => $originHostHeader,
+                'logging_enabled' => (bool) ($logging['EnableLogging'] ?? false),
+                'logging_save_to_storage' => (bool) ($logging['LoggingSaveToStorage'] ?? false),
+                'logging_storage_zone_id' => (int) ($logging['LoggingStorageZoneId'] ?? 0),
                 'hostnames' => $hostnameResults,
             ],
             'distribution_id' => (string) $zoneId,
@@ -251,6 +255,8 @@ class BunnyCdnProvider implements EdgeProviderInterface
         }
 
         try {
+            $logging = $this->loggingSettingsPayload();
+
             $this->client()->post("/pullzone/{$zoneId}", [
                 'Id' => $zoneId,
                 'Name' => $zoneName,
@@ -259,10 +265,96 @@ class BunnyCdnProvider implements EdgeProviderInterface
                 'AddHostHeader' => true,
                 'EnableAutoSSL' => true,
                 'Type' => 0,
-            ])->throw();
+            ] + $logging)->throw();
         } catch (\Throwable) {
             // Non-fatal: keep runtime checks resilient and retry on later actions.
         }
+    }
+
+    /**
+     * @return array{
+     *   EnableLogging: bool,
+     *   LoggingSaveToStorage: bool,
+     *   LoggingStorageZoneId: int,
+     *   LogForwardingEnabled: bool,
+     *   LogForwardingHostname: string|null,
+     *   LogForwardingPort: int,
+     *   LogForwardingToken: string|null,
+     *   LogForwardingProtocol: int|null,
+     *   LogForwardingFormat?: int|string|null
+     * }
+     */
+    private function loggingSettingsPayload(): array
+    {
+        $setting = SystemSetting::query()->where('key', 'bunny')->first();
+        $value = $setting?->value;
+
+        $configuredStorageZoneId = (int) (
+            (is_array($value) ? ($value['logging_storage_zone_id'] ?? null) : null)
+            ?? config('edge.bunny.logging_storage_zone_id', 0)
+        );
+
+        $saveToStorage = $configuredStorageZoneId > 0;
+        $logForwardingEnabled = (bool) (
+            (is_array($value) ? ($value['log_forwarding_enabled'] ?? null) : null)
+            ?? config('edge.bunny.log_forwarding_enabled', false)
+        );
+        $logForwardingHostname = (string) (
+            (is_array($value) ? ($value['log_forwarding_hostname'] ?? null) : null)
+            ?? config('edge.bunny.log_forwarding_hostname', '')
+        );
+        $logForwardingPort = (int) (
+            (is_array($value) ? ($value['log_forwarding_port'] ?? null) : null)
+            ?? config('edge.bunny.log_forwarding_port', 514)
+        );
+        $logForwardingToken = (string) (
+            (is_array($value) ? ($value['log_forwarding_token'] ?? null) : null)
+            ?? config('edge.bunny.log_forwarding_token', '')
+        );
+        $logForwardingProtocol = $this->normalizeForwardingProtocol(
+            (is_array($value) ? ($value['log_forwarding_protocol'] ?? null) : null)
+                ?? config('edge.bunny.log_forwarding_protocol')
+        );
+        $logForwardingFormat = (is_array($value) ? ($value['log_forwarding_format'] ?? null) : null)
+            ?? config('edge.bunny.log_forwarding_format');
+
+        $payload = [
+            'EnableLogging' => true,
+            'LoggingSaveToStorage' => $saveToStorage,
+            'LoggingStorageZoneId' => $saveToStorage ? $configuredStorageZoneId : 0,
+            'LogForwardingEnabled' => $logForwardingEnabled && $logForwardingHostname !== '' && $logForwardingPort > 0,
+            'LogForwardingHostname' => $logForwardingHostname !== '' ? $logForwardingHostname : null,
+            'LogForwardingPort' => $logForwardingPort > 0 ? $logForwardingPort : 514,
+            'LogForwardingToken' => $logForwardingToken !== '' ? $logForwardingToken : null,
+            'LogForwardingProtocol' => $logForwardingProtocol,
+        ];
+
+        if ($logForwardingFormat !== null && $logForwardingFormat !== '') {
+            $payload['LogForwardingFormat'] = $logForwardingFormat;
+        }
+
+        return $payload;
+    }
+
+    private function normalizeForwardingProtocol(mixed $value): ?int
+    {
+        if (is_numeric($value)) {
+            return (int) $value;
+        }
+
+        if (! is_string($value) || $value === '') {
+            return null;
+        }
+
+        $normalized = strtolower(trim($value));
+
+        return match ($normalized) {
+            'udp' => 0,
+            'tcp' => 1,
+            'tcp_encrypted', 'tcp-encrypted', 'tls', 'tcp_tls' => 2,
+            'datadog' => 3,
+            default => null,
+        };
     }
 
     public function checkDns(Site $site): array

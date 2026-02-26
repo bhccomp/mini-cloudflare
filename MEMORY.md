@@ -602,3 +602,18 @@
 - After deletion, site switcher updates without full page refresh:
   - Dispatches `sites-refreshed` event.
   - `SiteSwitcher` listens and clears stale selected site if deleted.
+
+## Edge Telemetry + Firewall Cleanup (Latest)
+- Implemented real-time forwarded edge log ingestion pipeline:
+  - Added `edge_request_logs` table + `EdgeRequestLog` model.
+  - Added UDP/TCP listener command (`bunny:forwarding-listen`) and Supervisor process.
+  - Added `BunnyForwardedLogIngestor` to parse forwarded payloads and persist events per site.
+- Fixed live ingestion parsing for Bunny forwarded logs:
+  - Added support for Bunny key casing (`Host`, `RemoteIp`, `PathAndQuery`, `Timestamp`, etc.).
+  - Added millisecond epoch timestamp parsing.
+  - Result: live forwarded packets are now persisted in local DB and used by Firewall widgets.
+- Networking hardening:
+  - Opened `5514/udp` in UFW so forwarded packets can reach the listener.
+- Firewall analytics now backed by local DB events when available, with existing fallback behavior retained.
+- Removed Firewall page user-facing diagnostics block (Technical details widget hidden from normal UI).
+- Current source of Firewall map/countries/IPs/events: local `edge_request_logs` ingestion.

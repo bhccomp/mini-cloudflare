@@ -20,7 +20,7 @@ class BunnyCdnProviderTest extends TestCase
 
         SystemSetting::query()->updateOrCreate(
             ['key' => 'bunny'],
-            ['value' => ['api_key' => 'test-key'], 'is_encrypted' => false]
+            ['value' => ['api_key' => 'test-key', 'logging_storage_zone_id' => 777], 'is_encrypted' => false]
         );
 
         $org = Organization::create(['name' => 'Org A', 'slug' => 'org-a']);
@@ -63,13 +63,19 @@ class BunnyCdnProviderTest extends TestCase
             return $request->url() === 'https://api.bunny.net/pullzone'
                 && data_get($request->data(), 'OriginUrl') === 'https://198.51.100.9'
                 && data_get($request->data(), 'OriginHostHeader') === 'example.com'
-                && data_get($request->data(), 'AddHostHeader') === true;
+                && data_get($request->data(), 'AddHostHeader') === true
+                && data_get($request->data(), 'EnableLogging') === true
+                && data_get($request->data(), 'LoggingSaveToStorage') === true
+                && (int) data_get($request->data(), 'LoggingStorageZoneId') === 777;
         });
         Http::assertSent(fn ($request) => str_starts_with($request->url(), 'https://api.bunny.net/pullzone/loadFreeCertificate'));
         Http::assertSent(function ($request) {
             return $request->url() === 'https://api.bunny.net/pullzone/321'
                 && data_get($request->data(), 'OriginUrl') === 'https://198.51.100.9'
-                && data_get($request->data(), 'OriginHostHeader') === 'example.com';
+                && data_get($request->data(), 'OriginHostHeader') === 'example.com'
+                && data_get($request->data(), 'EnableLogging') === true
+                && data_get($request->data(), 'LoggingSaveToStorage') === true
+                && (int) data_get($request->data(), 'LoggingStorageZoneId') === 777;
         });
     }
 
