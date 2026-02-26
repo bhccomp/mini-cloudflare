@@ -5,6 +5,7 @@ namespace App\Livewire\Filament\App;
 use App\Models\Site;
 use App\Services\SiteContext;
 use Illuminate\Support\Collection;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 class SiteSwitcher extends Component
@@ -67,6 +68,31 @@ class SiteSwitcher extends Component
     public function addSiteUrl(): string
     {
         return \App\Filament\App\Resources\SiteResource::getUrl('create');
+    }
+
+    #[On('sites-refreshed')]
+    public function refreshSites(SiteContext $siteContext): void
+    {
+        $user = auth()->user();
+
+        if (! $user) {
+            return;
+        }
+
+        if (! $this->selectedSiteId) {
+            return;
+        }
+
+        $exists = Site::query()
+            ->where('id', $this->selectedSiteId)
+            ->whereIn('organization_id', $user->organizations()->select('organizations.id'))
+            ->exists();
+
+        if ($exists) {
+            return;
+        }
+
+        $this->selectedSiteId = $siteContext->setSelectedSiteId($user, null);
     }
 
     public function getSelectedLabelProperty(): string

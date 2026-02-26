@@ -23,4 +23,6 @@ interface EdgeProviderInterface
     public function purgeCache(Site $site, array $paths = ['/*']): array;
 
     public function setUnderAttackMode(Site $site, bool $enabled): array;
+
+    public function deleteDeployment(Site $site): array;
 }

@@ -20,7 +20,7 @@ class CreateSite extends CreateRecord
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $domain = $this->normalizeDomainInput((string) ($data['apex_domain'] ?? ''));
-        $origin = $this->normalizeOriginInput((string) ($data['origin_url'] ?? ''));
+        $originIp = $this->normalizeOriginIpInput((string) ($data['origin_ip'] ?? ''));
 
         $data['apex_domain'] = $domain;
         $data['display_name'] = $domain;
@@ -33,9 +33,11 @@ class CreateSite extends CreateRecord
 
         $data['provider'] = $provider;
         $data['onboarding_status'] = Site::ONBOARDING_DRAFT;
-        $data['origin_type'] = 'url';
+        $data['origin_type'] = 'ip';
         $data['www_enabled'] = (bool) ($data['www_enabled'] ?? true);
-        $data['origin_url'] = $origin !== '' ? $origin : 'https://'.$domain;
+        $data['origin_ip'] = $originIp;
+        $data['origin_url'] = $originIp !== '' ? 'http://'.$originIp : null;
+        $data['origin_host'] = $domain;
 
         return $data;
     }
@@ -96,30 +98,8 @@ class CreateSite extends CreateRecord
         return $host;
     }
 
-    protected function normalizeOriginInput(string $value): string
+    protected function normalizeOriginIpInput(string $value): string
     {
-        $input = trim($value);
-
-        if ($input === '') {
-            return '';
-        }
-
-        if (! str_contains($input, '://')) {
-            $input = 'https://'.$input;
-        }
-
-        $parts = parse_url($input);
-        if (! is_array($parts) || blank($parts['host'] ?? null)) {
-            return $input;
-        }
-
-        $scheme = strtolower((string) ($parts['scheme'] ?? 'https'));
-        $host = strtolower((string) $parts['host']);
-        $path = (string) ($parts['path'] ?? '');
-        $query = isset($parts['query']) ? '?'.$parts['query'] : '';
-        $fragment = isset($parts['fragment']) ? '#'.$parts['fragment'] : '';
-        $port = isset($parts['port']) ? ':'.$parts['port'] : '';
-
-        return sprintf('%s://%s%s%s%s%s', $scheme, $host, $port, $path, $query, $fragment);
+        return trim($value);
     }
 }

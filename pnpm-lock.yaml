@@ -7,6 +7,10 @@ settings:
 importers:
 
   .:
+    dependencies:
+      leaflet:
+        specifier: ^1.9.4
+        version: 1.9.4
     devDependencies:
       '@tailwindcss/vite':
         specifier: ^4.0.0
@@ -601,6 +605,9 @@ packages:
     hasBin: true
     peerDependencies:
       vite: ^7.0.0
+
+  leaflet@1.9.4:
+    resolution: {integrity: sha512-nxS1ynzJOmOlHp+iL3FyWqK89GtNL8U8rvlMOsQdTTssxZwCXh8N2NB3GDQOL+YR3XnWyZAxwQixURb+FA74PA==}
 
   lightningcss-android-arm64@1.31.1:
     resolution: {integrity: sha512-HXJF3x8w9nQ4jbXRiNppBCqeZPIAfUo8zE/kOEGbW5NZvGc/K7nMxbhIr+YlFlHW5mpbg/YFPdbnCh1wAXCKFg==}
@@ -1249,6 +1256,8 @@ snapshots:
       picocolors: 1.1.1
       vite: 7.3.1(jiti@2.6.1)(lightningcss@1.31.1)
       vite-plugin-full-reload: 1.2.0
+
+  leaflet@1.9.4: {}
 
   lightningcss-android-arm64@1.31.1:
     optional: true

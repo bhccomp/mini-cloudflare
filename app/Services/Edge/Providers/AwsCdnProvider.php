@@ -98,4 +98,12 @@ class AwsCdnProvider implements EdgeProviderInterface
     {
         return $this->aws->setUnderAttackMode($site, $enabled);
     }
+
+    public function deleteDeployment(Site $site): array
+    {
+        return [
+            'changed' => false,
+            'message' => 'Edge removal is not automated for this provider yet. Delete resources manually first.',
+        ];
+    }
 }

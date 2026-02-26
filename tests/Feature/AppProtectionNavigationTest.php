@@ -80,7 +80,7 @@ class AppProtectionNavigationTest extends TestCase
             ->test(CreateSite::class)
             ->set('data.organization_id', $org->id)
             ->set('data.apex_domain', 'wizard-example.com')
-            ->set('data.origin_url', 'origin.wizard-example.com')
+            ->set('data.origin_ip', '203.0.113.10')
             ->call('create')
             ->assertHasNoErrors();
 
@@ -89,7 +89,8 @@ class AppProtectionNavigationTest extends TestCase
         $component->assertRedirect(SiteStatusHubPage::getUrl(['site_id' => $site->id]));
 
         $this->assertSame($site->id, $user->fresh()->selected_site_id);
-        $this->assertSame('https://origin.wizard-example.com', $site->origin_url);
+        $this->assertSame('203.0.113.10', $site->origin_ip);
+        $this->assertSame('http://203.0.113.10', $site->origin_url);
         $this->assertTrue($site->www_enabled);
     }
 }

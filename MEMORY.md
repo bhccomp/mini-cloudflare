@@ -573,3 +573,32 @@
     - `tests/Unit/BunnyCdnProviderTest.php`
     - `tests/Unit/SiteProviderSelectionTest.php`
     - `tests/Feature/ProvisionJobsTest.php`
+
+## Onboarding + Edge Stability Updates (Latest)
+- Origin input is now explicit and strict in onboarding:
+  - Field label changed to `Origin / Server IP`.
+  - Field is required and validates as public IPv4 only.
+  - Domains are rejected for origin input to avoid CDN self-loop risks.
+  - New validation rule: `app/Rules/OriginIpRule.php`.
+- Create Site flow stores `origin_ip` and derives runtime origin URL as `http://<origin_ip>` for compatibility.
+- Bunny provisioning now uses explicit host-header and safer origin handling:
+  - Sends `OriginHostHeader = <apex_domain>` and `AddHostHeader = true`.
+  - Requests free cert issuance for apex + www via Bunny API during provision/checks.
+  - Auto-detects origin redirect-loop risk (HTTP->HTTPS canonical redirect to public domain) and switches origin to `https://<origin_ip>` when needed.
+  - Syncs zone origin settings during provisioning and DNS/SSL checks.
+- Fixed Step-4 UX crash path in Livewire:
+  - Replaced hard `abort(429)` throttling with user-visible notification.
+  - Prevents generic “Error while loading page” from rapid check clicks.
+
+## Site Deletion + UX Sync (Latest)
+- Added real provider-aware site deletion in App Sites table:
+  - Action: `Delete site` (confirmed destructive action).
+  - Performs provider cleanup first, then deletes local site record.
+  - Writes audit log entries for success/failure.
+- Bunny deletion now supports related multi-zone cleanup:
+  - Deletes linked zone and any additional zones matching site hostnames/zone names.
+- User-facing copy is fully white-labeled:
+  - Uses neutral `Edge deployment` language (no provider names in dashboard messages).
+- After deletion, site switcher updates without full page refresh:
+  - Dispatches `sites-refreshed` event.
+  - `SiteSwitcher` listens and clears stale selected site if deleted.

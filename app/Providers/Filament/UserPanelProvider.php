@@ -44,6 +44,10 @@ class UserPanelProvider extends PanelProvider
                 PanelsRenderHook::TOPBAR_START,
                 fn (): \Illuminate\Contracts\View\View => view('filament.app.components.topbar-site-switcher'),
             )
+            ->renderHook(
+                PanelsRenderHook::HEAD_END,
+                fn (): \Illuminate\Contracts\View\View => view('filament.app.components.panel-assets'),
+            )
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

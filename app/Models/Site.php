@@ -55,6 +55,7 @@ class Site extends Model
         'www_enabled',
         'www_domain',
         'origin_type',
+        'origin_ip',
         'origin_url',
         'origin_host',
         'status',

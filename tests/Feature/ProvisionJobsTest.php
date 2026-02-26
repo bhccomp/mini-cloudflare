@@ -26,8 +26,16 @@ class ProvisionJobsTest extends TestCase
 
         $provider = new class implements EdgeProviderInterface
         {
-            public function key(): string { return Site::PROVIDER_AWS; }
-            public function requiresCertificateValidation(): bool { return true; }
+            public function key(): string
+            {
+                return Site::PROVIDER_AWS;
+            }
+
+            public function requiresCertificateValidation(): bool
+            {
+                return true;
+            }
+
             public function requestCertificate(Site $site): array
             {
                 return [
@@ -43,12 +51,41 @@ class ProvisionJobsTest extends TestCase
                     ],
                 ];
             }
-            public function checkCertificateValidation(Site $site): array { return ['validated' => false]; }
-            public function provision(Site $site): array { return []; }
-            public function checkDns(Site $site): array { return ['validated' => false]; }
-            public function checkSsl(Site $site): array { return ['status' => 'active', 'message' => 'SSL active']; }
-            public function purgeCache(Site $site, array $paths = ['/*']): array { return ['changed' => false]; }
-            public function setUnderAttackMode(Site $site, bool $enabled): array { return ['changed' => false, 'enabled' => $enabled]; }
+
+            public function checkCertificateValidation(Site $site): array
+            {
+                return ['validated' => false];
+            }
+
+            public function provision(Site $site): array
+            {
+                return [];
+            }
+
+            public function checkDns(Site $site): array
+            {
+                return ['validated' => false];
+            }
+
+            public function checkSsl(Site $site): array
+            {
+                return ['status' => 'active', 'message' => 'SSL active'];
+            }
+
+            public function purgeCache(Site $site, array $paths = ['/*']): array
+            {
+                return ['changed' => false];
+            }
+
+            public function setUnderAttackMode(Site $site, bool $enabled): array
+            {
+                return ['changed' => false, 'enabled' => $enabled];
+            }
+
+            public function deleteDeployment(Site $site): array
+            {
+                return ['changed' => false];
+            }
         };
 
         (new RequestAcmCertificateJob($site->id, $user->id))->handle($this->managerFor($provider));
@@ -75,9 +112,21 @@ class ProvisionJobsTest extends TestCase
 
         $provider = new class implements EdgeProviderInterface
         {
-            public function key(): string { return Site::PROVIDER_AWS; }
-            public function requiresCertificateValidation(): bool { return true; }
-            public function requestCertificate(Site $site): array { return []; }
+            public function key(): string
+            {
+                return Site::PROVIDER_AWS;
+            }
+
+            public function requiresCertificateValidation(): bool
+            {
+                return true;
+            }
+
+            public function requestCertificate(Site $site): array
+            {
+                return [];
+            }
+
             public function checkCertificateValidation(Site $site): array
             {
                 return [
@@ -86,11 +135,36 @@ class ProvisionJobsTest extends TestCase
                     'required_dns_records' => $site->required_dns_records,
                 ];
             }
-            public function provision(Site $site): array { return []; }
-            public function checkDns(Site $site): array { return ['validated' => false]; }
-            public function checkSsl(Site $site): array { return ['status' => 'active', 'message' => 'SSL active']; }
-            public function purgeCache(Site $site, array $paths = ['/*']): array { return ['changed' => false]; }
-            public function setUnderAttackMode(Site $site, bool $enabled): array { return ['changed' => false, 'enabled' => $enabled]; }
+
+            public function provision(Site $site): array
+            {
+                return [];
+            }
+
+            public function checkDns(Site $site): array
+            {
+                return ['validated' => false];
+            }
+
+            public function checkSsl(Site $site): array
+            {
+                return ['status' => 'active', 'message' => 'SSL active'];
+            }
+
+            public function purgeCache(Site $site, array $paths = ['/*']): array
+            {
+                return ['changed' => false];
+            }
+
+            public function setUnderAttackMode(Site $site, bool $enabled): array
+            {
+                return ['changed' => false, 'enabled' => $enabled];
+            }
+
+            public function deleteDeployment(Site $site): array
+            {
+                return ['changed' => false];
+            }
         };
 
         (new CheckAcmDnsValidationJob($site->id, $user->id))->handle($this->managerFor($provider));
@@ -119,9 +193,21 @@ class ProvisionJobsTest extends TestCase
 
         $provider = new class implements EdgeProviderInterface
         {
-            public function key(): string { return Site::PROVIDER_AWS; }
-            public function requiresCertificateValidation(): bool { return true; }
-            public function requestCertificate(Site $site): array { return []; }
+            public function key(): string
+            {
+                return Site::PROVIDER_AWS;
+            }
+
+            public function requiresCertificateValidation(): bool
+            {
+                return true;
+            }
+
+            public function requestCertificate(Site $site): array
+            {
+                return [];
+            }
+
             public function checkCertificateValidation(Site $site): array
             {
                 return [
@@ -129,6 +215,7 @@ class ProvisionJobsTest extends TestCase
                     'required_dns_records' => $site->required_dns_records,
                 ];
             }
+
             public function provision(Site $site): array
             {
                 return [
@@ -146,10 +233,31 @@ class ProvisionJobsTest extends TestCase
                     ],
                 ];
             }
-            public function checkDns(Site $site): array { return ['validated' => false]; }
-            public function checkSsl(Site $site): array { return ['status' => 'active', 'message' => 'SSL active']; }
-            public function purgeCache(Site $site, array $paths = ['/*']): array { return ['changed' => false]; }
-            public function setUnderAttackMode(Site $site, bool $enabled): array { return ['changed' => false, 'enabled' => $enabled]; }
+
+            public function checkDns(Site $site): array
+            {
+                return ['validated' => false];
+            }
+
+            public function checkSsl(Site $site): array
+            {
+                return ['status' => 'active', 'message' => 'SSL active'];
+            }
+
+            public function purgeCache(Site $site, array $paths = ['/*']): array
+            {
+                return ['changed' => false];
+            }
+
+            public function setUnderAttackMode(Site $site, bool $enabled): array
+            {
+                return ['changed' => false, 'enabled' => $enabled];
+            }
+
+            public function deleteDeployment(Site $site): array
+            {
+                return ['changed' => false];
+            }
         };
 
         (new CheckAcmDnsValidationJob($site->id, $user->id))->handle($this->managerFor($provider));
@@ -179,11 +287,31 @@ class ProvisionJobsTest extends TestCase
 
         $provider = new class implements EdgeProviderInterface
         {
-            public function key(): string { return Site::PROVIDER_AWS; }
-            public function requiresCertificateValidation(): bool { return true; }
-            public function requestCertificate(Site $site): array { return []; }
-            public function checkCertificateValidation(Site $site): array { return ['validated' => false]; }
-            public function provision(Site $site): array { return []; }
+            public function key(): string
+            {
+                return Site::PROVIDER_AWS;
+            }
+
+            public function requiresCertificateValidation(): bool
+            {
+                return true;
+            }
+
+            public function requestCertificate(Site $site): array
+            {
+                return [];
+            }
+
+            public function checkCertificateValidation(Site $site): array
+            {
+                return ['validated' => false];
+            }
+
+            public function provision(Site $site): array
+            {
+                return [];
+            }
+
             public function checkDns(Site $site): array
             {
                 return [
@@ -192,9 +320,26 @@ class ProvisionJobsTest extends TestCase
                     'required_dns_records' => $site->required_dns_records,
                 ];
             }
-            public function checkSsl(Site $site): array { return ['status' => 'active', 'message' => 'SSL active']; }
-            public function purgeCache(Site $site, array $paths = ['/*']): array { return ['changed' => false]; }
-            public function setUnderAttackMode(Site $site, bool $enabled): array { return ['changed' => false, 'enabled' => $enabled]; }
+
+            public function checkSsl(Site $site): array
+            {
+                return ['status' => 'active', 'message' => 'SSL active'];
+            }
+
+            public function purgeCache(Site $site, array $paths = ['/*']): array
+            {
+                return ['changed' => false];
+            }
+
+            public function setUnderAttackMode(Site $site, bool $enabled): array
+            {
+                return ['changed' => false, 'enabled' => $enabled];
+            }
+
+            public function deleteDeployment(Site $site): array
+            {
+                return ['changed' => false];
+            }
         };
 
         (new CheckAcmDnsValidationJob($site->id, $user->id))->handle($this->managerFor($provider));
@@ -213,11 +358,31 @@ class ProvisionJobsTest extends TestCase
 
         $provider = new class implements EdgeProviderInterface
         {
-            public function key(): string { return Site::PROVIDER_AWS; }
-            public function requiresCertificateValidation(): bool { return true; }
-            public function requestCertificate(Site $site): array { return []; }
-            public function checkCertificateValidation(Site $site): array { return ['validated' => false]; }
-            public function provision(Site $site): array { return []; }
+            public function key(): string
+            {
+                return Site::PROVIDER_AWS;
+            }
+
+            public function requiresCertificateValidation(): bool
+            {
+                return true;
+            }
+
+            public function requestCertificate(Site $site): array
+            {
+                return [];
+            }
+
+            public function checkCertificateValidation(Site $site): array
+            {
+                return ['validated' => false];
+            }
+
+            public function provision(Site $site): array
+            {
+                return [];
+            }
+
             public function checkDns(Site $site): array
             {
                 return [
@@ -226,9 +391,26 @@ class ProvisionJobsTest extends TestCase
                     'required_dns_records' => $site->required_dns_records,
                 ];
             }
-            public function checkSsl(Site $site): array { return ['status' => 'active', 'message' => 'SSL active']; }
-            public function purgeCache(Site $site, array $paths = ['/*']): array { return ['changed' => false]; }
-            public function setUnderAttackMode(Site $site, bool $enabled): array { return ['changed' => false, 'enabled' => $enabled]; }
+
+            public function checkSsl(Site $site): array
+            {
+                return ['status' => 'active', 'message' => 'SSL active'];
+            }
+
+            public function purgeCache(Site $site, array $paths = ['/*']): array
+            {
+                return ['changed' => false];
+            }
+
+            public function setUnderAttackMode(Site $site, bool $enabled): array
+            {
+                return ['changed' => false, 'enabled' => $enabled];
+            }
+
+            public function deleteDeployment(Site $site): array
+            {
+                return ['changed' => false];
+            }
         };
 
         (new CheckAcmDnsValidationJob($site->id, $user->id))->handle($this->managerFor($provider));

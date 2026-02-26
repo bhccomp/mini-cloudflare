@@ -9,9 +9,11 @@ use App\Jobs\CheckAcmDnsValidationJob;
 use App\Jobs\InvalidateCloudFrontCacheJob;
 use App\Jobs\RequestAcmCertificateJob;
 use App\Jobs\ToggleUnderAttackModeJob;
+use App\Models\AuditLog;
 use App\Models\Site;
 use App\Rules\ApexDomainRule;
-use App\Rules\SafeOriginUrlRule;
+use App\Rules\OriginIpRule;
+use App\Services\Edge\EdgeProviderManager;
 use Filament\Actions;
 use Filament\Forms;
 use Filament\Notifications\Notification;
@@ -25,6 +27,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter;
+use Livewire\Component as LivewireComponent;
 
 class SiteResource extends Resource
 {
@@ -57,10 +60,10 @@ class SiteResource extends Resource
                                 Forms\Components\Hidden::make('www_enabled')
                                     ->default(true),
                                 Forms\Components\TextInput::make('apex_domain')
-                                    ->label('Domain')
+                                    ->label('Public Domain')
                                     ->placeholder('example.com or https://example.com')
                                     ->required()
-                                    ->helperText('Enter your root domain. You can paste a URL and we will normalize it.')
+                                    ->helperText('This is the public domain visitors will use (for example: example.com).')
                                     ->rule(function (): \Closure {
                                         return function (string $attribute, mixed $value, \Closure $fail): void {
                                             (new ApexDomainRule)->validate(
@@ -71,43 +74,35 @@ class SiteResource extends Resource
                                         };
                                     })
                                     ->dehydrateStateUsing(fn (?string $state): string => static::normalizeDomainInput($state))
-                                    ->live(onBlur: true)
-                                    ->afterStateUpdated(function (Set $set, Get $get, ?string $state): void {
-                                        $domain = static::normalizeDomainInput($state);
-                                        $currentOrigin = trim((string) $get('origin_url'));
-
-                                        if ($domain !== '' && $currentOrigin === '') {
-                                            $set('origin_url', 'https://'.$domain);
-                                        }
-                                    }),
+                                    ->live(onBlur: true),
                             ])->columns(1),
                         \Filament\Schemas\Components\Wizard\Step::make('Origin')
                             ->description('Tell us where requests should be forwarded after inspection.')
                             ->schema([
-                                Forms\Components\TextInput::make('origin_url')
-                                    ->label('Origin URL')
+                                Forms\Components\TextInput::make('origin_ip')
+                                    ->label('Origin / Server IP')
                                     ->required()
-                                    ->placeholder('origin.example.com or https://origin.example.com')
-                                    ->helperText('Host-only values are accepted and normalized to https://. Private and local addresses are blocked for safety.')
+                                    ->placeholder('203.0.113.10')
+                                    ->helperText('Enter the public IP address of your backend server where your website is hosted. This must be the real server IP, not your domain name. Do NOT enter a domain that already points to the CDN.')
                                     ->rule(function (): \Closure {
                                         return function (string $attribute, mixed $value, \Closure $fail): void {
-                                            (new SafeOriginUrlRule)->validate(
+                                            (new OriginIpRule)->validate(
                                                 $attribute,
-                                                static::normalizeOriginInput((string) $value),
+                                                static::normalizeOriginIpInput((string) $value),
                                                 $fail
                                             );
                                         };
                                     })
-                                    ->dehydrateStateUsing(fn (?string $state): string => static::normalizeOriginInput((string) $state))
+                                    ->dehydrateStateUsing(fn (?string $state): string => static::normalizeOriginIpInput((string) $state))
                                     ->suffixAction(
                                         Actions\Action::make('testOrigin')
                                             ->label('Test')
                                             ->icon('heroicon-m-signal')
                                             ->action(function (Get $get, Set $set): void {
-                                                $originUrl = static::normalizeOriginInput((string) $get('origin_url'));
+                                                $originIp = static::normalizeOriginIpInput((string) $get('origin_ip'));
 
-                                                if ($originUrl === '') {
-                                                    $set('origin_test_feedback', 'Enter an origin URL before running a test.');
+                                                if ($originIp === '') {
+                                                    $set('origin_test_feedback', 'Enter an origin server IP before running a test.');
 
                                                     return;
                                                 }
@@ -115,7 +110,7 @@ class SiteResource extends Resource
                                                 try {
                                                     $response = Http::timeout(8)
                                                         ->withoutRedirecting()
-                                                        ->get($originUrl);
+                                                        ->get('http://'.$originIp);
 
                                                     if ($response->successful() || in_array($response->status(), [301, 302, 307, 308, 401, 403], true)) {
                                                         $set('origin_test_feedback', 'Origin reachable. Connection check succeeded.');
@@ -125,7 +120,7 @@ class SiteResource extends Resource
 
                                                     $set('origin_test_feedback', "Origin responded with status {$response->status()}. Please verify the URL.");
                                                 } catch (\Throwable $exception) {
-                                                    $set('origin_test_feedback', 'Could not connect to origin. Check DNS, SSL, and firewall rules.');
+                                                    $set('origin_test_feedback', 'Could not connect to origin IP. Check server firewall and reachability.');
                                                 }
                                             })
                                     ),
@@ -169,8 +164,8 @@ class SiteResource extends Resource
                                         return $apex.' and www.'.$apex;
                                     }),
                                 Forms\Components\Placeholder::make('review_origin')
-                                    ->label('Origin URL')
-                                    ->content(fn (Get $get): string => (string) ($get('origin_url') ?: 'Not set')),
+                                    ->label('Origin / Server IP')
+                                    ->content(fn (Get $get): string => (string) ($get('origin_ip') ?: 'Not set')),
                                 Forms\Components\Placeholder::make('review_note')
                                     ->label('Next action after creation')
                                     ->content('Open the Site Status Hub, provision edge, update DNS, and verify cutover until protection is live.'),
@@ -496,6 +491,60 @@ class SiteResource extends Resource
                         Notification::make()->title('Invalidation queued')->success()->send();
                     })
                     ->visible(fn (Site $record): bool => filled($record->cloudfront_distribution_id)),
+                Actions\Action::make('deleteSite')
+                    ->label('Delete site')
+                    ->icon('heroicon-m-trash')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalHeading('Delete site')
+                    ->modalDescription('This removes the site from FirePhage and attempts to remove linked edge resources. This action cannot be undone.')
+                    ->action(function (Site $record, LivewireComponent $livewire): void {
+                        static::throttle($record, 'delete-site');
+
+                        $provider = app(EdgeProviderManager::class)->forSite($record);
+
+                        try {
+                            $result = $provider->deleteDeployment($record);
+                        } catch (\Throwable $e) {
+                            Notification::make()
+                                ->title('Could not remove edge resources')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->send();
+
+                            AuditLog::create([
+                                'actor_id' => auth()->id(),
+                                'organization_id' => $record->organization_id,
+                                'site_id' => $record->id,
+                                'action' => 'site.delete',
+                                'status' => 'failed',
+                                'message' => $e->getMessage(),
+                                'meta' => ['provider' => $provider->key()],
+                            ]);
+
+                            return;
+                        }
+
+                        AuditLog::create([
+                            'actor_id' => auth()->id(),
+                            'organization_id' => $record->organization_id,
+                            'site_id' => $record->id,
+                            'action' => 'site.delete',
+                            'status' => 'success',
+                            'message' => 'Site deleted.',
+                            'meta' => ['provider' => $provider->key(), 'provider_cleanup' => $result],
+                        ]);
+
+                        $record->delete();
+
+                        Notification::make()
+                            ->title('Site deleted')
+                            ->body('Site and edge deployment removed successfully.')
+                            ->success()
+                            ->send();
+
+                        $livewire->dispatch('sites-refreshed');
+                    }),
             ]);
     }
 
@@ -581,30 +630,8 @@ class SiteResource extends Resource
         return $host;
     }
 
-    protected static function normalizeOriginInput(?string $value): string
+    protected static function normalizeOriginIpInput(?string $value): string
     {
-        $input = trim((string) $value);
-
-        if ($input === '') {
-            return '';
-        }
-
-        if (! str_contains($input, '://')) {
-            $input = 'https://'.$input;
-        }
-
-        $parts = parse_url($input);
-        if (! is_array($parts) || blank($parts['host'] ?? null)) {
-            return $input;
-        }
-
-        $scheme = strtolower((string) ($parts['scheme'] ?? 'https'));
-        $host = strtolower((string) $parts['host']);
-        $path = (string) ($parts['path'] ?? '');
-        $query = isset($parts['query']) ? '?'.$parts['query'] : '';
-        $fragment = isset($parts['fragment']) ? '#'.$parts['fragment'] : '';
-        $port = isset($parts['port']) ? ':'.$parts['port'] : '';
-
-        return sprintf('%s://%s%s%s%s%s', $scheme, $host, $port, $path, $query, $fragment);
+        return trim((string) $value);
     }
 }

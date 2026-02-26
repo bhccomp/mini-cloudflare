@@ -18,8 +18,8 @@ use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Str;
 
 abstract class BaseProtectionPage extends Page
@@ -102,7 +102,9 @@ abstract class BaseProtectionPage extends Page
         }
 
         $this->pollingEnabled = true;
-        $this->throttle('provision');
+        if (! $this->throttle('provision')) {
+            return;
+        }
 
         if ($this->site->provider === Site::PROVIDER_BUNNY) {
             $this->site->update([
@@ -132,7 +134,9 @@ abstract class BaseProtectionPage extends Page
         }
 
         $this->pollingEnabled = true;
-        $this->throttle('check-dns-validation');
+        if (! $this->throttle('check-dns-validation')) {
+            return;
+        }
         if ($this->site->provider === Site::PROVIDER_BUNNY) {
             $this->runBunnyDnsCheckNow();
             $this->notify($this->bunnyCheckMessage());
@@ -151,7 +155,9 @@ abstract class BaseProtectionPage extends Page
         }
 
         $this->pollingEnabled = true;
-        $this->throttle('check-cutover');
+        if (! $this->throttle('check-cutover')) {
+            return;
+        }
         if ($this->site->provider === Site::PROVIDER_BUNNY) {
             $this->runBunnyDnsCheckNow();
             $this->notify($this->bunnyCheckMessage());
@@ -306,17 +312,25 @@ abstract class BaseProtectionPage extends Page
         return request()->url();
     }
 
-    protected function throttle(string $action): void
+    protected function throttle(string $action): bool
     {
         if (! $this->site || ! auth()->check()) {
-            return;
+            return false;
         }
 
         $key = sprintf('site-action:%s:%s:%s', auth()->id(), $this->site->id, $action);
 
         if (! \Illuminate\Support\Facades\RateLimiter::attempt($key, maxAttempts: 3, callback: static fn () => true, decaySeconds: 60)) {
-            abort(429, 'Too many sensitive requests. Please retry in a minute.');
+            Notification::make()
+                ->title('Please wait a moment before checking again.')
+                ->body('Rate limit reached for this action. Try again in about one minute.')
+                ->danger()
+                ->send();
+
+            return false;
         }
+
+        return true;
     }
 
     protected function notify(string $message): void

@@ -43,6 +43,9 @@ class BunnyCdnProvider implements EdgeProviderInterface
 
     public function provision(Site $site): array
     {
+        $originUrl = $this->resolvePreferredOriginUrl($site);
+        $originHostHeader = strtolower((string) $site->apex_domain);
+
         $existingId = (int) ($site->provider_resource_id ?: 0);
         $zoneId = $existingId;
         $zoneName = (string) data_get($site->provider_meta, 'zone_name', '');
@@ -52,13 +55,18 @@ class BunnyCdnProvider implements EdgeProviderInterface
 
             $created = $this->client()->post('/pullzone', [
                 'Name' => $zoneName,
-                'OriginUrl' => $site->origin_url,
+                'OriginUrl' => $originUrl,
+                'OriginHostHeader' => $originHostHeader,
+                'AddHostHeader' => true,
+                'EnableAutoSSL' => true,
                 'Type' => 0,
             ])->throw()->json();
 
             $zoneId = (int) (Arr::get($created, 'Id') ?? Arr::get($created, 'id') ?? 0);
             $zoneName = (string) (Arr::get($created, 'Name') ?? $zoneName);
         }
+
+        $this->syncZoneOriginSettings($zoneId, $zoneName, $originUrl, $originHostHeader);
 
         $edgeDomain = $this->zoneEdgeDomain($zoneName);
         $hostnames = [$site->apex_domain];
@@ -69,9 +77,11 @@ class BunnyCdnProvider implements EdgeProviderInterface
 
         $hostnameResults = [];
         foreach ($hostnames as $hostname) {
-            $response = $this->client()->post("/pullzone/{$zoneId}/addHostName", [
+            $response = $this->client()->post("/pullzone/{$zoneId}/addHostname", [
                 'Hostname' => $hostname,
             ]);
+
+            $this->requestFreeCertificate($hostname);
 
             $hostnameResults[] = [
                 'hostname' => $hostname,
@@ -93,6 +103,8 @@ class BunnyCdnProvider implements EdgeProviderInterface
                 'zone_id' => $zoneId,
                 'zone_name' => $zoneName,
                 'edge_domain' => $edgeDomain,
+                'origin_url' => $originUrl,
+                'origin_host_header' => $originHostHeader,
                 'hostnames' => $hostnameResults,
             ],
             'distribution_id' => (string) $zoneId,
@@ -103,8 +115,161 @@ class BunnyCdnProvider implements EdgeProviderInterface
         ];
     }
 
+    private function buildOriginUrl(Site $site): string
+    {
+        $originIp = trim((string) ($site->origin_ip ?? ''));
+
+        if ($originIp !== '') {
+            return 'http://'.$originIp;
+        }
+
+        $fallback = trim((string) ($site->origin_url ?? ''));
+
+        if ($fallback === '') {
+            throw new \RuntimeException('Origin / Server IP is required before provisioning Bunny edge.');
+        }
+
+        return $fallback;
+    }
+
+    private function resolvePreferredOriginUrl(Site $site): string
+    {
+        $originIp = trim((string) ($site->origin_ip ?? ''));
+        $domain = strtolower((string) $site->apex_domain);
+
+        if ($originIp === '' || $domain === '') {
+            return $this->buildOriginUrl($site);
+        }
+
+        $http = $this->probeOriginEndpoint($originIp, $domain, 'http');
+        $https = $this->probeOriginEndpoint($originIp, $domain, 'https');
+
+        if ($this->isCanonicalHttpsRedirect($http, $domain) && $https['ok']) {
+            return 'https://'.$originIp;
+        }
+
+        if ($http['ok']) {
+            return 'http://'.$originIp;
+        }
+
+        if ($https['ok']) {
+            return 'https://'.$originIp;
+        }
+
+        return 'http://'.$originIp;
+    }
+
+    /**
+     * @return array{ok: bool, status: int|null, location: string|null}
+     */
+    private function probeOriginEndpoint(string $originIp, string $hostHeader, string $scheme): array
+    {
+        $url = sprintf('%s://%s/', $scheme, $originIp);
+
+        try {
+            $request = Http::timeout(7)
+                ->withoutRedirecting()
+                ->withHeaders([
+                    'Host' => $hostHeader,
+                ]);
+
+            if ($scheme === 'https') {
+                $request = $request->withOptions(['verify' => false]);
+            }
+
+            $response = $request->get($url);
+            $status = $response->status();
+            $location = $response->header('Location');
+            $ok = $response->successful() || in_array($status, [301, 302, 307, 308, 401, 403], true);
+
+            return [
+                'ok' => $ok,
+                'status' => $status,
+                'location' => is_string($location) ? $location : null,
+            ];
+        } catch (\Throwable) {
+            return [
+                'ok' => false,
+                'status' => null,
+                'location' => null,
+            ];
+        }
+    }
+
+    /**
+     * @param  array{ok: bool, status: int|null, location: string|null}  $probe
+     */
+    private function isCanonicalHttpsRedirect(array $probe, string $domain): bool
+    {
+        if (! in_array((int) ($probe['status'] ?? 0), [301, 302, 307, 308], true)) {
+            return false;
+        }
+
+        $location = trim((string) ($probe['location'] ?? ''));
+        if ($location === '') {
+            return false;
+        }
+
+        $parts = parse_url($location);
+        $scheme = strtolower((string) ($parts['scheme'] ?? ''));
+        $host = strtolower((string) ($parts['host'] ?? ''));
+
+        return $scheme === 'https' && $host === strtolower($domain);
+    }
+
+    private function syncZoneOriginForExistingSite(Site $site): void
+    {
+        $zoneId = (int) ($site->provider_resource_id ?: data_get($site->provider_meta, 'zone_id', 0));
+
+        if ($zoneId <= 0) {
+            return;
+        }
+
+        $zoneName = (string) data_get($site->provider_meta, 'zone_name', '');
+        if ($zoneName === '') {
+            $zoneName = (string) Str::of((string) ($site->cloudfront_domain_name ?? ''))
+                ->before('.b-cdn.net')
+                ->value();
+        }
+
+        if ($zoneName === '') {
+            return;
+        }
+
+        $this->syncZoneOriginSettings(
+            $zoneId,
+            $zoneName,
+            $this->resolvePreferredOriginUrl($site),
+            strtolower((string) $site->apex_domain)
+        );
+    }
+
+    private function syncZoneOriginSettings(int $zoneId, string $zoneName, string $originUrl, string $originHostHeader): void
+    {
+        if ($zoneId <= 0 || $zoneName === '' || $originUrl === '' || $originHostHeader === '') {
+            return;
+        }
+
+        try {
+            $this->client()->post("/pullzone/{$zoneId}", [
+                'Id' => $zoneId,
+                'Name' => $zoneName,
+                'OriginUrl' => $originUrl,
+                'OriginHostHeader' => $originHostHeader,
+                'AddHostHeader' => true,
+                'EnableAutoSSL' => true,
+                'Type' => 0,
+            ])->throw();
+        } catch (\Throwable) {
+            // Non-fatal: keep runtime checks resilient and retry on later actions.
+        }
+    }
+
     public function checkDns(Site $site): array
     {
+        $this->requestCertificatesForSiteHostnames($site);
+        $this->syncZoneOriginForExistingSite($site);
+
         $target = rtrim(strtolower((string) $site->cloudfront_domain_name), '.');
         if ($target === '') {
             return [
@@ -165,6 +330,9 @@ class BunnyCdnProvider implements EdgeProviderInterface
 
     public function checkSsl(Site $site): array
     {
+        $this->requestCertificatesForSiteHostnames($site);
+        $this->syncZoneOriginForExistingSite($site);
+
         $zoneId = (int) ($site->provider_resource_id ?: data_get($site->provider_meta, 'zone_id', 0));
         if ($zoneId <= 0) {
             return ['status' => 'error', 'message' => 'Bunny pull zone is missing.'];
@@ -220,6 +388,37 @@ class BunnyCdnProvider implements EdgeProviderInterface
         return ['status' => 'pending', 'message' => 'DNS is detected. Waiting for Bunny SSL certificate issuance.'];
     }
 
+    protected function requestCertificatesForSiteHostnames(Site $site): void
+    {
+        $hostnames = [$site->apex_domain];
+
+        if ($site->www_enabled && $site->www_domain) {
+            $hostnames[] = $site->www_domain;
+        }
+
+        foreach ($hostnames as $hostname) {
+            $this->requestFreeCertificate($hostname);
+        }
+    }
+
+    protected function requestFreeCertificate(string $hostname): void
+    {
+        if ($hostname === '') {
+            return;
+        }
+
+        try {
+            $this->client()
+                ->withQueryParameters([
+                    'hostname' => $hostname,
+                    'useOnlyHttp01' => 'true',
+                ])
+                ->get('/pullzone/loadFreeCertificate');
+        } catch (\Throwable) {
+            // Keep onboarding resilient: cert requests are best effort and can be retried during checks.
+        }
+    }
+
     public function purgeCache(Site $site, array $paths = ['/*']): array
     {
         $zoneId = (int) ($site->provider_resource_id ?: data_get($site->provider_meta, 'zone_id', 0));
@@ -260,6 +459,126 @@ class BunnyCdnProvider implements EdgeProviderInterface
             'enabled' => $enabled,
             'message' => 'Under-attack mode is not supported for Bunny provider yet.',
         ];
+    }
+
+    public function deleteDeployment(Site $site): array
+    {
+        $zoneId = (int) ($site->provider_resource_id ?: data_get($site->provider_meta, 'zone_id', 0));
+        $zoneIds = $this->collectRelatedZoneIds($site, $zoneId);
+
+        if ($zoneIds === []) {
+            return [
+                'changed' => false,
+                'message' => 'No edge deployment is linked to this site.',
+            ];
+        }
+
+        $deleted = [];
+        $failed = [];
+
+        foreach ($zoneIds as $candidateId) {
+            $response = $this->client()->delete("/pullzone/{$candidateId}");
+
+            if ($response->successful() || in_array($response->status(), [404, 410], true)) {
+                $deleted[] = $candidateId;
+
+                continue;
+            }
+
+            $failed[] = "{$candidateId}:{$response->status()}";
+        }
+
+        if ($failed !== []) {
+            throw new \RuntimeException('Unable to delete edge deployment(s): '.implode(', ', $failed));
+        }
+
+        return [
+            'changed' => $deleted !== [],
+            'message' => sprintf('Edge deployment deleted (%d).', count($deleted)),
+            'deleted_zone_ids' => $deleted,
+        ];
+    }
+
+    /**
+     * @return list<int>
+     */
+    protected function collectRelatedZoneIds(Site $site, int $linkedZoneId = 0): array
+    {
+        $ids = [];
+
+        if ($linkedZoneId > 0) {
+            $ids[] = $linkedZoneId;
+        }
+
+        $zones = $this->listPullZones();
+        if ($zones === []) {
+            return array_values(array_unique($ids));
+        }
+
+        $expectedNames = array_filter([
+            strtolower((string) data_get($site->provider_meta, 'zone_name', '')),
+            strtolower($this->zoneNameFor($site)),
+        ]);
+
+        $domains = array_filter([
+            strtolower((string) $site->apex_domain),
+            strtolower((string) ($site->www_enabled ? $site->www_domain : '')),
+        ]);
+
+        foreach ($zones as $zone) {
+            $candidateId = (int) (Arr::get($zone, 'Id') ?? Arr::get($zone, 'id') ?? 0);
+            if ($candidateId <= 0) {
+                continue;
+            }
+
+            $candidateName = strtolower((string) (Arr::get($zone, 'Name') ?? Arr::get($zone, 'name') ?? ''));
+            $hostnames = collect((array) (Arr::get($zone, 'Hostnames') ?? Arr::get($zone, 'hostnames', [])))
+                ->map(function ($row): string {
+                    return strtolower((string) Arr::get($row, 'Value', Arr::get($row, 'value', Arr::get($row, 'Hostname', Arr::get($row, 'hostname', '')))));
+                })
+                ->filter()
+                ->values()
+                ->all();
+
+            $matchesName = $candidateName !== '' && in_array($candidateName, $expectedNames, true);
+            $matchesDomain = $domains !== [] && count(array_intersect($domains, $hostnames)) > 0;
+
+            if ($matchesName || $matchesDomain) {
+                $ids[] = $candidateId;
+            }
+        }
+
+        return array_values(array_unique($ids));
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    protected function listPullZones(): array
+    {
+        try {
+            $response = $this->client()->get('/pullzone');
+
+            if (! $response->successful()) {
+                return [];
+            }
+
+            $payload = $response->json();
+
+            if (is_array($payload) && array_is_list($payload)) {
+                return $payload;
+            }
+
+            if (is_array($payload)) {
+                $items = Arr::get($payload, 'Items', Arr::get($payload, 'items', []));
+
+                return is_array($items) ? $items : [];
+            }
+
+            return [];
+        } catch (\Throwable) {
+            return [];
+        }
     }
 
     protected function client(): PendingRequest
