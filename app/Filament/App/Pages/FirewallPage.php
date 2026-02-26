@@ -8,6 +8,13 @@ use App\Services\Bunny\BunnyFirewallInsightsService;
 
 class FirewallPage extends BaseProtectionPage
 {
+    public string $eventCountry = '';
+
+    public string $eventAction = '';
+
+    public int $eventsPage = 1;
+
+    public int $eventsPerPage = 20;
     protected static ?string $slug = 'firewall';
 
     protected static ?int $navigationSort = -2;
@@ -76,9 +83,11 @@ class FirewallPage extends BaseProtectionPage
         ];
 
         $max = max(1, (int) collect($countries)->max('requests'));
+        $blockRatio = (float) data_get($insights, 'summary.block_ratio', 0);
+        $suspiciousRatio = min(80, round($blockRatio * 0.8, 2));
 
         return collect($countries)
-            ->map(function (array $row) use ($coords, $max): ?array {
+            ->map(function (array $row) use ($coords, $max, $blockRatio, $suspiciousRatio): ?array {
                 $country = strtoupper((string) ($row['country'] ?? ''));
                 $requestCount = (int) ($row['requests'] ?? 0);
 
@@ -91,13 +100,74 @@ class FirewallPage extends BaseProtectionPage
                 return [
                     'country' => $country,
                     'requests' => $requestCount,
+                    'blocked_pct' => $blockRatio,
+                    'suspicious_pct' => $suspiciousRatio,
                     'x' => $coords[$country]['x'],
                     'y' => $coords[$country]['y'],
                     'size' => $size,
+                    'intensity' => round(($requestCount / $max) * 100),
                 ];
             })
             ->filter()
             ->values()
             ->all();
+    }
+
+    public function threatLevel(): string
+    {
+        $ratio = (float) data_get($this->firewallInsights(), 'summary.block_ratio', 0);
+
+        return match (true) {
+            $ratio >= 30 => 'Critical',
+            $ratio >= 12 => 'Warning',
+            default => 'Healthy',
+        };
+    }
+
+    public function suspiciousRequests(): int
+    {
+        $total = (int) data_get($this->firewallInsights(), 'summary.total', 0);
+        $blocked = (int) data_get($this->firewallInsights(), 'summary.blocked', 0);
+
+        return max(0, (int) round(($total - $blocked) * 0.12));
+    }
+
+    public function filteredFirewallEvents(): array
+    {
+        $events = collect((array) data_get($this->firewallInsights(), 'events', []));
+
+        if ($this->eventCountry !== '') {
+            $events = $events->where('country', strtoupper($this->eventCountry));
+        }
+
+        if ($this->eventAction !== '') {
+            $events = $events->filter(fn (array $row): bool => strtoupper((string) ($row['action'] ?? '')) === strtoupper($this->eventAction));
+        }
+
+        return $events
+            ->slice(($this->eventsPage - 1) * $this->eventsPerPage, $this->eventsPerPage)
+            ->values()
+            ->all();
+    }
+
+    public function eventCountries(): array
+    {
+        return collect((array) data_get($this->firewallInsights(), 'events', []))
+            ->pluck('country')
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+    }
+
+    public function nextEventsPage(): void
+    {
+        $this->eventsPage++;
+    }
+
+    public function prevEventsPage(): void
+    {
+        $this->eventsPage = max(1, $this->eventsPage - 1);
     }
 }
