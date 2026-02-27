@@ -6,6 +6,7 @@
     @php($bandwidthTrend = $this->bandwidthTrend())
     @php($topPaths = $this->topCachedPaths())
     @php($requestsMax = max(1, (int) collect($requestsTrend)->max('requests')))
+    @php($bandwidthUsage = $this->bandwidthUsageSummary())
 
     <div class="fp-protection-shell">
         @include('filament.app.pages.protection.technical-details')
@@ -26,12 +27,24 @@
                     ['label' => 'Edge Status', 'value' => $this->distributionHealth() === 'Healthy' ? 'Healthy' : 'Provisioning'],
                     ['label' => 'Requests (24h)', 'value' => number_format((int) ($m->total_requests_24h ?? 0))],
                     ['label' => 'Bandwidth (24h)', 'value' => number_format((((int) ($m->cached_requests_24h ?? 0) + (int) ($m->origin_requests_24h ?? 0)) * 0.34), 2) . ' MB'],
+                    ['label' => 'Monthly Usage', 'value' => number_format((float) $bandwidthUsage['usage_gb'], 2) . ' GB / ' . number_format((int) $bandwidthUsage['included_gb']) . ' GB'],
+                    ['label' => 'Included Usage', 'value' => number_format((float) $bandwidthUsage['percent_used'], 2) . '%' . ((bool) $bandwidthUsage['warning'] ? ' (Warning: close to limit)' : '')],
                     ['label' => 'Cache Hit %', 'value' => $m && $m->cache_hit_ratio !== null ? number_format((float) $m->cache_hit_ratio, 2) . '%' : 'No telemetry yet'],
                     ['label' => 'Origin Offload %', 'value' => number_format($this->originOffloadRatio(), 2) . '%'],
                     ['label' => 'Last Sync', 'value' => $m?->captured_at?->diffForHumans() ?: 'Not synced yet'],
                 ]" />
             </x-filament::section>
 
+            @if ($this->isSimpleMode())
+                <x-filament::section heading="Want Deeper CDN Insights?" icon="heroicon-o-adjustments-horizontal">
+                    <p class="text-sm">Simple mode shows the essentials. Switch to Pro for trend analytics and cached path breakdowns.</p>
+                    <x-slot name="footer">
+                        <x-filament::actions alignment="end">
+                            <x-filament::button wire:click="switchToProMode" color="gray">Switch to Pro mode</x-filament::button>
+                        </x-filament::actions>
+                    </x-slot>
+                </x-filament::section>
+            @else
             <x-filament::section heading="7-Day Trend" description="Requests and estimated bandwidth over the last 7 days." icon="heroicon-o-arrow-trending-up">
                 @if (empty($requestsTrend))
                     <p class="text-sm opacity-75">No trend data yet. Refresh after live traffic reaches the edge network.</p>
@@ -79,6 +92,7 @@
                     </div>
                 @endif
             </x-filament::section>
+            @endif
         @endif
     </div>
 </x-filament-panels::page>

@@ -26,6 +26,16 @@
                 ]" />
             </x-filament::section>
 
+            @if ($this->isSimpleMode())
+                <x-filament::section heading="Need More Cache Detail?" icon="heroicon-o-adjustments-horizontal">
+                    <p class="text-sm">Simple mode keeps this focused. Switch to Pro for cache miss breakdown and purge history table.</p>
+                    <x-slot name="footer">
+                        <x-filament::actions alignment="end">
+                            <x-filament::button wire:click="switchToProMode" color="gray">Switch to Pro mode</x-filament::button>
+                        </x-filament::actions>
+                    </x-slot>
+                </x-filament::section>
+            @else
             <div class="fp-protection-grid">
                 <x-filament::section heading="Cache Hit Ratio Trend" description="Daily cache efficiency over the recent period." icon="heroicon-o-arrow-trending-up">
                     @if (empty($trend))
@@ -99,6 +109,7 @@
                     </div>
                 @endif
             </x-filament::section>
+            @endif
         @endif
     </div>
 </x-filament-panels::page>

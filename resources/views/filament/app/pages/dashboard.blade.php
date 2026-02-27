@@ -4,6 +4,20 @@
     <div class="fp-protection-shell">
         @if (! $this->site)
             @include('filament.app.pages.protection.empty-state')
+        @elseif ($this->isSimpleMode())
+            <x-filament::section
+                heading="Simple Overview"
+                description="You are seeing a simplified experience focused on health, risk, bandwidth, and recent activity."
+                icon="heroicon-o-sparkles"
+            >
+                <x-slot name="footer">
+                    <x-filament::actions alignment="end">
+                        <x-filament::button wire:click="switchToProMode" color="gray">
+                            Switch to Pro for full controls
+                        </x-filament::button>
+                    </x-filament::actions>
+                </x-slot>
+            </x-filament::section>
         @else
             <x-filament.app.settings.card
                 title="Protection Control Stack"

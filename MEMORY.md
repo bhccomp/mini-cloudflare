@@ -640,3 +640,36 @@
   - Updated form method signature for Filament v5 (`Schema` instead of `Form`).
   - Switched tabs component import to Filament v5 schema tabs namespace.
   - Cleared optimize caches and reloaded PHP-FPM.
+
+## Simple vs Pro UI Mode (Latest)
+- Added persistent user UI mode (`simple` | `pro`):
+  - DB: `users.ui_mode` (default `simple`)
+  - Runtime: session-backed via `UiModeManager`
+- Added App topbar mode switcher near site switcher:
+  - `Simple` / `Pro` segmented controls
+  - instant notification and state update
+- Added centralized mode service and page helpers:
+  - `App\Services\UiModeManager`
+  - `BaseProtectionPage` helpers: `isSimpleMode()`, `isProMode()`, `switchToProMode()`
+- Added bandwidth usage support (with >=80% warning):
+  - config limits in `config/ui.php`
+  - `BandwidthUsageService`
+  - `BandwidthUsageStats` widget
+- Added human-friendly activity feed (cached short TTL):
+  - `ActivityFeedService` from `edge_request_logs` + `audit_logs`
+  - `SimpleActivityFeedWidget`
+- Mode-aware presentation updates:
+  - Overview, Firewall, CDN, Cache, Analytics, Logs, SSL, Status Hub now show simplified content in Simple mode with CTA to switch to Pro.
+  - Pro mode shows advanced views/charts/tables/logs.
+  - Technical details drawer hidden in Simple mode.
+- Redirect hardening:
+  - Fixed mode switch redirect leak to Livewire update endpoint.
+  - Hardened site switcher return URL handling to avoid `/livewire-.../update` targets.
+- Added tests:
+  - `tests/Feature/UiModeTest.php` covering default mode, persistence/session switching, and simple/pro visibility behavior.
+- Validation snapshot:
+  - `./vendor/bin/pint --dirty` passed
+  - `php artisan test` passed
+  - `php artisan optimize` passed
+- Backup branch created before rollout:
+  - `backup/pre-ui-mode-20260227-202412`

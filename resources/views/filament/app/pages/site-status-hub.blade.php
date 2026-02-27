@@ -138,6 +138,17 @@
                 @endif
             </x-filament::section>
 
+            @if ($this->isSimpleMode())
+                <x-filament::section heading="Simple Mode Enabled" icon="heroicon-o-sparkles">
+                    <p>This onboarding hub keeps essential actions visible in both modes. Switch to Pro any time for deeper diagnostics.</p>
+                    <x-slot name="footer">
+                        <x-filament::actions alignment="end">
+                            <x-filament::button wire:click="switchToProMode" color="gray">Switch to Pro mode</x-filament::button>
+                        </x-filament::actions>
+                    </x-slot>
+                </x-filament::section>
+            @endif
+
             <x-filament::section heading="Next Best Action" icon="heroicon-o-forward">
                 @if ($this->isBunnyFlow())
                     @if ($this->site->onboarding_status === \App\Models\Site::ONBOARDING_DRAFT)

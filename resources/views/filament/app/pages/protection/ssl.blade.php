@@ -31,6 +31,7 @@
                     </x-filament.app.settings.card>
                 </div>
 
+                @if ($this->isProMode())
                 <x-filament.app.settings.card
                     title="Deployment Timeline"
                     description="Recent SSL lifecycle updates"
@@ -44,6 +45,16 @@
                         ]" />
                     </x-filament.app.settings.section>
                 </x-filament.app.settings.card>
+                @else
+                    <x-filament::section heading="Need Lifecycle Detail?" icon="heroicon-o-adjustments-horizontal">
+                        <p class="text-sm">Switch to Pro mode for deployment timeline and deeper certificate event history.</p>
+                        <x-slot name="footer">
+                            <x-filament::actions alignment="end">
+                                <x-filament::button wire:click="switchToProMode" color="gray">Switch to Pro mode</x-filament::button>
+                            </x-filament::actions>
+                        </x-slot>
+                    </x-filament::section>
+                @endif
             </div>
         @endif
     </div>

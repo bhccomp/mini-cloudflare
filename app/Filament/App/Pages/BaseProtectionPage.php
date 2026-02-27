@@ -13,12 +13,14 @@ use App\Models\AuditLog;
 use App\Models\Site;
 use App\Services\Edge\EdgeProviderManager;
 use App\Services\SiteContext;
+use App\Services\UiModeManager;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Str;
+use Livewire\Attributes\On;
 
 abstract class BaseProtectionPage extends Page
 {
@@ -32,6 +34,8 @@ abstract class BaseProtectionPage extends Page
 
     public bool $pollingEnabled = false;
 
+    public string $uiMode = UiModeManager::SIMPLE;
+
     /** @var Collection<int, Site> */
     public Collection $availableSites;
 
@@ -40,7 +44,7 @@ abstract class BaseProtectionPage extends Page
         return null;
     }
 
-    public function mount(Request $request, SiteContext $siteContext): void
+    public function mount(Request $request, SiteContext $siteContext, UiModeManager $uiMode): void
     {
         $user = auth()->user();
 
@@ -58,11 +62,62 @@ abstract class BaseProtectionPage extends Page
             ->orderBy('apex_domain')
             ->get(['id', 'apex_domain', 'display_name', 'status']);
         $this->pollingEnabled = $this->shouldAutoPollByStatus();
+        $this->uiMode = $uiMode->current($user);
     }
 
     protected function getHeaderActions(): array
     {
         return [];
+    }
+
+    public function isProMode(): bool
+    {
+        return $this->uiMode === UiModeManager::PRO;
+    }
+
+    public function isSimpleMode(): bool
+    {
+        return ! $this->isProMode();
+    }
+
+    public function showProModePrompt(): bool
+    {
+        return $this->isSimpleMode() && $this->site !== null;
+    }
+
+    public function switchToProMode(UiModeManager $uiMode): void
+    {
+        $user = auth()->user();
+
+        if (! $user) {
+            return;
+        }
+
+        $this->uiMode = $uiMode->setMode($user, UiModeManager::PRO);
+        $this->notify('Switched to Pro mode');
+        $this->dispatch('ui-mode-changed', mode: $this->uiMode);
+        $this->redirect($this->safeReturnUrl(), navigate: true);
+    }
+
+    #[On('ui-mode-changed')]
+    public function onUiModeChanged(string $mode = UiModeManager::SIMPLE): void
+    {
+        $this->uiMode = app(UiModeManager::class)->normalize($mode);
+    }
+
+    protected function safeReturnUrl(): string
+    {
+        $referer = (string) request()->headers->get('referer', '');
+
+        if ($referer !== '' && str_contains($referer, '/app/') && ! str_contains($referer, '/livewire-')) {
+            return $referer;
+        }
+
+        if ($this->site) {
+            return static::getUrl(['site_id' => $this->site->id]);
+        }
+
+        return static::getUrl();
     }
 
     public function emptyStateHeading(): string

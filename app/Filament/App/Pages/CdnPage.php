@@ -4,6 +4,7 @@ namespace App\Filament\App\Pages;
 
 use App\Models\Site;
 use App\Services\Analytics\AnalyticsSyncManager;
+use App\Services\BandwidthUsageService;
 use App\Services\Bunny\BunnyLogsService;
 
 class CdnPage extends BaseProtectionPage
@@ -75,6 +76,24 @@ class CdnPage extends BaseProtectionPage
         }
 
         return round(($cached / $total) * 100, 2);
+    }
+
+    /**
+     * @return array{usage_gb: float, included_gb: int, percent_used: float, warning: bool, plan_code: string}
+     */
+    public function bandwidthUsageSummary(): array
+    {
+        if (! $this->site) {
+            return [
+                'usage_gb' => 0.0,
+                'included_gb' => 0,
+                'percent_used' => 0.0,
+                'warning' => false,
+                'plan_code' => 'default',
+            ];
+        }
+
+        return app(BandwidthUsageService::class)->forSite($this->site);
     }
 
     public function topCachedPaths(): array

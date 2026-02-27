@@ -22,6 +22,7 @@ class User extends Authenticatable implements FilamentUser
         'is_super_admin',
         'current_organization_id',
         'selected_site_id',
+        'ui_mode',
     ];
 
     protected $hidden = [
@@ -36,6 +37,7 @@ class User extends Authenticatable implements FilamentUser
             'password' => 'hashed',
             'is_super_admin' => 'boolean',
             'selected_site_id' => 'integer',
+            'ui_mode' => 'string',
         ];
     }
 

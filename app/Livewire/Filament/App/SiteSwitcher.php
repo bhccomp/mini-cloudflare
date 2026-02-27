@@ -10,6 +10,8 @@ use Livewire\Component;
 
 class SiteSwitcher extends Component
 {
+    public const RETURN_URL_SESSION_KEY = 'site_switcher_return_url';
+
     public ?int $selectedSiteId = null;
 
     public string $search = '';
@@ -25,7 +27,8 @@ class SiteSwitcher extends Component
         }
 
         $this->selectedSiteId = $siteContext->getSelectedSiteId($user, request());
-        $this->returnUrl = request()->url();
+        $this->returnUrl = $this->resolveReturnUrl();
+        session([self::RETURN_URL_SESSION_KEY => $this->returnUrl]);
     }
 
     public function sites(): Collection
@@ -59,10 +62,34 @@ class SiteSwitcher extends Component
         }
 
         $this->selectedSiteId = $siteContext->setSelectedSiteId($user, $siteId === 'all' ? null : (int) $siteId);
-        $target = $this->returnUrl !== '' ? $this->returnUrl : request()->url();
+        $target = (string) session(self::RETURN_URL_SESSION_KEY, $this->returnUrl);
+        if ($target === '' || str_contains($target, '/livewire-')) {
+            $target = \App\Filament\App\Pages\Dashboard::getUrl();
+        }
+
         $query = $this->selectedSiteId ? '?site_id='.$this->selectedSiteId : '';
 
         $this->redirect($target.$query, navigate: true);
+    }
+
+    protected function resolveReturnUrl(): string
+    {
+        $current = request()->fullUrl();
+
+        if (! str_contains($current, '/livewire-')) {
+            return $current;
+        }
+
+        $sessionUrl = (string) session(self::RETURN_URL_SESSION_KEY, '');
+        if ($sessionUrl !== '' && ! str_contains($sessionUrl, '/livewire-')) {
+            return $sessionUrl;
+        }
+
+        $referer = (string) request()->headers->get('referer', '');
+
+        return str_contains($referer, '/livewire-')
+            ? \App\Filament\App\Pages\Dashboard::getUrl()
+            : ($referer !== '' ? $referer : \App\Filament\App\Pages\Dashboard::getUrl());
     }
 
     public function addSiteUrl(): string

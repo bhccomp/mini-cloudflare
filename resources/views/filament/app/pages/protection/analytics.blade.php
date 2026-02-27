@@ -30,6 +30,16 @@
                 ]" />
             </x-filament::section>
 
+            @if ($this->isSimpleMode())
+                <x-filament::section heading="Advanced Analytics Hidden in Simple Mode" icon="heroicon-o-adjustments-horizontal">
+                    <p class="text-sm">Switch to Pro mode for trend charts, block ratio analysis, and hourly heatmaps.</p>
+                    <x-slot name="footer">
+                        <x-filament::actions alignment="end">
+                            <x-filament::button wire:click="switchToProMode" color="gray">Switch to Pro mode</x-filament::button>
+                        </x-filament::actions>
+                    </x-slot>
+                </x-filament::section>
+            @else
             <div class="fp-protection-grid">
                 <x-filament::section heading="Requests Trend (7d)" description="Daily request volume trend." icon="heroicon-o-arrow-trending-up">
                     @if (empty($requestTrend))
@@ -80,6 +90,7 @@
                     @endforeach
                 </div>
             </x-filament::section>
+            @endif
         @endif
     </div>
 </x-filament-panels::page>

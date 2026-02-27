@@ -1,3 +1,4 @@
+@if ($this->isProMode())
 <div x-data="{ openTech: false }" style="display:flex; justify-content:flex-end; margin-bottom:0.5rem;">
     <button type="button" x-on:click="openTech = true" class="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
         Technical Details
@@ -24,3 +25,4 @@
         </div>
     </div>
 </div>
+@endif
