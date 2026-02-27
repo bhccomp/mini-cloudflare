@@ -14,13 +14,13 @@
 
             @php($diag = $this->diagnosticsDetails())
             <div class="grid gap-2 text-sm">
-                <div><strong>Edge Provider:</strong> {{ $diag['edge_provider'] ?? 'n/a' }}</div>
-                <div><strong>Zone ID / Pull Zone ID:</strong> {{ $diag['zone_id'] ?? 'n/a' }}</div>
+                <div><strong>Edge Mode:</strong> {{ $diag['edge_provider'] ?? 'Managed' }}</div>
+                <div><strong>Edge Zone ID:</strong> {{ $diag['zone_id'] ?? 'n/a' }}</div>
                 <div><strong>Site ID:</strong> {{ $diag['site_id'] ?? 'n/a' }}</div>
                 <div><strong>Last sync timestamp:</strong> {{ $diag['last_sync'] ?? 'n/a' }}</div>
                 <div><strong>API status:</strong> {{ $diag['api_status'] ?? 'n/a' }}</div>
                 <div><strong>Last API response time:</strong> {{ $diag['api_response_time'] ?? 'n/a' }}</div>
-                <div><strong>Raw provider health state:</strong> {{ $diag['raw_health'] ?? 'n/a' }}</div>
+                <div><strong>Raw edge health state:</strong> {{ $diag['raw_health'] ?? 'n/a' }}</div>
             </div>
         </div>
     </div>

@@ -626,6 +626,21 @@
   - Renamed `CloudFront` column to `Zone Name`.
   - Removed `Under Attack` column.
 
+## UI Mode + White-Label Follow-up (Latest)
+- Replaced custom Simple activity feed widget markup with native Filament `TableWidget` rows:
+  - added `SimpleActivityFeedTable`
+  - removed old custom feed widget view/class.
+- Fixed Livewire update endpoint redirects for mode switching:
+  - removed unsafe full-url redirects from mode switch handlers
+  - added safe return URL handling in site switcher to avoid `/livewire-.../update` targets.
+- Simple/Pro topbar state sync now updates correctly across page-level mode CTA and topbar switcher events.
+- Removed provider branding from user-facing copy in app panel:
+  - sanitized activity/log messages (`Bunny/AWS/CloudFront` -> neutral edge wording)
+  - neutralized status hub and onboarding copy to edge terminology
+  - neutralized technical details labels for user-facing diagnostics.
+- Firewall simple layout update:
+  - simple mode now uses single-column widget grid so widgets span full width (no awkward missing slot rows).
+
 ## Alert Channels Refactor (Latest)
 - Replaced Alert Channels CRUD with a single Filament-native configuration page using tabs.
 - New tabs/settings sections:

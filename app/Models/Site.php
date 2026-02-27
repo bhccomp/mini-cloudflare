@@ -155,8 +155,8 @@ class Site extends Model
     public static function providers(): array
     {
         return [
-            self::PROVIDER_AWS => 'AWS',
-            self::PROVIDER_BUNNY => 'Bunny.net',
+            self::PROVIDER_AWS => 'Legacy Edge',
+            self::PROVIDER_BUNNY => 'Standard Edge',
         ];
     }
 

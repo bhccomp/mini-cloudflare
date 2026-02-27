@@ -65,9 +65,9 @@ class CreateSite extends CreateRecord
                     ->handle(app(EdgeProviderManager::class));
                 (new MarkSiteReadyForCutoverJob($this->record->id, auth()->id()))
                     ->handle();
-                $body = 'Bunny edge provisioning started automatically. Continue DNS setup in the Site Status Hub.';
+                $body = 'Edge provisioning started automatically. Continue DNS setup in the Site Status Hub.';
             } catch (\Throwable $e) {
-                $body = 'Site created, but Bunny provisioning failed. Open Status Hub for details and retry.';
+                $body = 'Site created, but edge provisioning failed. Open Status Hub for details and retry.';
             }
         }
 

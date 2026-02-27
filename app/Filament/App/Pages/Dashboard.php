@@ -6,7 +6,7 @@ use App\Filament\App\Widgets\BandwidthUsageStats;
 use App\Filament\App\Widgets\CacheDistributionChart;
 use App\Filament\App\Widgets\RegionalThreatLevelChart;
 use App\Filament\App\Widgets\RegionalTrafficShareChart;
-use App\Filament\App\Widgets\SimpleActivityFeedWidget;
+use App\Filament\App\Widgets\SimpleActivityFeedTable;
 use App\Filament\App\Widgets\SiteSignalsStats;
 use App\Filament\App\Widgets\TrafficTrendChart;
 
@@ -36,7 +36,7 @@ class Dashboard extends BaseProtectionPage
             return [
                 SiteSignalsStats::class,
                 BandwidthUsageStats::class,
-                SimpleActivityFeedWidget::class,
+                SimpleActivityFeedTable::class,
             ];
         }
 

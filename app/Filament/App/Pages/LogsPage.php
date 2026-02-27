@@ -54,7 +54,7 @@ class LogsPage extends BaseProtectionPage
                 'country' => '??',
                 'method' => 'SYS',
                 'uri' => $log->action,
-                'rule' => (string) $log->message,
+                'rule' => str_ireplace(['bunny', 'aws', 'cloudfront'], 'edge network', (string) $log->message),
                 'status_code' => $log->status === 'failed' ? 500 : 200,
             ])
             ->all();

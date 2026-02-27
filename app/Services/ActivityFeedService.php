@@ -85,8 +85,15 @@ class ActivityFeedService
             ->first();
 
         if ($recentProtectionAction) {
+            $message = $recentProtectionAction->message ?: 'Policy change applied.';
+            $message = str_ireplace(
+                ['bunny', 'aws', 'cloudfront'],
+                ['edge network', 'edge network', 'edge network'],
+                $message,
+            );
+
             $items[] = [
-                'message' => 'Protection workflow updated: '.($recentProtectionAction->message ?: 'Policy change applied.'),
+                'message' => 'Protection workflow updated: '.$message,
                 'at' => $recentProtectionAction->created_at,
             ];
         }

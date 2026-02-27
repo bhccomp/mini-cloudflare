@@ -431,7 +431,7 @@ abstract class BaseProtectionPage extends Page
             ?? data_get($this->site->analyticsMetric?->source ?? [], 'response_time_ms');
 
         return [
-            'edge_provider' => (string) ($this->site->provider ?? 'unknown'),
+            'edge_provider' => 'Managed',
             'zone_id' => (string) ($this->site->provider_resource_id ?? data_get($this->site->provider_meta, 'zone_id', 'n/a')),
             'site_id' => (string) $this->site->id,
             'last_sync' => $lastSync?->toDateTimeString() ?? 'n/a',

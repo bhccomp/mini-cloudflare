@@ -115,7 +115,7 @@
         @else
             <x-filament::section
                 heading="Site Status Hub"
-                description="{{ $this->isBunnyFlow() ? 'Bunny-first onboarding: provision edge, update DNS, then wait for SSL activation.' : 'Follow this setup flow in order. Traffic should not be pointed to CloudFront until deployment is complete.' }}"
+                description="{{ $this->isBunnyFlow() ? 'Provision edge, update DNS, then wait for SSL activation.' : 'Follow this setup flow in order. Traffic should not be pointed to the edge target until deployment is complete.' }}"
                 icon="heroicon-o-queue-list"
             >
                 <x-slot name="afterHeader">
@@ -152,13 +152,13 @@
             <x-filament::section heading="Next Best Action" icon="heroicon-o-forward">
                 @if ($this->isBunnyFlow())
                     @if ($this->site->onboarding_status === \App\Models\Site::ONBOARDING_DRAFT)
-                        <p>Provision Bunny edge now to create your Pull Zone and DNS target records.</p>
+                        <p>Provision edge now to create DNS target records.</p>
                         <x-filament::button wire:click="requestSsl" wire:loading.attr="disabled" wire:target="requestSsl">Provision edge</x-filament::button>
                     @elseif ($this->site->onboarding_status === \App\Models\Site::ONBOARDING_PROVISIONING_EDGE)
                         <p>Provisioning edge resources now. This can take a few minutes.</p>
                         <x-filament::button color="gray" disabled>Provisioning...</x-filament::button>
                     @elseif ($this->site->onboarding_status === \App\Models\Site::ONBOARDING_PENDING_DNS_CUTOVER)
-                        <p>Update DNS to the Bunny edge target below, then click <strong>Check now</strong>.</p>
+                        <p>Update DNS to the edge target below, then click <strong>Check now</strong>.</p>
                         <x-filament::button wire:click="checkCutover" wire:loading.attr="disabled" wire:target="checkCutover">Check now</x-filament::button>
                     @elseif ($this->site->onboarding_status === \App\Models\Site::ONBOARDING_DNS_VERIFIED_SSL_PENDING)
                         <p>DNS is verified. SSL certificate is still pending issuance.</p>
@@ -185,7 +185,7 @@
                         <p>Deploying edge resources now. This can take several minutes.</p>
                         <x-filament::button color="gray" disabled>Deploying...</x-filament::button>
                     @elseif ($this->site->status === \App\Models\Site::STATUS_READY_FOR_CUTOVER)
-                        <p>Edge deployment is complete. Update traffic DNS to CloudFront, then verify cutover.</p>
+                        <p>Edge deployment is complete. Update traffic DNS to the edge target, then verify cutover.</p>
                         <x-filament::button wire:click="checkCutover" wire:loading.attr="disabled" wire:target="checkCutover">Check cutover</x-filament::button>
                     @elseif ($this->site->status === \App\Models\Site::STATUS_ACTIVE)
                         <p>Protection is active. You can continue with cache, WAF, and SSL operations.</p>
@@ -265,7 +265,7 @@
 
             @if ($this->isBunnyFlow() && $this->site->onboarding_status === \App\Models\Site::ONBOARDING_DNS_VERIFIED_SSL_PENDING)
                 <x-filament::section heading="SSL Status" icon="heroicon-o-lock-closed">
-                    <p>DNS cutover is verified. Bunny SSL certificate is still provisioning.</p>
+                    <p>DNS cutover is verified. SSL certificate is still provisioning.</p>
                     <p>Keep this page open or click <strong>Check now</strong> until status becomes <strong>Live / Protected</strong>.</p>
                 </x-filament::section>
             @endif

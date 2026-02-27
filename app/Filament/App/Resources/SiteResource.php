@@ -53,7 +53,7 @@ class SiteResource extends Resource
                 ->schema([
                     \Filament\Schemas\Components\Wizard::make([
                         \Filament\Schemas\Components\Wizard\Step::make('Domain')
-                            ->description('Choose the domain you want to protect with Bunny edge by default.')
+                            ->description('Choose the domain you want to protect with the edge network.')
                             ->schema([
                                 Forms\Components\Hidden::make('organization_id')
                                     ->default(fn () => auth()->user()?->current_organization_id ?: auth()->user()?->organizations()->value('organizations.id')),
@@ -131,23 +131,23 @@ class SiteResource extends Resource
                                     ->content(fn (Get $get): string => (string) ($get('origin_test_feedback') ?: 'Run a quick connectivity test before continuing.')),
                             ])->columns(1),
                         \Filament\Schemas\Components\Wizard\Step::make('Advanced')
-                            ->description('Optional controls for provider selection and rollout behavior.')
+                            ->description('Optional controls for advanced rollout behavior.')
                             ->schema([
                                 Forms\Components\Toggle::make('show_advanced_provider')
-                                    ->label('I want to choose provider manually')
+                                    ->label('I want to choose edge mode manually')
                                     ->dehydrated(false)
                                     ->default(false),
                                 Forms\Components\Select::make('provider')
-                                    ->label('Edge provider')
+                                    ->label('Edge mode')
                                     ->options([
-                                        Site::PROVIDER_BUNNY => 'Bunny.net (Recommended)',
-                                        Site::PROVIDER_AWS => 'AWS (Advanced)',
+                                        Site::PROVIDER_BUNNY => 'Standard Edge (Recommended)',
+                                        Site::PROVIDER_AWS => 'Legacy Edge (Advanced)',
                                     ])
                                     ->default((string) config('edge.default_provider', Site::PROVIDER_BUNNY))
                                     ->visible(fn (Get $get): bool => (bool) config('edge.feature_aws_onboarding', false) || (bool) $get('show_advanced_provider')),
                                 Forms\Components\Placeholder::make('advanced_note')
                                     ->label('Onboarding mode')
-                                    ->content('Bunny flow skips pre-validation and activates SSL after DNS cutover. AWS flow remains available for advanced users.'),
+                                    ->content('Standard mode skips pre-validation and activates SSL after DNS cutover. Legacy mode remains available for advanced users.'),
                             ]),
                         \Filament\Schemas\Components\Wizard\Step::make('Review & Create')
                             ->description('Confirm details and create your protection layer.')
@@ -588,8 +588,8 @@ class SiteResource extends Resource
         return match ($site->status) {
             Site::STATUS_DRAFT => 'Click Provision to generate SSL validation DNS records.',
             Site::STATUS_PENDING_DNS_VALIDATION => 'Add validation DNS records, then click Check DNS.',
-            Site::STATUS_DEPLOYING => 'Deploying WAF and CloudFront. Wait until ready for cutover.',
-            Site::STATUS_READY_FOR_CUTOVER => 'Update apex/www traffic DNS to CloudFront, then click Check cutover.',
+            Site::STATUS_DEPLOYING => 'Deploying edge protection. Wait until ready for cutover.',
+            Site::STATUS_READY_FOR_CUTOVER => 'Update apex/www traffic DNS to the edge target, then click Check cutover.',
             Site::STATUS_ACTIVE => 'Site is active and protected.',
             Site::STATUS_FAILED => 'Review last error and retry Provision.',
             default => 'Review site status.',
