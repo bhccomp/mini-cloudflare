@@ -48,4 +48,32 @@ class SitePolicyTest extends TestCase
         $this->assertFalse($policy->view($user, $siteB));
         $this->assertFalse($policy->manageSecurityActions($user, $siteB));
     }
+
+    public function test_viewer_can_read_but_cannot_write_site_actions(): void
+    {
+        $policy = new SitePolicy;
+
+        $org = Organization::create(['name' => 'Org Viewer', 'slug' => 'org-viewer']);
+        $user = User::factory()->create(['current_organization_id' => $org->id]);
+
+        $user->organizations()->attach($org->id, [
+            'role' => 'viewer',
+        ]);
+
+        $site = Site::create([
+            'organization_id' => $org->id,
+            'name' => 'Viewer Site',
+            'display_name' => 'Viewer Site',
+            'apex_domain' => 'viewer.example.com',
+            'origin_type' => 'url',
+            'origin_url' => 'https://origin-viewer.example.com',
+            'status' => 'draft',
+        ]);
+
+        $this->assertTrue($policy->viewAny($user));
+        $this->assertTrue($policy->view($user, $site));
+        $this->assertFalse($policy->update($user, $site));
+        $this->assertFalse($policy->manageSecurityActions($user, $site));
+        $this->assertFalse($policy->create($user));
+    }
 }

@@ -1,5 +1,34 @@
 # MEMORY
 
+## Organization Roles + Invitations (Latest)
+- Added organization-level RBAC mapping with roles and permission keys:
+  - Roles: `owner`, `admin`, `editor`, `viewer`
+  - Permissions: `sites_read`, `sites_write`, `alerts_read`, `alerts_write`, `logs_read`, `members_manage`, `settings_manage`, `billing_read`
+- Added `OrganizationAccessService` for centralized permission resolution and checks across current organization context.
+- Added per-membership custom permissions on `organization_user.permissions` (JSON).
+- Added organization invitations flow:
+  - New table `organization_invitations` with token, role, custom permissions, expiry, accepted/revoked timestamps.
+  - New model `OrganizationInvitation`.
+  - New mail notification `OrganizationInvitationNotification`.
+  - New authenticated accept endpoint:
+    - `GET /app/invitations/{token}/accept` (`app.invitations.accept`)
+    - validates pending token + email match, attaches membership, marks invite accepted.
+- Upgraded `/app/organization-settings` page:
+  - Team invite form (email + read/write/admin + optional advanced permissions)
+  - Members management (change role/remove)
+  - Pending invitations list (revoke)
+  - Read-only users see non-editable state.
+- Policy updates:
+  - `SitePolicy` now explicitly uses permission checks (`sites_read` / `sites_write`).
+  - `OrganizationPolicy` update/member-management uses `settings_manage` / `members_manage`.
+- Added tests:
+  - `tests/Feature/OrganizationInvitationTest.php`
+  - Extended `tests/Feature/SitePolicyTest.php` for viewer read-only behavior.
+- Validation status:
+  - `./vendor/bin/pint --dirty` passed
+  - `php artisan test` passed
+  - `php artisan optimize` passed
+
 ## Project
 - Name: FirePhage WAF SaaS
 - Stack: Laravel 12, Filament 5, PostgreSQL, Redis, Nginx, Supervisor
