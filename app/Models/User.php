@@ -44,7 +44,7 @@ class User extends Authenticatable implements FilamentUser
     public function organizations(): BelongsToMany
     {
         return $this->belongsToMany(Organization::class)
-            ->withPivot('role')
+            ->withPivot('role', 'permissions')
             ->withTimestamps();
     }
 
@@ -64,5 +64,13 @@ class User extends Authenticatable implements FilamentUser
         }
 
         return false;
+    }
+
+    public function organizationRole(int $organizationId): ?string
+    {
+        $organization = $this->organizations
+            ->firstWhere('id', $organizationId);
+
+        return $organization?->pivot?->role;
     }
 }

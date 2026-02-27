@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Models\Organization;
 use App\Models\User;
+use App\Services\OrganizationAccessService;
 
 class OrganizationPolicy
 {
@@ -19,7 +20,12 @@ class OrganizationPolicy
 
     public function update(User $user, Organization $organization): bool
     {
-        return $this->isOwner($user, $organization);
+        return app(OrganizationAccessService::class)->can($user, $organization, OrganizationAccessService::PERMISSION_SETTINGS_MANAGE);
+    }
+
+    public function manageMembers(User $user, Organization $organization): bool
+    {
+        return app(OrganizationAccessService::class)->can($user, $organization, OrganizationAccessService::PERMISSION_MEMBERS_MANAGE);
     }
 
     protected function isOwner(User $user, Organization $organization): bool
