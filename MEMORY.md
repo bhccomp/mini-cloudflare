@@ -625,3 +625,18 @@
 - Updated App Sites table:
   - Renamed `CloudFront` column to `Zone Name`.
   - Removed `Under Attack` column.
+
+## Alert Channels Refactor (Latest)
+- Replaced Alert Channels CRUD with a single Filament-native configuration page using tabs.
+- New tabs/settings sections:
+  - Slack (enable, site scope, webhook URL, channel/mention overrides)
+  - Email (enable, site scope, recipients, from name)
+  - Phone/SMS (enable, site scope, recipients, provider note)
+  - Webhook (enable, site scope, destination URL, optional secret)
+- Alert Channels route remains the same (`/app/alert-channels`) and now serves a settings page.
+- Data persistence remains in existing `alert_channels` table via type-based upsert (`slack`, `email`, `sms`, `webhook`).
+- Removed old Alert Channels list/create/edit page classes from app panel flow.
+- Fixed production 500s during rollout:
+  - Updated form method signature for Filament v5 (`Schema` instead of `Form`).
+  - Switched tabs component import to Filament v5 schema tabs namespace.
+  - Cleared optimize caches and reloaded PHP-FPM.
