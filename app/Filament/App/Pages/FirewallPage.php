@@ -8,7 +8,6 @@ use App\Filament\App\Widgets\Firewall\FirewallRequestMapWidget;
 use App\Filament\App\Widgets\Firewall\FirewallThreatSummaryStats;
 use App\Filament\App\Widgets\Firewall\FirewallTopCountriesTable;
 use App\Filament\App\Widgets\Firewall\FirewallTopIpsTable;
-use App\Models\Site;
 use App\Services\Analytics\AnalyticsSyncManager;
 use App\Services\Bunny\BunnyLogsService;
 use App\Services\Firewall\FirewallInsightsPresenter;
@@ -37,19 +36,6 @@ class FirewallPage extends BaseProtectionPage
                 ->color('primary')
                 ->action('syncFirewallNow')
                 ->disabled(fn (): bool => ! $this->site),
-            Action::make('toggleUnderAttack')
-                ->label('Under Attack Mode')
-                ->icon('heroicon-m-shield-exclamation')
-                ->color(fn (): string => $this->site?->under_attack ? 'danger' : 'gray')
-                ->badge(fn (): string => $this->underAttackModeSupported()
-                    ? ($this->site?->under_attack ? 'On' : 'Off')
-                    : 'Coming soon')
-                ->tooltip(fn (): string => $this->underAttackModeSupported()
-                    ? 'Last changed: '.$this->lastAction('waf.')
-                    : 'Coming soon for this edge mode.')
-                ->requiresConfirmation()
-                ->action('toggleUnderAttackMode')
-                ->disabled(fn (): bool => ! $this->site || ! $this->underAttackModeSupported()),
         ];
     }
 
@@ -107,21 +93,5 @@ class FirewallPage extends BaseProtectionPage
         }
 
         $this->notify('Sync complete. '.$total.' requests observed, '.$blocked.' blocked.');
-    }
-
-    public function toggleUnderAttackMode(): void
-    {
-        if (! $this->site || ! $this->underAttackModeSupported()) {
-            return;
-        }
-
-        $this->throttle('toggle-under-attack');
-        $this->toggleUnderAttack();
-        $this->dispatch('firewall-sync-widgets');
-    }
-
-    public function underAttackModeSupported(): bool
-    {
-        return (string) ($this->site?->provider ?? '') === Site::PROVIDER_AWS;
     }
 }

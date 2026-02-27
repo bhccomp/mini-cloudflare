@@ -617,3 +617,11 @@
 - Firewall analytics now backed by local DB events when available, with existing fallback behavior retained.
 - Removed Firewall page user-facing diagnostics block (Technical details widget hidden from normal UI).
 - Current source of Firewall map/countries/IPs/events: local `edge_request_logs` ingestion.
+
+## UI Cleanup (Latest)
+- Removed Firewall page `Under Attack Mode` header action (Bunny flow has no supported API for this toggle).
+- Removed shared top-right page buttons (`Add Site`, `Sites`) from protection pages.
+- Added a single `+ Add Site` header action specifically on `Status Hub`.
+- Updated App Sites table:
+  - Renamed `CloudFront` column to `Zone Name`.
+  - Removed `Under Attack` column.

@@ -2,8 +2,10 @@
 
 namespace App\Filament\App\Pages;
 
+use App\Filament\App\Resources\SiteResource;
 use App\Jobs\CheckAcmDnsValidationJob;
 use App\Models\Site;
+use Filament\Actions\Action;
 
 class SiteStatusHubPage extends BaseProtectionPage
 {
@@ -18,6 +20,17 @@ class SiteStatusHubPage extends BaseProtectionPage
     protected static ?string $title = 'Site Status Hub';
 
     protected string $view = 'filament.app.pages.site-status-hub';
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('addSite')
+                ->label('Add Site')
+                ->icon('heroicon-m-plus')
+                ->color('primary')
+                ->url(SiteResource::getUrl('create')),
+        ];
+    }
 
     public function isBunnyFlow(): bool
     {

@@ -2,7 +2,6 @@
 
 namespace App\Filament\App\Pages;
 
-use App\Filament\App\Resources\SiteResource;
 use App\Jobs\ApplySiteControlSettingJob;
 use App\Jobs\CheckAcmDnsValidationJob;
 use App\Jobs\InvalidateCloudFrontCacheJob;
@@ -14,7 +13,6 @@ use App\Models\AuditLog;
 use App\Models\Site;
 use App\Services\Edge\EdgeProviderManager;
 use App\Services\SiteContext;
-use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Http\Request;
@@ -64,17 +62,7 @@ abstract class BaseProtectionPage extends Page
 
     protected function getHeaderActions(): array
     {
-        return [
-            Action::make('addSite')
-                ->label('Add Site')
-                ->icon('heroicon-m-plus')
-                ->color('primary')
-                ->url(SiteResource::getUrl('create')),
-            Action::make('goToSites')
-                ->label('Sites')
-                ->color('gray')
-                ->url(SiteResource::getUrl('index')),
-        ];
+        return [];
     }
 
     public function emptyStateHeading(): string

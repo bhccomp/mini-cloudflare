@@ -424,8 +424,7 @@ class SiteResource extends Resource
                 Tables\Columns\TextColumn::make('display_name')->searchable(),
                 Tables\Columns\TextColumn::make('apex_domain')->searchable(),
                 Tables\Columns\TextColumn::make('status')->badge(),
-                Tables\Columns\IconColumn::make('under_attack')->label('Under Attack')->boolean(),
-                Tables\Columns\TextColumn::make('cloudfront_domain_name')->label('CloudFront')->toggleable(),
+                Tables\Columns\TextColumn::make('cloudfront_domain_name')->label('Zone Name')->toggleable(),
                 Tables\Columns\TextColumn::make('step')
                     ->label('Step')
                     ->state(fn (Site $record) => static::nextStepLabel($record))
