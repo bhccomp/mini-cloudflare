@@ -8,6 +8,8 @@ use App\Services\Bunny\BunnyLogsService;
 
 class LogsPage extends BaseProtectionPage
 {
+    protected static bool $shouldRegisterNavigation = false;
+
     public string $timeRange = '24h';
 
     public string $statusGroup = '';

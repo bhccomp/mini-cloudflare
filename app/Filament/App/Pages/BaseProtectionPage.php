@@ -8,6 +8,7 @@ use App\Jobs\InvalidateCloudFrontCacheJob;
 use App\Jobs\MarkSiteReadyForCutoverJob;
 use App\Jobs\ProvisionEdgeDeploymentJob;
 use App\Jobs\RequestAcmCertificateJob;
+use App\Jobs\ToggleDevelopmentModeJob;
 use App\Jobs\ToggleUnderAttackModeJob;
 use App\Models\AuditLog;
 use App\Models\Site;
@@ -230,6 +231,33 @@ abstract class BaseProtectionPage extends Page
 
         ToggleUnderAttackModeJob::dispatch($this->site->id, ! $this->site->under_attack, auth()->id());
         $this->notify('Firewall mode update queued');
+    }
+
+    public function toggleDevelopmentMode(): void
+    {
+        if (! $this->site) {
+            return;
+        }
+
+        if (! $this->throttle('toggle-development-mode')) {
+            return;
+        }
+
+        try {
+            (new ToggleDevelopmentModeJob($this->site->id, ! (bool) $this->site->development_mode, auth()->id()))
+                ->handle(app(\App\Services\Edge\EdgeProviderManager::class));
+
+            $this->refreshSite();
+            $this->notify($this->isDevelopmentMode() ? 'Development mode enabled' : 'Development mode disabled');
+        } catch (\Throwable $exception) {
+            report($exception);
+            $this->notify('Development mode update failed');
+        }
+    }
+
+    public function isDevelopmentMode(): bool
+    {
+        return (bool) ($this->site?->development_mode ?? false);
     }
 
     public function toggleHttpsEnforcement(): void

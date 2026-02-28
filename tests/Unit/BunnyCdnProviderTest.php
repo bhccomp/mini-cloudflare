@@ -169,4 +169,52 @@ class BunnyCdnProviderTest extends TestCase
         Http::assertSent(fn ($request) => $request->method() === 'DELETE' && $request->url() === 'https://api.bunny.net/pullzone/321');
         Http::assertSent(fn ($request) => $request->method() === 'DELETE' && $request->url() === 'https://api.bunny.net/pullzone/654');
     }
+
+    public function test_set_development_mode_updates_edge_zone_settings(): void
+    {
+        config()->set('edge.bunny.base_url', 'https://api.bunny.net');
+
+        SystemSetting::query()->updateOrCreate(
+            ['key' => 'bunny'],
+            ['value' => ['api_key' => 'test-key'], 'is_encrypted' => false]
+        );
+
+        $org = Organization::create(['name' => 'Org A', 'slug' => 'org-a']);
+        $site = Site::create([
+            'organization_id' => $org->id,
+            'display_name' => 'example.com',
+            'name' => 'example.com',
+            'apex_domain' => 'example.com',
+            'provider' => Site::PROVIDER_BUNNY,
+            'provider_resource_id' => '321',
+            'provider_meta' => ['zone_name' => 'fp-1-example-com'],
+            'www_enabled' => true,
+            'origin_type' => 'ip',
+            'origin_ip' => '198.51.100.9',
+            'origin_url' => 'http://198.51.100.9',
+            'status' => Site::STATUS_ACTIVE,
+        ]);
+
+        Http::fake([
+            'https://api.bunny.net/pullzone/321' => Http::sequence()
+                ->push([
+                    'Id' => 321,
+                    'Name' => 'fp-1-example-com',
+                    'OriginUrl' => 'http://198.51.100.9',
+                    'OriginHostHeader' => 'example.com',
+                ], 200)
+                ->push([], 200),
+        ]);
+
+        $provider = new BunnyCdnProvider;
+        $result = $provider->setDevelopmentMode($site, true);
+
+        $this->assertTrue($result['changed']);
+        Http::assertSentCount(2);
+        Http::assertSent(function ($request) {
+            return $request->method() === 'POST'
+                && $request->url() === 'https://api.bunny.net/pullzone/321'
+                && data_get($request->data(), 'DisableCache') === true;
+        });
+    }
 }

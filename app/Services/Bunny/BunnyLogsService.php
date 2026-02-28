@@ -157,7 +157,7 @@ class BunnyLogsService
             ?? ($status >= 400 ? 'BLOCK' : 'ALLOW'));
 
         return [
-            'timestamp' => Carbon::parse($rawTime),
+            'timestamp' => $this->parseTimestampSafely($rawTime),
             'action' => strtoupper($action),
             'ip' => (string) (Arr::get($row, 'ip') ?? Arr::get($row, 'IP') ?? Arr::get($row, 'remoteIp') ?? '-'),
             'country' => strtoupper((string) (Arr::get($row, 'country') ?? Arr::get($row, 'countryCode') ?? Arr::get($row, 'CountryCode') ?? '??')),
@@ -167,6 +167,43 @@ class BunnyLogsService
             'status_code' => $status,
             'bytes' => (int) (Arr::get($row, 'bytes') ?? Arr::get($row, 'Bytes') ?? 0),
         ];
+    }
+
+    private function parseTimestampSafely(string $raw): Carbon
+    {
+        $candidate = trim($raw);
+
+        if ($candidate === '') {
+            return now();
+        }
+
+        if (preg_match('/^\d{13}$/', $candidate) === 1) {
+            return Carbon::createFromTimestampMs((int) $candidate);
+        }
+
+        if (preg_match('/^\d{10}$/', $candidate) === 1) {
+            return Carbon::createFromTimestamp((int) $candidate);
+        }
+
+        if (str_contains($candidate, '|')) {
+            foreach (explode('|', $candidate) as $segment) {
+                $segment = trim($segment);
+
+                if (preg_match('/^\d{13}$/', $segment) === 1) {
+                    return Carbon::createFromTimestampMs((int) $segment);
+                }
+
+                if (preg_match('/^\d{10}$/', $segment) === 1) {
+                    return Carbon::createFromTimestamp((int) $segment);
+                }
+            }
+        }
+
+        try {
+            return Carbon::parse($candidate);
+        } catch (\Throwable) {
+            return now();
+        }
     }
 
     /**

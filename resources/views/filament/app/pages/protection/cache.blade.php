@@ -14,11 +14,20 @@
             <x-filament::section heading="Cache Control" description="Edge caching state and cache efficiency." icon="heroicon-o-circle-stack">
                 <x-slot name="footer">
                     <x-filament::actions alignment="end">
-                        <x-filament::button color="gray" wire:click="purgeCache" wire:loading.attr="disabled" wire:target="purgeCache">Purge cache</x-filament::button>
+                        <x-filament::button
+                            color="{{ $this->isDevelopmentMode() ? 'warning' : 'gray' }}"
+                            wire:click="toggleDevelopmentMode"
+                            wire:loading.attr="disabled"
+                            wire:target="toggleDevelopmentMode"
+                        >
+                            {{ $this->isDevelopmentMode() ? 'Disable Development Mode' : 'Enable Development Mode' }}
+                        </x-filament::button>
+                        <x-filament::button color="gray" wire:click="purgeCache" wire:loading.attr="disabled" wire:target="purgeCache" :disabled="$this->isDevelopmentMode()">Purge cache</x-filament::button>
                     </x-filament::actions>
                 </x-slot>
 
                 <x-filament.app.settings.key-value-grid :rows="[
+                    ['label' => 'Development Mode', 'value' => $this->isDevelopmentMode() ? 'Enabled (cache + acceleration disabled)' : 'Disabled'],
                     ['label' => 'Cache Policy', 'value' => 'Managed by Edge Network'],
                     ['label' => 'Cache Hit Ratio', 'value' => $this->metricCacheHitRatio()],
                     ['label' => 'Last Action', 'value' => $this->lastAction('cloudfront.invalidate')],

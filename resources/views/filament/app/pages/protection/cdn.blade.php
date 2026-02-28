@@ -17,14 +17,23 @@
             <x-filament::section heading="Edge Delivery" description="Live edge traffic and caching posture." icon="heroicon-o-globe-alt">
                 <x-slot name="footer">
                     <x-filament::actions alignment="end">
+                        <x-filament::button
+                            color="{{ $this->isDevelopmentMode() ? 'warning' : 'gray' }}"
+                            wire:click="toggleDevelopmentMode"
+                            wire:loading.attr="disabled"
+                            wire:target="toggleDevelopmentMode"
+                        >
+                            {{ $this->isDevelopmentMode() ? 'Disable Development Mode' : 'Enable Development Mode' }}
+                        </x-filament::button>
                         <x-filament::button color="gray" wire:click="refreshCdnMetrics" wire:loading.attr="disabled" wire:target="refreshCdnMetrics">Refresh metrics</x-filament::button>
-                        <x-filament::button color="gray" wire:click="purgeCache" wire:loading.attr="disabled" wire:target="purgeCache">Purge cache</x-filament::button>
+                        <x-filament::button color="gray" wire:click="purgeCache" wire:loading.attr="disabled" wire:target="purgeCache" :disabled="$this->isDevelopmentMode()">Purge cache</x-filament::button>
                     </x-filament::actions>
                 </x-slot>
 
                 <x-filament.app.settings.key-value-grid :rows="[
-                    ['label' => 'Edge Network', 'value' => $this->site->cloudfront_distribution_id ? 'Connected' : 'Pending setup'],
-                    ['label' => 'Edge Status', 'value' => $this->distributionHealth() === 'Healthy' ? 'Healthy' : 'Provisioning'],
+                    ['label' => 'Development Mode', 'value' => $this->isDevelopmentMode() ? 'Enabled (cache + acceleration disabled)' : 'Disabled'],
+                    ['label' => 'Edge Network', 'value' => $this->isDevelopmentMode() ? 'Connected (development bypass mode)' : ($this->site->cloudfront_distribution_id ? 'Connected' : 'Pending setup')],
+                    ['label' => 'Edge Status', 'value' => $this->isDevelopmentMode() ? 'Development mode' : ($this->distributionHealth() === 'Healthy' ? 'Healthy' : 'Provisioning')],
                     ['label' => 'Requests (24h)', 'value' => number_format((int) ($m->total_requests_24h ?? 0))],
                     ['label' => 'Bandwidth (24h)', 'value' => number_format((((int) ($m->cached_requests_24h ?? 0) + (int) ($m->origin_requests_24h ?? 0)) * 0.34), 2) . ' MB'],
                     ['label' => 'Monthly Usage', 'value' => number_format((float) $bandwidthUsage['usage_gb'], 2) . ' GB / ' . number_format((int) $bandwidthUsage['included_gb']) . ' GB'],

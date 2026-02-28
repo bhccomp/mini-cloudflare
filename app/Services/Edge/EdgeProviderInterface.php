@@ -24,5 +24,7 @@ interface EdgeProviderInterface
 
     public function setUnderAttackMode(Site $site, bool $enabled): array;
 
+    public function setDevelopmentMode(Site $site, bool $enabled): array;
+
     public function deleteDeployment(Site $site): array;
 }

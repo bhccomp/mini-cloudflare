@@ -1,5 +1,26 @@
 # MEMORY
 
+## Dev Mode + Navigation Cleanup (Latest)
+- Added real per-site `development_mode` support:
+  - migration `2026_02_28_000000_add_development_mode_to_sites_table.php`
+  - `sites.development_mode` is now persisted and cast on `Site` model.
+- Added provider contract method `setDevelopmentMode(Site $site, bool $enabled)` and implementations:
+  - Bunny: updates pull zone settings to disable cache/optimization in development mode.
+  - AWS: compatible no-break response path for mode toggling.
+- Added `ToggleDevelopmentModeJob` with audit logging (`edge.development_mode`).
+- Wired Development Mode toggle into `/app/cdn` and `/app/cache` actions and status rows.
+- Updated toggle execution in page flow to run immediately and refresh site state, so button label flips instantly between enable/disable.
+- Fixed CDN 500 caused by malformed provider log timestamps:
+  - `BunnyLogsService` now safely parses epoch/pipe-formatted timestamps and falls back safely instead of crashing.
+- Hid Logs page from sidebar navigation while keeping route/page accessible:
+  - `LogsPage::$shouldRegisterNavigation = false`.
+- Moved Sites resource nav group from `Security` to `Protection` so Security header is removed in app sidebar.
+- Validation snapshot:
+  - `php artisan migrate --force` passed
+  - `./vendor/bin/pint --dirty` passed
+  - `php artisan test` passed
+  - `php artisan optimize` passed
+
 ## Organization Roles + Invitations (Latest)
 - Added organization-level RBAC mapping with roles and permission keys:
   - Roles: `owner`, `admin`, `editor`, `viewer`

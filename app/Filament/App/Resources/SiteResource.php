@@ -35,7 +35,7 @@ class SiteResource extends Resource
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-globe-alt';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Security';
+    protected static string|\UnitEnum|null $navigationGroup = 'Protection';
 
     public static function getEloquentQuery(): Builder
     {

@@ -82,6 +82,11 @@ class ProvisionJobsTest extends TestCase
                 return ['changed' => false, 'enabled' => $enabled];
             }
 
+            public function setDevelopmentMode(Site $site, bool $enabled): array
+            {
+                return ['changed' => false, 'enabled' => $enabled];
+            }
+
             public function deleteDeployment(Site $site): array
             {
                 return ['changed' => false];
@@ -157,6 +162,11 @@ class ProvisionJobsTest extends TestCase
             }
 
             public function setUnderAttackMode(Site $site, bool $enabled): array
+            {
+                return ['changed' => false, 'enabled' => $enabled];
+            }
+
+            public function setDevelopmentMode(Site $site, bool $enabled): array
             {
                 return ['changed' => false, 'enabled' => $enabled];
             }
@@ -254,6 +264,11 @@ class ProvisionJobsTest extends TestCase
                 return ['changed' => false, 'enabled' => $enabled];
             }
 
+            public function setDevelopmentMode(Site $site, bool $enabled): array
+            {
+                return ['changed' => false, 'enabled' => $enabled];
+            }
+
             public function deleteDeployment(Site $site): array
             {
                 return ['changed' => false];
@@ -336,6 +351,11 @@ class ProvisionJobsTest extends TestCase
                 return ['changed' => false, 'enabled' => $enabled];
             }
 
+            public function setDevelopmentMode(Site $site, bool $enabled): array
+            {
+                return ['changed' => false, 'enabled' => $enabled];
+            }
+
             public function deleteDeployment(Site $site): array
             {
                 return ['changed' => false];
@@ -403,6 +423,11 @@ class ProvisionJobsTest extends TestCase
             }
 
             public function setUnderAttackMode(Site $site, bool $enabled): array
+            {
+                return ['changed' => false, 'enabled' => $enabled];
+            }
+
+            public function setDevelopmentMode(Site $site, bool $enabled): array
             {
                 return ['changed' => false, 'enabled' => $enabled];
             }

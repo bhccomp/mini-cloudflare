@@ -255,20 +255,37 @@ class BunnyCdnProvider implements EdgeProviderInterface
         }
 
         try {
-            $logging = $this->loggingSettingsPayload();
-
-            $this->client()->post("/pullzone/{$zoneId}", [
-                'Id' => $zoneId,
-                'Name' => $zoneName,
-                'OriginUrl' => $originUrl,
-                'OriginHostHeader' => $originHostHeader,
-                'AddHostHeader' => true,
-                'EnableAutoSSL' => true,
-                'Type' => 0,
-            ] + $logging)->throw();
+            $this->client()->post("/pullzone/{$zoneId}", $this->buildZoneUpdatePayload(
+                zoneId: $zoneId,
+                zoneName: $zoneName,
+                originUrl: $originUrl,
+                originHostHeader: $originHostHeader,
+            ))->throw();
         } catch (\Throwable) {
             // Non-fatal: keep runtime checks resilient and retry on later actions.
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $overrides
+     * @return array<string, mixed>
+     */
+    private function buildZoneUpdatePayload(
+        int $zoneId,
+        string $zoneName,
+        string $originUrl,
+        string $originHostHeader,
+        array $overrides = [],
+    ): array {
+        return [
+            'Id' => $zoneId,
+            'Name' => $zoneName,
+            'OriginUrl' => $originUrl,
+            'OriginHostHeader' => $originHostHeader,
+            'AddHostHeader' => true,
+            'EnableAutoSSL' => true,
+            'Type' => 0,
+        ] + $this->loggingSettingsPayload() + $overrides;
     }
 
     /**
@@ -515,7 +532,7 @@ class BunnyCdnProvider implements EdgeProviderInterface
     {
         $zoneId = (int) ($site->provider_resource_id ?: data_get($site->provider_meta, 'zone_id', 0));
         if ($zoneId <= 0) {
-            return ['changed' => false, 'message' => 'Bunny zone is not provisioned yet.'];
+            return ['changed' => false, 'message' => 'Edge zone is not provisioned yet.'];
         }
 
         $paths = array_values($paths);
@@ -526,7 +543,7 @@ class BunnyCdnProvider implements EdgeProviderInterface
             return [
                 'changed' => true,
                 'paths' => ['/*'],
-                'message' => 'Bunny cache purge requested for all files.',
+                'message' => 'Edge cache purge requested for all files.',
             ];
         }
 
@@ -540,7 +557,7 @@ class BunnyCdnProvider implements EdgeProviderInterface
         return [
             'changed' => true,
             'paths' => $paths,
-            'message' => 'Bunny cache purge requested for selected paths.',
+            'message' => 'Edge cache purge requested for selected paths.',
         ];
     }
 
@@ -549,7 +566,53 @@ class BunnyCdnProvider implements EdgeProviderInterface
         return [
             'changed' => false,
             'enabled' => $enabled,
-            'message' => 'Under-attack mode is not supported for Bunny provider yet.',
+            'message' => 'Under-attack mode is not supported for this edge network yet.',
+        ];
+    }
+
+    public function setDevelopmentMode(Site $site, bool $enabled): array
+    {
+        $zoneId = (int) ($site->provider_resource_id ?: data_get($site->provider_meta, 'zone_id', 0));
+
+        if ($zoneId <= 0) {
+            return [
+                'changed' => false,
+                'enabled' => $enabled,
+                'message' => 'Edge deployment is not provisioned yet.',
+            ];
+        }
+
+        $zoneResponse = $this->client()->get("/pullzone/{$zoneId}");
+        if (! $zoneResponse->successful()) {
+            throw new \RuntimeException('Unable to load edge zone settings.');
+        }
+
+        $zone = $zoneResponse->json();
+        $zoneName = (string) (Arr::get($zone, 'Name') ?: data_get($site->provider_meta, 'zone_name', $this->zoneNameFor($site)));
+        $originUrl = (string) (Arr::get($zone, 'OriginUrl') ?: $this->resolvePreferredOriginUrl($site));
+        $originHostHeader = (string) (Arr::get($zone, 'OriginHostHeader') ?: strtolower((string) $site->apex_domain));
+
+        $payload = $this->buildZoneUpdatePayload(
+            zoneId: $zoneId,
+            zoneName: $zoneName,
+            originUrl: $originUrl,
+            originHostHeader: $originHostHeader,
+            overrides: [
+                // Development mode bypasses cache and optimization.
+                'DisableCache' => $enabled,
+                'EnableOptimizers' => ! $enabled,
+                'EnableQueryStringOrdering' => ! $enabled,
+            ],
+        );
+
+        $this->client()->post("/pullzone/{$zoneId}", $payload)->throw();
+
+        return [
+            'changed' => true,
+            'enabled' => $enabled,
+            'message' => $enabled
+                ? 'Development mode enabled. Edge cache and optimization are disabled.'
+                : 'Development mode disabled. Standard edge cache and optimization are enabled.',
         ];
     }
 

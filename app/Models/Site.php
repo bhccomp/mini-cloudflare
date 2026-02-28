@@ -67,6 +67,7 @@ class Site extends Model
         'waf_web_acl_arn',
         'required_dns_records',
         'under_attack',
+        'development_mode',
     ];
 
     protected static function booted(): void
@@ -105,6 +106,7 @@ class Site extends Model
             'required_dns_records' => 'array',
             'provider_meta' => 'array',
             'under_attack' => 'boolean',
+            'development_mode' => 'boolean',
             'last_provisioned_at' => 'datetime',
             'last_checked_at' => 'datetime',
         ];

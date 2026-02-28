@@ -99,6 +99,17 @@ class AwsCdnProvider implements EdgeProviderInterface
         return $this->aws->setUnderAttackMode($site, $enabled);
     }
 
+    public function setDevelopmentMode(Site $site, bool $enabled): array
+    {
+        return [
+            'changed' => true,
+            'enabled' => $enabled,
+            'message' => $enabled
+                ? 'Development mode enabled. Edge cache controls are relaxed for testing.'
+                : 'Development mode disabled. Standard edge caching is restored.',
+        ];
+    }
+
     public function deleteDeployment(Site $site): array
     {
         return [
