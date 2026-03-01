@@ -21,6 +21,19 @@
   - `php artisan test` passed
   - `php artisan optimize` passed
 
+## Branding Asset Update (Latest)
+- Added a real FirePhage favicon set in `public/`:
+  - `favicon.svg`
+  - `favicon.ico` (replaced previously empty file)
+  - `favicon-16x16.png`
+  - `favicon-32x32.png`
+  - `favicon.png`
+  - `apple-touch-icon.png`
+- Wired favicon into both Filament panels via provider config:
+  - `app/Providers/Filament/UserPanelProvider.php`
+  - `app/Providers/Filament/AdminPanelProvider.php`
+- Result: consistent favicon across `/app` and `/admin` with proper browser fallback handling.
+
 ## Organization Roles + Invitations (Latest)
 - Added organization-level RBAC mapping with roles and permission keys:
   - Roles: `owner`, `admin`, `editor`, `viewer`
