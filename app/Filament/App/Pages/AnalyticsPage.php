@@ -8,6 +8,8 @@ use App\Services\Bunny\BunnyLogsService;
 
 class AnalyticsPage extends BaseProtectionPage
 {
+    protected static string|\UnitEnum|null $navigationGroup = 'Monitoring';
+
     protected static ?string $slug = 'analytics';
 
     protected static ?int $navigationSort = -7;

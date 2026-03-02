@@ -27,17 +27,17 @@ class FirewallAccessControlPage extends BaseProtectionPage implements HasForms
 {
     use InteractsWithForms;
 
+    protected static string|\UnitEnum|null $navigationGroup = 'Security & Protection';
+
     protected static ?string $slug = 'firewall-access-control';
 
-    protected static ?int $navigationSort = 1;
+    protected static ?int $navigationSort = -39;
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-no-symbol';
 
-    protected static ?string $navigationLabel = 'Access Control';
+    protected static ?string $navigationLabel = 'WAF';
 
-    protected static ?string $navigationParentItem = 'Firewall';
-
-    protected static ?string $title = 'Firewall Access Control';
+    protected static ?string $title = 'WAF';
 
     protected string $view = 'filament.app.pages.protection.firewall-access-control';
 
@@ -215,6 +215,7 @@ class FirewallAccessControlPage extends BaseProtectionPage implements HasForms
 
         $createdCount = 0;
         $failedCount = 0;
+        $firstFailure = null;
 
         foreach ($targets as $target) {
             $created = app(FirewallAccessControlService::class)->createRules(
@@ -230,15 +231,20 @@ class FirewallAccessControlPage extends BaseProtectionPage implements HasForms
 
             $createdCount += count($created);
             $failedCount += collect($created)->where('status', SiteFirewallRule::STATUS_FAILED)->count();
+            if ($firstFailure === null) {
+                $firstFailure = collect($created)
+                    ->first(fn (SiteFirewallRule $rule): bool => $rule->status === SiteFirewallRule::STATUS_FAILED);
+            }
         }
 
         $this->dispatch('firewall-access-rules-updated');
         $this->syncOptions();
 
         if ($failedCount > 0) {
+            $failureReason = (string) data_get($firstFailure?->meta, 'error', '');
             Notification::make()
                 ->title("Saved {$createdCount} rule(s); {$failedCount} could not be enforced yet.")
-                ->body('Verify edge provisioning for this site and try deploying staged rules again.')
+                ->body($failureReason !== '' ? $failureReason : 'Verify edge provisioning for this site and try deploying staged rules again.')
                 ->warning()
                 ->send();
 

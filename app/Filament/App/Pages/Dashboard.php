@@ -12,9 +12,11 @@ use App\Filament\App\Widgets\TrafficTrendChart;
 
 class Dashboard extends BaseProtectionPage
 {
+    protected static string|\UnitEnum|null $navigationGroup = 'Security & Protection';
+
     protected static ?string $slug = 'overview';
 
-    protected static ?int $navigationSort = -2;
+    protected static ?int $navigationSort = -50;
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-home';
 

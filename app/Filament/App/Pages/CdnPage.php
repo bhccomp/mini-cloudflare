@@ -9,6 +9,8 @@ use App\Services\Bunny\BunnyLogsService;
 
 class CdnPage extends BaseProtectionPage
 {
+    protected static string|\UnitEnum|null $navigationGroup = 'Performance';
+
     protected static ?string $slug = 'cdn';
 
     protected static ?int $navigationSort = -10;

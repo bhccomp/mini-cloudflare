@@ -4,6 +4,7 @@ namespace App\Services\Edge\Providers;
 
 use App\Models\Site;
 use App\Models\SystemSetting;
+use App\Services\Bunny\BunnyShieldAccessListService;
 use App\Services\Edge\EdgeProviderInterface;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Arr;
@@ -13,6 +14,8 @@ use Symfony\Component\Process\Process;
 
 class BunnyCdnProvider implements EdgeProviderInterface
 {
+    public function __construct(protected ?BunnyShieldAccessListService $shieldAccess = null) {}
+
     public function key(): string
     {
         return Site::PROVIDER_BUNNY;
@@ -25,6 +28,9 @@ class BunnyCdnProvider implements EdgeProviderInterface
 
     public function requestCertificate(Site $site): array
     {
+        $existingShieldZoneId = (int) data_get($site->provider_meta, 'shield_zone_id', 0);
+        $resolvedShieldZoneId = $shieldZoneId ?: ($existingShieldZoneId > 0 ? $existingShieldZoneId : null);
+
         return [
             'changed' => false,
             'required_dns_records' => $site->required_dns_records ?? [],
@@ -69,6 +75,22 @@ class BunnyCdnProvider implements EdgeProviderInterface
 
         $this->syncZoneOriginSettings($zoneId, $zoneName, $originUrl, $originHostHeader);
 
+        $shieldZoneId = null;
+        $shieldMessage = null;
+        try {
+            $site->forceFill([
+                'provider_resource_id' => (string) $zoneId,
+                'provider_meta' => array_merge(
+                    is_array($site->provider_meta) ? $site->provider_meta : [],
+                    ['zone_id' => $zoneId, 'zone_name' => $zoneName],
+                ),
+            ])->save();
+
+            $shieldZoneId = $this->shieldAccess()->ensureShieldZone($site);
+        } catch (\Throwable $e) {
+            $shieldMessage = $e->getMessage();
+        }
+
         $edgeDomain = $this->zoneEdgeDomain($zoneName);
         $hostnames = [$site->apex_domain];
 
@@ -95,6 +117,9 @@ class BunnyCdnProvider implements EdgeProviderInterface
             'traffic' => $this->trafficRecords($site, $edgeDomain),
         ];
 
+        $existingShieldZoneId = (int) data_get($site->provider_meta, 'shield_zone_id', 0);
+        $resolvedShieldZoneId = $shieldZoneId ?: ($existingShieldZoneId > 0 ? $existingShieldZoneId : null);
+
         return [
             'ok' => true,
             'status' => Site::STATUS_DEPLOYING,
@@ -103,6 +128,9 @@ class BunnyCdnProvider implements EdgeProviderInterface
             'provider_meta' => [
                 'zone_id' => $zoneId,
                 'zone_name' => $zoneName,
+                'shield_zone_id' => $resolvedShieldZoneId,
+                'shield_status' => $resolvedShieldZoneId ? 'active' : 'pending',
+                'shield_last_error' => $shieldMessage,
                 'edge_domain' => $edgeDomain,
                 'origin_url' => $originUrl,
                 'origin_host_header' => $originHostHeader,
@@ -115,7 +143,11 @@ class BunnyCdnProvider implements EdgeProviderInterface
             'distribution_domain_name' => $edgeDomain,
             'required_dns_records' => $requiredDnsRecords,
             'dns_records' => $requiredDnsRecords['traffic'],
-            'notes' => ['Bunny Pull Zone provisioned. Point DNS traffic records to the Bunny edge domain.'],
+            'notes' => array_values(array_filter([
+                'Edge zone provisioned. Point DNS traffic records to the edge domain.',
+                $resolvedShieldZoneId ? 'Security zone has been enabled for this site.' : null,
+                $resolvedShieldZoneId ? null : 'Security zone setup is pending and will retry automatically.',
+            ])),
         ];
     }
 
@@ -376,6 +408,14 @@ class BunnyCdnProvider implements EdgeProviderInterface
 
     public function checkDns(Site $site): array
     {
+        if (! data_get($site->provider_meta, 'shield_zone_id')) {
+            try {
+                $this->shieldAccess()->ensureShieldZone($site);
+            } catch (\Throwable) {
+                // Best effort: DNS checks must continue even if security zone setup is delayed.
+            }
+        }
+
         $this->requestCertificatesForSiteHostnames($site);
         $this->syncZoneOriginForExistingSite($site);
 
@@ -916,5 +956,10 @@ class BunnyCdnProvider implements EdgeProviderInterface
             ->filter()
             ->values()
             ->all();
+    }
+
+    protected function shieldAccess(): BunnyShieldAccessListService
+    {
+        return $this->shieldAccess ??= app(BunnyShieldAccessListService::class);
     }
 }

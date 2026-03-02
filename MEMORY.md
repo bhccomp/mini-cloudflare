@@ -1,4 +1,39 @@
 # MEMORY
+## Security & Protection Navigation + Shield + Availability Monitor (Latest)
+- Shield onboarding and existing-site linkage:
+  - Added auto ensure/link of Shield zone during Bunny provisioning.
+  - Added fallback ensure on DNS checks so delayed Shield creation is retried automatically.
+  - Backfilled existing production site (`nikolajocic.dev`) and persisted `provider_meta.shield_zone_id`.
+- Fixed country/IP rule enforcement against current Bunny Shield API:
+  - Access-list payload updated to new schema (`name`, `type`, `content`, `action`, `isEnabled`).
+  - Correct type mapping discovered and applied (`country` => type `3`).
+  - Improved error extraction (`error.message`, validation payloads) and surfaced exact failures in UI.
+- Added Shield settings service and pages:
+  - `WAF` page (`/app/firewall-access-control`) for access rules and policy controls.
+  - `DDoS` page (`/app/firewall-shield-settings`) for sensitivities + challenge window.
+  - `Rate Limiting` page (`/app/firewall-rate-limiting`) for creating/listing rate limit rules.
+- Navigation UX refactor (flat, non-nested):
+  - Reorganized App sidebar into:
+    - `General`: Status Hub, Sites, Origin
+    - `Security & Protection`: Overview, WAF, DDoS, Rate Limiting, SSL/TLS
+    - `Performance`: CDN, Cache
+    - `Monitoring`: Availability Monitor, Analytics
+    - `Account`: Billing, Organization Settings
+    - `Alerts`: Alert Channels, Alert Events, Alert Rules
+  - Applied native Filament navigation groups with collapsed sections by default.
+- Added Availability Monitor feature (Filament-native):
+  - New page `/app/availability-monitor` + recent checks table widget.
+  - New persistence model/table: `site_availability_checks`.
+  - Plan-aware check cadence:
+    - Basic plans: every 5 minutes.
+    - Paid plans: every 1 minute.
+  - Added scheduled command `availability:run-due` (every minute) with migration guard.
+  - Added config keys in `config/ui.php` for monitor intervals and paid-plan mapping.
+- Stability and test status:
+  - Cleared/cached framework + Filament artifacts repeatedly to eliminate route cache mismatch issues.
+  - Validation completed: `./vendor/bin/pint --dirty`, `php artisan test` (all passing), `php artisan optimize`.
+  - Migration applied: `2026_03_02_230000_create_site_availability_checks_table`.
+
 ## Firewall Access Control + Provisioning Safety (Latest)
 - Added a new Firewall Access Control flow for App panel:
   - Page: `/app/firewall-access-control`

@@ -9,6 +9,8 @@ use Filament\Actions\Action;
 
 class SiteStatusHubPage extends BaseProtectionPage
 {
+    protected static string|\UnitEnum|null $navigationGroup = 'General';
+
     protected static ?string $slug = 'status-hub';
 
     protected static ?int $navigationSort = -50;

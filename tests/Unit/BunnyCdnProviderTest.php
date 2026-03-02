@@ -44,6 +44,11 @@ class BunnyCdnProviderTest extends TestCase
             'https://api.bunny.net/pullzone/321' => Http::response([], 200),
             'https://api.bunny.net/pullzone/321/addHostname' => Http::response([], 200),
             'https://api.bunny.net/pullzone/loadFreeCertificate*' => Http::response([], 200),
+            'https://api.bunny.net/shield/shield-zones*' => Http::response([
+                'Items' => [
+                    ['Id' => 999, 'PullZoneId' => 321],
+                ],
+            ], 200),
         ]);
 
         $provider = new BunnyCdnProvider;
@@ -57,8 +62,9 @@ class BunnyCdnProviderTest extends TestCase
         $this->assertNotEmpty($result['dns_records']);
         $this->assertSame('https://198.51.100.9', data_get($result, 'provider_meta.origin_url'));
         $this->assertSame('example.com', data_get($result, 'provider_meta.origin_host_header'));
+        $this->assertSame(999, data_get($result, 'provider_meta.shield_zone_id'));
 
-        Http::assertSentCount(8);
+        Http::assertSentCount(9);
         Http::assertSent(function ($request) {
             return $request->url() === 'https://api.bunny.net/pullzone'
                 && data_get($request->data(), 'OriginUrl') === 'https://198.51.100.9'

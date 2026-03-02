@@ -1,10 +1,13 @@
 <?php
 
 use App\Jobs\SyncSiteAnalyticsMetricJob;
+use App\Models\Organization;
 use App\Models\Site;
+use App\Services\AvailabilityMonitorService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
+use Illuminate\Support\Facades\Schema;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -33,4 +36,29 @@ Artisan::command('metrics:sync-sites', function () {
 
 Schedule::command('metrics:sync-sites')
     ->everyFiveMinutes()
+    ->withoutOverlapping();
+
+Artisan::command('availability:run-due', function (AvailabilityMonitorService $monitor): void {
+    if (! Schema::hasTable('site_availability_checks')) {
+        $this->warn('Skipping availability checks because migration is not applied yet.');
+
+        return;
+    }
+
+    $count = 0;
+
+    Organization::query()
+        ->whereHas('sites')
+        ->orderBy('id')
+        ->chunkById(100, function ($organizations) use ($monitor, &$count): void {
+            foreach ($organizations as $organization) {
+                $count += $monitor->runDueChecksForOrganization($organization);
+            }
+        });
+
+    $this->info("Availability checks executed for {$count} site(s).");
+})->purpose('Run due availability checks based on plan cadence.');
+
+Schedule::command('availability:run-due')
+    ->everyMinute()
     ->withoutOverlapping();

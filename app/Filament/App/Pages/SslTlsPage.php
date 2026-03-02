@@ -4,6 +4,8 @@ namespace App\Filament\App\Pages;
 
 class SslTlsPage extends BaseProtectionPage
 {
+    protected static string|\UnitEnum|null $navigationGroup = 'Security & Protection';
+
     protected static ?string $slug = 'ssl';
 
     protected static ?int $navigationSort = -30;

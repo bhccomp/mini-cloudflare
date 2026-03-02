@@ -11,6 +11,71 @@ class BunnyShieldAccessListService
 {
     public function __construct(protected BunnyApiService $api) {}
 
+    public function ensureShieldZone(Site $site): int
+    {
+        try {
+            return $this->resolveShieldZoneId($site);
+        } catch (\Throwable) {
+            // Continue with creation flow when the shield zone is missing.
+        }
+
+        $pullZoneId = (int) ($site->provider_resource_id ?: data_get($site->provider_meta, 'zone_id', 0));
+        if ($pullZoneId <= 0) {
+            throw new \RuntimeException('Edge zone is not provisioned for this site.');
+        }
+
+        $responses = [
+            $this->api->client()->post('/shield/shield-zone', [
+                'PullZoneId' => $pullZoneId,
+                'Enabled' => true,
+            ]),
+            $this->api->client()->post('/shield/shield-zone', [
+                'pullZoneId' => $pullZoneId,
+                'enabled' => true,
+            ]),
+            $this->api->client()->post('/shield/shield-zone', [
+                'PullZoneId' => $pullZoneId,
+            ]),
+        ];
+
+        foreach ($responses as $response) {
+            if (! $response->successful()) {
+                continue;
+            }
+
+            $payload = $response->json();
+            $shieldZoneId = (int) (Arr::get($payload, 'Id')
+                ?? Arr::get($payload, 'id')
+                ?? Arr::get($payload, 'shieldZoneId')
+                ?? Arr::get($payload, 'data.shieldZoneId')
+                ?? 0);
+            if ($shieldZoneId <= 0) {
+                $shieldZoneId = $this->findShieldZoneIdByPullZone($pullZoneId);
+            }
+
+            if ($shieldZoneId <= 0) {
+                continue;
+            }
+
+            $meta = is_array($site->provider_meta) ? $site->provider_meta : [];
+            $meta['shield_zone_id'] = $shieldZoneId;
+            $site->forceFill(['provider_meta' => $meta])->save();
+
+            return $shieldZoneId;
+        }
+
+        $resolved = $this->findShieldZoneIdByPullZone($pullZoneId);
+        if ($resolved > 0) {
+            $meta = is_array($site->provider_meta) ? $site->provider_meta : [];
+            $meta['shield_zone_id'] = $resolved;
+            $site->forceFill(['provider_meta' => $meta])->save();
+
+            return $resolved;
+        }
+
+        throw new \RuntimeException('Unable to create or resolve shield zone for this site.');
+    }
+
     /**
      * @return array<int, array<string, mixed>>
      */
@@ -34,21 +99,21 @@ class BunnyShieldAccessListService
     public function createRule(Site $site, array $rule): array
     {
         $shieldZoneId = $this->resolveShieldZoneId($site);
-        $enums = $this->accessListEnums();
 
         $ruleType = strtolower((string) ($rule['rule_type'] ?? 'ip'));
         $action = strtolower((string) ($rule['action'] ?? 'block'));
         $target = (string) ($rule['target'] ?? '');
 
-        $typeId = $this->resolveEnumId($enums, 'type', $ruleType);
-        $actionId = $this->resolveEnumId($enums, 'action', $action);
+        $typeId = $this->resolveTypeCode($ruleType);
+        $actionId = $this->resolveActionCode($action);
 
         $payload = [
-            'Value' => $target,
-            'Type' => $typeId,
-            'ActionType' => $actionId,
-            'Enabled' => true,
-            'Comment' => (string) ($rule['note'] ?? ''),
+            'name' => (string) ($rule['name'] ?? $this->defaultRuleName($ruleType, $target)),
+            'description' => (string) ($rule['note'] ?? ''),
+            'type' => $typeId,
+            'action' => $actionId,
+            'isEnabled' => true,
+            'content' => strtoupper(trim($target)),
         ];
 
         $response = $this->api->client()
@@ -173,30 +238,9 @@ class BunnyShieldAccessListService
             throw new \RuntimeException('Edge zone is not provisioned for this site.');
         }
 
-        $response = $this->api->client()->get('/shield/shield-zones', [
-            'page' => 1,
-            'perPage' => 200,
-        ]);
-
-        if (! $response->successful()) {
-            throw new \RuntimeException($this->responseError($response, 'Unable to load shield zones.'));
-        }
-
-        $rows = collect($this->extractRows($response->json()));
-
-        $matched = $rows->first(function (array $row) use ($pullZoneId): bool {
-            $linkedPullZoneId = (int) (Arr::get($row, 'PullZoneId') ?? Arr::get($row, 'pullZoneId') ?? 0);
-
-            return $linkedPullZoneId === $pullZoneId;
-        });
-
-        if (! is_array($matched)) {
-            throw new \RuntimeException('Shield zone is not available for this edge deployment yet.');
-        }
-
-        $shieldZoneId = (int) (Arr::get($matched, 'Id') ?? Arr::get($matched, 'id') ?? 0);
+        $shieldZoneId = $this->findShieldZoneIdByPullZone($pullZoneId);
         if ($shieldZoneId <= 0) {
-            throw new \RuntimeException('Shield zone identifier is missing.');
+            throw new \RuntimeException('Shield zone is not available for this edge deployment yet.');
         }
 
         $meta = is_array($site->provider_meta) ? $site->provider_meta : [];
@@ -242,6 +286,26 @@ class BunnyShieldAccessListService
             ->values();
 
         return compact('type', 'action');
+    }
+
+    protected function resolveTypeCode(string $ruleType): int
+    {
+        return match (strtolower(trim($ruleType))) {
+            'ip' => 0,
+            'cidr' => 1,
+            'asn' => 2,
+            'country' => 3,
+            default => 0,
+        };
+    }
+
+    protected function resolveActionCode(string $action): int
+    {
+        return match (strtolower(trim($action))) {
+            'allow' => 0,
+            'challenge' => 2,
+            default => 1,
+        };
     }
 
     /**
@@ -304,13 +368,30 @@ class BunnyShieldAccessListService
             }
         }
 
+        $managed = $payload['managedLists'] ?? null;
+        $custom = $payload['customLists'] ?? null;
+        if (is_array($managed) || is_array($custom)) {
+            $rows = array_merge(
+                is_array($managed) ? $managed : [],
+                is_array($custom) ? $custom : [],
+            );
+
+            if ($rows !== []) {
+                return array_values(array_filter($rows, 'is_array'));
+            }
+        }
+
         return [];
     }
 
     protected function extractRuleId(mixed $payload): ?string
     {
         if (is_array($payload)) {
-            $id = Arr::get($payload, 'Id') ?? Arr::get($payload, 'id');
+            $id = Arr::get($payload, 'Id')
+                ?? Arr::get($payload, 'id')
+                ?? Arr::get($payload, 'data.id')
+                ?? Arr::get($payload, 'listId')
+                ?? Arr::get($payload, 'data.listId');
 
             if (is_scalar($id)) {
                 return (string) $id;
@@ -324,7 +405,9 @@ class BunnyShieldAccessListService
     {
         $message = (string) (Arr::get($response->json(), 'Message')
             ?? Arr::get($response->json(), 'message')
+            ?? Arr::get($response->json(), 'error.message')
             ?? Arr::get($response->json(), 'error')
+            ?? Arr::get($response->json(), 'errors.$.0')
             ?? '');
 
         return $message !== '' ? $message : $fallback;
@@ -394,5 +477,49 @@ class BunnyShieldAccessListService
         asort($mapped);
 
         return $mapped;
+    }
+
+    protected function findShieldZoneIdByPullZone(int $pullZoneId): int
+    {
+        if ($pullZoneId <= 0) {
+            return 0;
+        }
+
+        $response = $this->api->client()->get('/shield/shield-zones', [
+            'page' => 1,
+            'perPage' => 200,
+        ]);
+
+        if (! $response->successful()) {
+            return 0;
+        }
+
+        $rows = collect($this->extractRows($response->json()));
+        $matched = $rows->first(function (array $row) use ($pullZoneId): bool {
+            $linkedPullZoneId = (int) (Arr::get($row, 'PullZoneId')
+                ?? Arr::get($row, 'pullZoneId')
+                ?? Arr::get($row, 'pull_zone_id')
+                ?? 0);
+
+            return $linkedPullZoneId === $pullZoneId;
+        });
+
+        if (! is_array($matched)) {
+            return 0;
+        }
+
+        return (int) (Arr::get($matched, 'Id')
+            ?? Arr::get($matched, 'id')
+            ?? Arr::get($matched, 'shieldZoneId')
+            ?? Arr::get($matched, 'shield_zone_id')
+            ?? 0);
+    }
+
+    protected function defaultRuleName(string $ruleType, string $target): string
+    {
+        $label = strtoupper(trim($target));
+        $type = strtoupper(trim($ruleType));
+
+        return trim("FP {$type} {$label}");
     }
 }

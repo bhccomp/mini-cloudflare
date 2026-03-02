@@ -14,46 +14,22 @@ use App\Services\Analytics\AnalyticsSyncManager;
 use App\Services\Bunny\BunnyLogsService;
 use App\Services\Firewall\FirewallInsightsPresenter;
 use Filament\Actions\Action;
-use Filament\Navigation\NavigationItem;
 
 class FirewallPage extends BaseProtectionPage
 {
+    protected static string|\UnitEnum|null $navigationGroup = 'Security & Protection';
+
     protected static ?string $slug = 'firewall';
 
     protected static ?int $navigationSort = -40;
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-shield-check';
 
-    protected static ?string $navigationLabel = 'Firewall';
+    protected static ?string $navigationLabel = 'Overview';
 
-    protected static ?string $title = 'Firewall';
+    protected static ?string $title = 'Protection Overview';
 
     protected string $view = 'filament.app.pages.protection.firewall';
-
-    /**
-     * @return array<NavigationItem>
-     */
-    public static function getNavigationItems(): array
-    {
-        return [
-            NavigationItem::make(static::getNavigationLabel())
-                ->group(static::getNavigationGroup())
-                ->icon(static::getNavigationIcon())
-                ->activeIcon(static::getActiveNavigationIcon())
-                ->isActiveWhen(fn (): bool => request()->routeIs([
-                    static::getNavigationItemActiveRoutePattern(),
-                    'filament.app.pages.firewall-access-control',
-                ]))
-                ->sort(static::getNavigationSort())
-                ->url(static::getNavigationUrl()),
-            NavigationItem::make('Overview')
-                ->group(static::getNavigationGroup())
-                ->parentItem('Firewall')
-                ->isActiveWhen(fn (): bool => request()->routeIs(static::getNavigationItemActiveRoutePattern()))
-                ->sort(0)
-                ->url(static::getNavigationUrl()),
-        ];
-    }
 
     protected function getHeaderActions(): array
     {
@@ -65,10 +41,16 @@ class FirewallPage extends BaseProtectionPage
                 ->action('syncFirewallNow')
                 ->disabled(fn (): bool => ! $this->site),
             Action::make('accessControl')
-                ->label('Access Control')
+                ->label('Open WAF')
                 ->icon('heroicon-m-no-symbol')
                 ->color('gray')
                 ->url(fn (): string => FirewallAccessControlPage::getUrl(['site_id' => $this->site?->id]))
+                ->disabled(fn (): bool => ! $this->site),
+            Action::make('shieldSettings')
+                ->label('Open DDoS')
+                ->icon('heroicon-m-adjustments-horizontal')
+                ->color('gray')
+                ->url(fn (): string => FirewallShieldSettingsPage::getUrl(['site_id' => $this->site?->id]))
                 ->disabled(fn (): bool => ! $this->site),
         ];
     }

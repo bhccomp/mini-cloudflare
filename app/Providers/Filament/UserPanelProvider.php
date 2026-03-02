@@ -7,6 +7,7 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationGroup;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
@@ -37,6 +38,14 @@ class UserPanelProvider extends PanelProvider
             ->discoverPages(in: app_path('Filament/App/Pages'), for: 'App\\Filament\\App\\Pages')
             ->pages([
                 FirewallPage::class,
+            ])
+            ->navigationGroups([
+                NavigationGroup::make()->label('General')->collapsed(),
+                NavigationGroup::make()->label('Security & Protection')->collapsed(),
+                NavigationGroup::make()->label('Performance')->collapsed(),
+                NavigationGroup::make()->label('Monitoring')->collapsed(),
+                NavigationGroup::make()->label('Account')->collapsed(),
+                NavigationGroup::make()->label('Alerts')->collapsed(),
             ])
             ->widgets([
                 AccountWidget::class,

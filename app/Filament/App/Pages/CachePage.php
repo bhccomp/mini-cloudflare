@@ -8,6 +8,8 @@ use App\Services\Bunny\BunnyLogsService;
 
 class CachePage extends BaseProtectionPage
 {
+    protected static string|\UnitEnum|null $navigationGroup = 'Performance';
+
     protected static ?string $slug = 'cache';
 
     protected static ?int $navigationSort = -9;

@@ -62,8 +62,14 @@ class FirewallAccessRulesTable extends TableWidget
                     ->color(fn (string $state): string => match ($state) {
                         SiteFirewallRule::STATUS_ACTIVE => 'success',
                         SiteFirewallRule::STATUS_EXPIRED, SiteFirewallRule::STATUS_REMOVED => 'gray',
+                        SiteFirewallRule::STATUS_FAILED => 'danger',
                         default => 'warning',
                     }),
+                Tables\Columns\TextColumn::make('meta.error')
+                    ->label('Failure reason')
+                    ->toggleable()
+                    ->wrap()
+                    ->limit(120),
                 Tables\Columns\TextColumn::make('expires_at')
                     ->label('Expires')
                     ->formatStateUsing(fn ($state): string => $state ? $state->diffForHumans() : 'Never'),
@@ -76,6 +82,7 @@ class FirewallAccessRulesTable extends TableWidget
                     ->options([
                         SiteFirewallRule::STATUS_PENDING => 'Pending',
                         SiteFirewallRule::STATUS_ACTIVE => 'Active',
+                        SiteFirewallRule::STATUS_FAILED => 'Failed',
                         SiteFirewallRule::STATUS_EXPIRED => 'Expired',
                         SiteFirewallRule::STATUS_REMOVED => 'Removed',
                     ]),

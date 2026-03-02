@@ -25,7 +25,7 @@ use Livewire\Attributes\On;
 
 abstract class BaseProtectionPage extends Page
 {
-    protected static string|\UnitEnum|null $navigationGroup = 'Protection';
+    protected static string|\UnitEnum|null $navigationGroup = 'Security & Protection';
 
     public ?Site $site = null;
 

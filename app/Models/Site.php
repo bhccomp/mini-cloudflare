@@ -147,6 +147,11 @@ class Site extends Model
         return $this->hasMany(SiteFirewallRule::class);
     }
 
+    public function availabilityChecks(): HasMany
+    {
+        return $this->hasMany(SiteAvailabilityCheck::class);
+    }
+
     public static function statuses(): array
     {
         return [
