@@ -142,6 +142,11 @@ class Site extends Model
         return $this->hasOne(SiteAnalyticsMetric::class);
     }
 
+    public function firewallRules(): HasMany
+    {
+        return $this->hasMany(SiteFirewallRule::class);
+    }
+
     public static function statuses(): array
     {
         return [

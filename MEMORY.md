@@ -1,4 +1,28 @@
 # MEMORY
+## Firewall Access Control + Provisioning Safety (Latest)
+- Added a new Firewall Access Control flow for App panel:
+  - Page: `/app/firewall-access-control`
+  - Supports country, continent, IP/CIDR, bulk import, staged mode, and policy flags.
+  - Includes rules table widget and quick IP block from recent firewall events.
+- Added firewall rules persistence model/table:
+  - `site_firewall_rules` migration + model `SiteFirewallRule`.
+- Added Bunny Shield access-list integration service:
+  - Resolves shield zone, manages access-list rules, loads countries/continents with safe fallbacks.
+- Added access-control orchestration service:
+  - Create/apply/remove/deploy/expire rule operations + audit logging.
+- Fixed 500/page-load crash when saving rule set:
+  - Root cause: uncaught runtime exception when shield zone is unavailable.
+  - Rule apply now catches provider exceptions, marks status `failed`, stores error in `meta`, and sends warning notification instead of crashing Livewire.
+- Added explicit rule status constant: `SiteFirewallRule::STATUS_FAILED`.
+- Countries list reliability improved:
+  - Added multiple Bunny endpoint fallbacks and local ICU country fallback.
+- Navigation refactor for Firewall section:
+  - Single left sidebar structure retained with nested Firewall items (`Overview`, `Access Control`), removed in-content sub-sidebar behavior.
+- Safety fix to prevent live provider side effects in feature/unit tests:
+  - `CreateSite::afterCreate()` now skips auto-provisioning when `app()->runningUnitTests()`.
+  - Prevents accidental real Bunny zone creation from test fixtures (e.g. `wizard-example.com`, `203.0.113.10`) when real API key exists.
+- Operational notes:
+  - Existing fake Bunny zones were caused by direct provisioning in test execution context; this is now guarded.
 
 ## Dev Mode + Navigation Cleanup (Latest)
 - Added real per-site `development_mode` support:

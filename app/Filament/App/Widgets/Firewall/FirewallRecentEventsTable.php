@@ -3,8 +3,10 @@
 namespace App\Filament\App\Widgets\Firewall;
 
 use App\Filament\App\Widgets\Concerns\ResolvesSelectedSite;
+use App\Services\Firewall\FirewallAccessControlService;
 use App\Services\Firewall\FirewallInsightsPresenter;
 use Filament\Actions\Action;
+use Filament\Notifications\Notification;
 use Filament\Tables;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -91,6 +93,44 @@ class FirewallRecentEventsTable extends TableWidget
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Close')
                     ->modalContent(fn (array $record) => view('filament.app.widgets.firewall.event-details', ['record' => $record])),
+                Action::make('blockIp')
+                    ->label('Block IP (24h)')
+                    ->icon('heroicon-m-no-symbol')
+                    ->color('danger')
+                    ->visible(function (array $record): bool {
+                        $site = $this->getSelectedSite();
+                        if (! $site) {
+                            return false;
+                        }
+
+                        $ip = (string) ($record['ip'] ?? '');
+
+                        return filter_var($ip, FILTER_VALIDATE_IP) !== false
+                            && app(FirewallAccessControlService::class)->supportsManagedRules($site);
+                    })
+                    ->requiresConfirmation()
+                    ->action(function (array $record): void {
+                        $site = $this->getSelectedSite();
+                        if (! $site) {
+                            return;
+                        }
+
+                        $ip = (string) ($record['ip'] ?? '');
+                        $created = app(FirewallAccessControlService::class)->quickBlockIp(
+                            site: $site,
+                            actorId: (int) auth()->id(),
+                            ip: $ip,
+                            note: 'Created from recent firewall event.',
+                        );
+
+                        if (! $created) {
+                            Notification::make()->title('Unable to block this IP address.')->danger()->send();
+
+                            return;
+                        }
+
+                        Notification::make()->title('IP blocked for 24h.')->success()->send();
+                    }),
             ])
             ->recordAction('viewEvent')
             ->emptyStateHeading('No telemetry yet')

@@ -11,7 +11,7 @@ class CdnPage extends BaseProtectionPage
 {
     protected static ?string $slug = 'cdn';
 
-    protected static ?int $navigationSort = 0;
+    protected static ?int $navigationSort = -10;
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-globe-alt';
 

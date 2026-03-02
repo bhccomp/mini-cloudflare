@@ -6,7 +6,7 @@ class SslTlsPage extends BaseProtectionPage
 {
     protected static ?string $slug = 'ssl';
 
-    protected static ?int $navigationSort = -1;
+    protected static ?int $navigationSort = -30;
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-lock-closed';
 

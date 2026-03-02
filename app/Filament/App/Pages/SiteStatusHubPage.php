@@ -11,7 +11,7 @@ class SiteStatusHubPage extends BaseProtectionPage
 {
     protected static ?string $slug = 'status-hub';
 
-    protected static ?int $navigationSort = -3;
+    protected static ?int $navigationSort = -50;
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-queue-list';
 

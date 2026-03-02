@@ -37,6 +37,8 @@ class SiteResource extends Resource
 
     protected static string|\UnitEnum|null $navigationGroup = 'Protection';
 
+    protected static ?int $navigationSort = -20;
+
     public static function getEloquentQuery(): Builder
     {
         $user = auth()->user();

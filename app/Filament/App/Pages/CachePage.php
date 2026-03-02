@@ -10,7 +10,7 @@ class CachePage extends BaseProtectionPage
 {
     protected static ?string $slug = 'cache';
 
-    protected static ?int $navigationSort = 1;
+    protected static ?int $navigationSort = -9;
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-circle-stack';
 

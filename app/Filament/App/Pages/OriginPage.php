@@ -6,7 +6,7 @@ class OriginPage extends BaseProtectionPage
 {
     protected static ?string $slug = 'origin';
 
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = -8;
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-server-stack';
 

@@ -59,7 +59,7 @@ class CreateSite extends CreateRecord
 
         $body = 'Your site is selected. Continue setup in the Site Status Hub.';
 
-        if ($this->record->provider === Site::PROVIDER_BUNNY) {
+        if ($this->record->provider === Site::PROVIDER_BUNNY && ! app()->runningUnitTests()) {
             try {
                 (new ProvisionEdgeDeploymentJob($this->record->id, auth()->id()))
                     ->handle(app(EdgeProviderManager::class));
