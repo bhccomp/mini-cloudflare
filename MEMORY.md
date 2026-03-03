@@ -835,3 +835,11 @@
 - Corrected Bunny Shield action code mapping to match 5-mode order:
   - `bypass=0`, `allow=1`, `block=2`, `challenge=3`, `log=4`.
 - Live fix applied to current custom list so it is in block mode (`action=2`) instead of allow/log.
+
+## Global Content Width Consistency (Latest)
+- Fixed inconsistent widths across App panel pages (Simple + Pro) by removing custom hard caps (`max-width: 72rem`) from shared protection wrappers.
+- Updated wrappers now follow Filament page content width uniformly, so top sections and lower widgets/tables align on the same width.
+- Files adjusted:
+  - `resources/views/components/filament/app/settings/layout-styles.blade.php` (`.fp-protection-shell`)
+  - `resources/views/filament/app/pages/site-status-hub.blade.php` (`.fp-status-shell`)
+- Refreshed optimized caches after change (`php artisan optimize`).

@@ -2,8 +2,6 @@
     <style>
         .fp-protection-shell {
             width: 100%;
-            max-width: 72rem;
-            margin-inline: auto;
             display: grid;
             gap: 1rem;
         }
