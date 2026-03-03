@@ -59,15 +59,21 @@ class BunnyAnalyticsService
             ? $this->trendFromEvents($events, false)
             : $this->trendFromRequestsSeries($requestsSeries, $blockedTrend);
 
-        $regionalTraffic = $events->groupBy(fn (array $event) => $this->regionForCountry((string) ($event['country'] ?? '')))
-            ->map(fn ($group) => $group->count())
-            ->toArray();
+        $regionalTraffic = $this->regionalTrafficFromLocalLogs($site, hours: 24, blockedOnly: false);
+        if ($regionalTraffic === []) {
+            $regionalTraffic = $events->groupBy(fn (array $event) => $this->regionForCountry((string) ($event['country'] ?? '')))
+                ->map(fn ($group) => $group->count())
+                ->toArray();
+        }
 
-        $regionalThreat = $events
-            ->filter(fn (array $event) => in_array(strtoupper((string) ($event['action'] ?? 'ALLOW')), ['BLOCK', 'DENY', 'CHALLENGE', 'CAPTCHA'], true) || (int) ($event['status_code'] ?? 200) === 403)
-            ->groupBy(fn (array $event) => $this->regionForCountry((string) ($event['country'] ?? '')))
-            ->map(fn ($group) => $group->count())
-            ->toArray();
+        $regionalThreat = $this->regionalTrafficFromLocalLogs($site, hours: 24, blockedOnly: true);
+        if ($regionalThreat === []) {
+            $regionalThreat = $events
+                ->filter(fn (array $event) => in_array(strtoupper((string) ($event['action'] ?? 'ALLOW')), ['BLOCK', 'DENY', 'CHALLENGE', 'CAPTCHA'], true) || (int) ($event['status_code'] ?? 200) === 403)
+                ->groupBy(fn (array $event) => $this->regionForCountry((string) ($event['country'] ?? '')))
+                ->map(fn ($group) => $group->count())
+                ->toArray();
+        }
 
         $payload = [
             'blocked_requests_24h' => $blocked24h,
@@ -275,5 +281,41 @@ class BunnyAnalyticsService
         $bytes = Arr::get($response->json(), 'MonthlyBandwidthUsed');
 
         return is_numeric($bytes) ? (int) $bytes : null;
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    protected function regionalTrafficFromLocalLogs(Site $site, int $hours = 24, bool $blockedOnly = false): array
+    {
+        $query = EdgeRequestLog::query()
+            ->where('site_id', $site->id)
+            ->where('event_at', '>=', now()->subHours($hours));
+
+        if ($blockedOnly) {
+            $query->where(function ($blocked): void {
+                $blocked->whereIn('action', ['BLOCK', 'DENY', 'CHALLENGE', 'CAPTCHA'])
+                    ->orWhere('status_code', 403);
+            });
+        }
+
+        $rows = $query
+            ->selectRaw('upper(coalesce(country, ?)) as country_code, count(*) as requests', ['??'])
+            ->groupBy('country_code')
+            ->get();
+
+        if ($rows->isEmpty()) {
+            return [];
+        }
+
+        return $rows
+            ->mapToGroups(function ($row): array {
+                $country = (string) ($row->country_code ?? '??');
+                $region = $this->regionForCountry($country);
+
+                return [$region => (int) ($row->requests ?? 0)];
+            })
+            ->map(fn (Collection $counts): int => (int) $counts->sum())
+            ->toArray();
     }
 }
