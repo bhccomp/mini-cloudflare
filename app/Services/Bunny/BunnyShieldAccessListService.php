@@ -318,9 +318,11 @@ class BunnyShieldAccessListService
     protected function resolveActionCode(string $action): int
     {
         return match (strtolower(trim($action))) {
-            'allow' => 1,
+            // Bunny Shield Access List actions:
+            // 0 = allow, 1 = block, 2 = challenge, 4 = log
+            'allow' => 0,
             'challenge' => 2,
-            default => 4,
+            default => 1,
         };
     }
 
