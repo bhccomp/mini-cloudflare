@@ -6,11 +6,16 @@ use App\Filament\App\Widgets\Concerns\ResolvesSelectedSite;
 use App\Models\SiteFirewallRule;
 use App\Services\Firewall\FirewallAccessControlService;
 use Filament\Actions\Action;
+use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Tables;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget;
+use Illuminate\Support\Carbon;
 use Livewire\Attributes\On;
 
 class FirewallAccessRulesTable extends TableWidget
@@ -42,8 +47,22 @@ class FirewallAccessRulesTable extends TableWidget
                     ->badge(),
                 Tables\Columns\TextColumn::make('target')
                     ->label('Target')
+                    ->formatStateUsing(function (string $state, SiteFirewallRule $record): string {
+                        $count = (int) data_get($record->meta, 'entry_count', 0);
+
+                        if ($count > 1 && $record->rule_type === SiteFirewallRule::TYPE_COUNTRY) {
+                            return "Country set ({$count})";
+                        }
+
+                        return $state;
+                    })
                     ->copyable()
                     ->searchable(),
+                Tables\Columns\TextColumn::make('meta.entry_count')
+                    ->label('Entries')
+                    ->formatStateUsing(fn ($state): string => $state ? (string) $state : '1')
+                    ->badge()
+                    ->color('gray'),
                 Tables\Columns\TextColumn::make('action')
                     ->label('Action')
                     ->badge()
@@ -61,7 +80,7 @@ class FirewallAccessRulesTable extends TableWidget
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         SiteFirewallRule::STATUS_ACTIVE => 'success',
-                        SiteFirewallRule::STATUS_EXPIRED, SiteFirewallRule::STATUS_REMOVED => 'gray',
+                        SiteFirewallRule::STATUS_EXPIRED => 'gray',
                         SiteFirewallRule::STATUS_FAILED => 'danger',
                         default => 'warning',
                     }),
@@ -84,7 +103,6 @@ class FirewallAccessRulesTable extends TableWidget
                         SiteFirewallRule::STATUS_ACTIVE => 'Active',
                         SiteFirewallRule::STATUS_FAILED => 'Failed',
                         SiteFirewallRule::STATUS_EXPIRED => 'Expired',
-                        SiteFirewallRule::STATUS_REMOVED => 'Removed',
                     ]),
                 SelectFilter::make('mode')
                     ->options([
@@ -95,10 +113,125 @@ class FirewallAccessRulesTable extends TableWidget
                     ->options(SiteFirewallRule::actionOptions()),
             ])
             ->recordActions([
+                Action::make('edit')
+                    ->label('Edit')
+                    ->icon('heroicon-m-pencil-square')
+                    ->fillForm(function (SiteFirewallRule $record): array {
+                        $countryCodes = collect((array) data_get($record->meta, 'targets', []))
+                            ->map(fn (mixed $value): string => strtoupper(trim((string) $value)))
+                            ->filter(fn (string $code): bool => preg_match('/^[A-Z]{2}$/', $code) === 1)
+                            ->values()
+                            ->all();
+
+                        if ($countryCodes === []) {
+                            $countryCodes = collect(preg_split('/\r\n|\r|\n/', (string) data_get($record->meta, 'content', '')) ?: [])
+                                ->map(fn (string $line): string => strtoupper(trim($line)))
+                                ->filter(fn (string $code): bool => preg_match('/^[A-Z]{2}$/', $code) === 1)
+                                ->values()
+                                ->all();
+                        }
+
+                        return [
+                            'rule_type' => $record->rule_type,
+                            'target' => $record->target,
+                            'country_codes' => $countryCodes,
+                            'action' => $record->action,
+                            'mode' => $record->mode,
+                            'note' => $record->note,
+                            'expires_at' => $record->expires_at,
+                        ];
+                    })
+                    ->form(function (SiteFirewallRule $record): array {
+                        return [
+                            Select::make('rule_type')
+                                ->label('Type')
+                                ->options(SiteFirewallRule::typeOptions())
+                                ->disabled(),
+                            TextInput::make('target')
+                                ->label('Target')
+                                ->visible(fn () => $record->rule_type !== SiteFirewallRule::TYPE_COUNTRY)
+                                ->required(fn () => $record->rule_type !== SiteFirewallRule::TYPE_COUNTRY),
+                            Select::make('country_codes')
+                                ->label('Countries')
+                                ->options(function (): array {
+                                    $site = $this->getSelectedSite();
+
+                                    if (! $site) {
+                                        return [];
+                                    }
+
+                                    return app(FirewallAccessControlService::class)->countryOptions($site);
+                                })
+                                ->multiple()
+                                ->searchable()
+                                ->helperText('Select one or more countries for this rule set.')
+                                ->visible(fn () => $record->rule_type === SiteFirewallRule::TYPE_COUNTRY),
+                            Select::make('action')
+                                ->label('Action')
+                                ->options(SiteFirewallRule::actionOptions())
+                                ->required(),
+                            Select::make('mode')
+                                ->label('Mode')
+                                ->options([
+                                    SiteFirewallRule::MODE_ENFORCED => 'Enforced',
+                                    SiteFirewallRule::MODE_STAGED => 'Staged',
+                                ])
+                                ->required(),
+                            DateTimePicker::make('expires_at')
+                                ->label('Temporary until')
+                                ->native(false)
+                                ->seconds(false),
+                            Textarea::make('note')
+                                ->label('Reason (optional)')
+                                ->rows(2)
+                                ->maxLength(255),
+                        ];
+                    })
+                    ->action(function (SiteFirewallRule $record, array $data): void {
+                        if ($record->rule_type === SiteFirewallRule::TYPE_COUNTRY) {
+                            $codes = collect((array) ($data['country_codes'] ?? []))
+                                ->map(fn (string $line): string => strtoupper(trim($line)))
+                                ->filter()
+                                ->unique()
+                                ->values();
+
+                            $invalid = $codes->first(fn (string $code): bool => preg_match('/^[A-Z]{2}$/', $code) !== 1);
+                            if ($invalid) {
+                                Notification::make()
+                                    ->title('Invalid country code in list')
+                                    ->body("`{$invalid}` is not a valid 2-letter country code.")
+                                    ->warning()
+                                    ->send();
+
+                                return;
+                            }
+                        }
+
+                        $expiresAt = $data['expires_at'] ?? null;
+                        app(FirewallAccessControlService::class)->updateRule(
+                            $record,
+                            (int) auth()->id(),
+                            [
+                                'target' => $data['target'] ?? null,
+                                'countries_content' => collect((array) ($data['country_codes'] ?? []))
+                                    ->map(fn (string $line): string => strtoupper(trim($line)))
+                                    ->filter()
+                                    ->unique()
+                                    ->implode("\n"),
+                                'action' => $data['action'] ?? $record->action,
+                                'mode' => $data['mode'] ?? $record->mode,
+                                'note' => $data['note'] ?? null,
+                                'expires_at' => $expiresAt ? Carbon::parse((string) $expiresAt) : null,
+                            ],
+                        );
+
+                        Notification::make()->title('Rule updated.')->success()->send();
+                        $this->dispatch('firewall-access-rules-updated');
+                    }),
                 Action::make('enforce')
                     ->label('Enforce now')
                     ->icon('heroicon-m-check-circle')
-                    ->visible(fn (SiteFirewallRule $record): bool => $record->mode === SiteFirewallRule::MODE_STAGED && $record->status !== SiteFirewallRule::STATUS_REMOVED)
+                    ->visible(fn (SiteFirewallRule $record): bool => $record->mode === SiteFirewallRule::MODE_STAGED)
                     ->action(function (SiteFirewallRule $record): void {
                         app(FirewallAccessControlService::class)->applyRule($record, (int) auth()->id());
                         Notification::make()->title('Rule enforced.')->success()->send();

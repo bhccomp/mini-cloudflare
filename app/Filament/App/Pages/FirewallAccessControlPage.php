@@ -216,9 +216,40 @@ class FirewallAccessControlPage extends BaseProtectionPage implements HasForms
         $createdCount = 0;
         $failedCount = 0;
         $firstFailure = null;
+        $service = app(FirewallAccessControlService::class);
+
+        $countryTargets = collect($targets)
+            ->where('type', SiteFirewallRule::TYPE_COUNTRY)
+            ->pluck('value')
+            ->values()
+            ->all();
+
+        if ($countryTargets !== []) {
+            $created = $service->createRuleSet(
+                site: $this->site,
+                actorId: (int) auth()->id(),
+                ruleType: SiteFirewallRule::TYPE_COUNTRY,
+                targets: $countryTargets,
+                action: $action,
+                mode: $mode,
+                expiresAt: $expiresAt ? Carbon::parse((string) $expiresAt) : null,
+                note: is_string($note) ? $note : null,
+            );
+
+            $createdCount += count($created);
+            $failedCount += collect($created)->where('status', SiteFirewallRule::STATUS_FAILED)->count();
+            if ($firstFailure === null) {
+                $firstFailure = collect($created)
+                    ->first(fn (SiteFirewallRule $rule): bool => $rule->status === SiteFirewallRule::STATUS_FAILED);
+            }
+        }
 
         foreach ($targets as $target) {
-            $created = app(FirewallAccessControlService::class)->createRules(
+            if ($target['type'] === SiteFirewallRule::TYPE_COUNTRY) {
+                continue;
+            }
+
+            $created = $service->createRules(
                 site: $this->site,
                 actorId: (int) auth()->id(),
                 ruleType: $target['type'],

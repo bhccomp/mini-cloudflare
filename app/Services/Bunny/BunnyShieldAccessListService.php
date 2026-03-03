@@ -103,6 +103,7 @@ class BunnyShieldAccessListService
         $ruleType = strtolower((string) ($rule['rule_type'] ?? 'ip'));
         $action = strtolower((string) ($rule['action'] ?? 'block'));
         $target = (string) ($rule['target'] ?? '');
+        $content = trim((string) ($rule['content'] ?? $target));
 
         $typeId = $this->resolveTypeCode($ruleType);
         $actionId = $this->resolveActionCode($action);
@@ -113,25 +114,40 @@ class BunnyShieldAccessListService
             'type' => $typeId,
             'action' => $actionId,
             'isEnabled' => true,
-            'content' => strtoupper(trim($target)),
+            'content' => strtoupper($content),
         ];
 
         $response = $this->api->client()
             ->post("/shield/shield-zone/{$shieldZoneId}/access-lists", $payload);
 
-        if (! $response->successful()) {
+        $responseJson = $response->json();
+        if (! $response->successful() || $this->isOperationFailure($responseJson)) {
+            if ($this->isLimitExceededError($responseJson)) {
+                return $this->updateExistingCustomList(
+                    site: $site,
+                    shieldZoneId: $shieldZoneId,
+                    payload: $payload,
+                    actionId: $actionId,
+                );
+            }
+
             throw new \RuntimeException($this->responseError($response, 'Unable to create access rule.'));
         }
 
-        $data = $response->json();
+        $data = $responseJson;
         $providerRuleId = $this->extractRuleId($data);
+        $configurationId = $this->extractConfigurationId($data);
 
-        if ($providerRuleId !== null && ! empty($rule['expires_at'])) {
+        if ($providerRuleId !== null && $configurationId === null) {
+            $configurationId = $this->findConfigurationIdByListId($site, $providerRuleId);
+        }
+
+        if ($configurationId !== null) {
             $this->updateRuleConfiguration(
                 shieldZoneId: $shieldZoneId,
-                providerRuleId: $providerRuleId,
+                providerRuleId: $configurationId,
                 actionId: $actionId,
-                expiresAt: (string) $rule['expires_at'],
+                expiresAt: ! empty($rule['expires_at']) ? (string) $rule['expires_at'] : null,
             );
         }
 
@@ -302,9 +318,9 @@ class BunnyShieldAccessListService
     protected function resolveActionCode(string $action): int
     {
         return match (strtolower(trim($action))) {
-            'allow' => 0,
+            'allow' => 1,
             'challenge' => 2,
-            default => 1,
+            default => 4,
         };
     }
 
@@ -335,15 +351,20 @@ class BunnyShieldAccessListService
         int $shieldZoneId,
         string $providerRuleId,
         int|string $actionId,
-        string $expiresAt,
+        ?string $expiresAt = null,
     ): void {
-        $this->api->client()->put(
+        $payload = [
+            'action' => (int) $actionId,
+            'isEnabled' => true,
+        ];
+
+        if (is_string($expiresAt) && $expiresAt !== '') {
+            $payload['expiresAt'] = $expiresAt;
+        }
+
+        $this->api->client()->patch(
             "/shield/shield-zone/{$shieldZoneId}/access-lists/configurations/{$providerRuleId}",
-            [
-                'ActionType' => $actionId,
-                'IsEnabled' => true,
-                'ExpiresAt' => $expiresAt,
-            ],
+            $payload,
         );
     }
 
@@ -392,6 +413,22 @@ class BunnyShieldAccessListService
                 ?? Arr::get($payload, 'data.id')
                 ?? Arr::get($payload, 'listId')
                 ?? Arr::get($payload, 'data.listId');
+
+            if (is_scalar($id)) {
+                return (string) $id;
+            }
+        }
+
+        return null;
+    }
+
+    protected function extractConfigurationId(mixed $payload): ?string
+    {
+        if (is_array($payload)) {
+            $id = Arr::get($payload, 'configurationId')
+                ?? Arr::get($payload, 'ConfigurationId')
+                ?? Arr::get($payload, 'data.configurationId')
+                ?? Arr::get($payload, 'data.ConfigurationId');
 
             if (is_scalar($id)) {
                 return (string) $id;
@@ -521,5 +558,103 @@ class BunnyShieldAccessListService
         $type = strtoupper(trim($ruleType));
 
         return trim("FP {$type} {$label}");
+    }
+
+    protected function findConfigurationIdByListId(Site $site, string $listId): ?string
+    {
+        $rows = $this->listRules($site);
+
+        foreach ($rows as $row) {
+            $currentListId = (string) (Arr::get($row, 'listId') ?? Arr::get($row, 'id') ?? Arr::get($row, 'Id') ?? '');
+            if ($currentListId !== (string) $listId) {
+                continue;
+            }
+
+            $configurationId = Arr::get($row, 'configurationId') ?? Arr::get($row, 'ConfigurationId');
+            if (is_scalar($configurationId)) {
+                return (string) $configurationId;
+            }
+        }
+
+        return null;
+    }
+
+    protected function isOperationFailure(mixed $payload): bool
+    {
+        if (! is_array($payload)) {
+            return false;
+        }
+
+        $success = Arr::get($payload, 'error.success');
+
+        return is_bool($success) && $success === false;
+    }
+
+    protected function isLimitExceededError(mixed $payload): bool
+    {
+        if (! is_array($payload)) {
+            return false;
+        }
+
+        $errorKey = strtolower((string) Arr::get($payload, 'error.errorKey', ''));
+
+        return str_contains($errorKey, 'limit_reached.access_list');
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    protected function updateExistingCustomList(
+        Site $site,
+        int $shieldZoneId,
+        array $payload,
+        int|string $actionId,
+    ): array {
+        $current = $this->api->client()->get("/shield/shield-zone/{$shieldZoneId}/access-lists");
+        if (! $current->successful()) {
+            throw new \RuntimeException('Access list limit reached and existing list could not be loaded.');
+        }
+
+        $customLists = (array) Arr::get($current->json(), 'customLists', []);
+        $candidate = collect($customLists)
+            ->first(fn (array $row): bool => (int) (Arr::get($row, 'listId') ?? 0) > 0);
+
+        if (! is_array($candidate)) {
+            throw new \RuntimeException('Access list limit reached. No editable custom list was found.');
+        }
+
+        $listId = (string) (Arr::get($candidate, 'listId') ?? Arr::get($candidate, 'id') ?? '');
+        $configurationId = (string) (Arr::get($candidate, 'configurationId') ?? '');
+        if ($listId === '') {
+            throw new \RuntimeException('Access list limit reached. Existing list identifier is missing.');
+        }
+
+        $patch = $this->api->client()->patch(
+            "/shield/shield-zone/{$shieldZoneId}/access-lists/{$listId}",
+            [
+                'name' => (string) ($payload['name'] ?? 'Firewall rule'),
+                'description' => (string) ($payload['description'] ?? ''),
+                'type' => (int) ($payload['type'] ?? 3),
+                'content' => (string) ($payload['content'] ?? ''),
+            ],
+        );
+
+        if (! $patch->successful()) {
+            throw new \RuntimeException($this->responseError($patch, 'Unable to update existing custom access list.'));
+        }
+
+        if ($configurationId !== '') {
+            $this->updateRuleConfiguration(
+                shieldZoneId: $shieldZoneId,
+                providerRuleId: $configurationId,
+                actionId: $actionId,
+            );
+        }
+
+        return [
+            'provider_rule_id' => $listId,
+            'response' => $patch->json(),
+        ];
     }
 }
