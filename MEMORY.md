@@ -881,3 +881,16 @@
 - Live verification performed for `nikolajocic.dev` (site `275`):
   - metrics now persist non-zero blocked values from real logs;
   - source now includes monthly bandwidth bytes from Bunny zone API.
+
+## User Profile Features via Filament Plugin (Latest)
+- Installed `jeffgreco13/filament-breezy` to avoid custom account-settings implementation.
+- Enabled Breezy plugin on App panel (`UserPanelProvider`) with My Profile page:
+  - user menu link enabled (`My Profile`)
+  - navigation item enabled under `Account`
+  - avatar upload enabled (`hasAvatars: true`)
+- Added avatar support to `User` model:
+  - implements `Filament\Models\Contracts\HasAvatar`
+  - `getFilamentAvatarUrl()` returns storage URL for `avatar_url`
+  - added `avatar_url` to fillable fields
+- Added DB migration for `users.avatar_url` and ran migrations.
+- Result: users can manage profile info (name/email), password, and avatar through plugin-provided My Profile page at `/app/my-profile`.

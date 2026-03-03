@@ -19,6 +19,7 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Jeffgreco13\FilamentBreezy\BreezyCore;
 
 class UserPanelProvider extends PanelProvider
 {
@@ -50,6 +51,16 @@ class UserPanelProvider extends PanelProvider
             ->widgets([
                 AccountWidget::class,
             ])
+            ->plugin(
+                BreezyCore::make()
+                    ->myProfile(
+                        shouldRegisterUserMenu: true,
+                        userMenuLabel: 'My Profile',
+                        shouldRegisterNavigation: true,
+                        navigationGroup: 'Account',
+                        hasAvatars: true,
+                    )
+            )
             ->renderHook(
                 PanelsRenderHook::TOPBAR_START,
                 fn (): \Illuminate\Contracts\View\View => view('filament.app.components.topbar-site-switcher'),

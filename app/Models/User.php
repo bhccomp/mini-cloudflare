@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Filament\Models\Contracts\HasAvatar;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -9,8 +10,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 
-class User extends Authenticatable implements FilamentUser
+class User extends Authenticatable implements FilamentUser, HasAvatar
 {
     use HasFactory;
     use Notifiable;
@@ -23,6 +25,7 @@ class User extends Authenticatable implements FilamentUser
         'current_organization_id',
         'selected_site_id',
         'ui_mode',
+        'avatar_url',
     ];
 
     protected $hidden = [
@@ -72,5 +75,14 @@ class User extends Authenticatable implements FilamentUser
             ->firstWhere('id', $organizationId);
 
         return $organization?->pivot?->role;
+    }
+
+    public function getFilamentAvatarUrl(): ?string
+    {
+        if (! $this->avatar_url) {
+            return null;
+        }
+
+        return Storage::url($this->avatar_url);
     }
 }
