@@ -319,10 +319,10 @@ class BunnyShieldAccessListService
     {
         return match (strtolower(trim($action))) {
             // Bunny Shield Access List actions:
-            // 0 = allow, 1 = block, 2 = challenge, 4 = log
-            'allow' => 0,
-            'challenge' => 2,
-            default => 1,
+            // 0 = bypass, 1 = allow, 2 = block, 3 = challenge, 4 = log
+            'allow' => 1,
+            'challenge' => 3,
+            default => 2,
         };
     }
 
@@ -336,9 +336,9 @@ class BunnyShieldAccessListService
             'type:cidr' => 1,
             'type:country' => 2,
             'type:continent' => 3,
-            'action:allow' => 0,
-            'action:block' => 1,
-            'action:challenge' => 2,
+            'action:allow' => 1,
+            'action:block' => 2,
+            'action:challenge' => 3,
             default => 0,
         };
 
