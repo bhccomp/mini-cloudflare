@@ -193,10 +193,7 @@ class FirewallAccessControlService
         }
 
         $count = $targets->count();
-        $summary = match ($ruleType) {
-            SiteFirewallRule::TYPE_COUNTRY => "Country set ({$count})",
-            default => "Rule set ({$count})",
-        };
+        $summary = $this->ruleSetLabel($ruleType, $action);
 
         $meta = [
             'targets' => $targets->all(),
@@ -264,6 +261,7 @@ class FirewallAccessControlService
         $meta = is_array($rule->meta) ? $rule->meta : [];
         $ruleType = $rule->rule_type;
         $target = trim((string) Arr::get($data, 'target', $rule->target));
+        $action = strtolower((string) Arr::get($data, 'action', $rule->action));
 
         if ($ruleType === SiteFirewallRule::TYPE_COUNTRY) {
             $codes = collect(preg_split('/\r\n|\r|\n/', (string) Arr::get($data, 'countries_content', '')) ?: [])
@@ -276,7 +274,7 @@ class FirewallAccessControlService
                 $meta['targets'] = $codes->all();
                 $meta['content'] = $codes->implode("\n");
                 $meta['entry_count'] = $codes->count();
-                $target = "Country set ({$codes->count()})";
+                $target = $this->ruleSetLabel($ruleType, $action);
             }
         } else {
             unset($meta['targets'], $meta['content'], $meta['entry_count']);
@@ -285,7 +283,7 @@ class FirewallAccessControlService
         unset($meta['error'], $meta['provider_response']);
 
         $mode = (string) Arr::get($data, 'mode', $rule->mode);
-        $action = (string) Arr::get($data, 'action', $rule->action);
+        $action = strtolower((string) Arr::get($data, 'action', $rule->action));
         $note = Arr::get($data, 'note');
         $expiresAt = Arr::get($data, 'expires_at');
 
@@ -404,5 +402,24 @@ class FirewallAccessControlService
             'message' => $message,
             'meta' => $meta + ['provider' => $site->provider],
         ]);
+    }
+
+    protected function ruleSetLabel(string $ruleType, string $action): string
+    {
+        $typeLabel = match ($ruleType) {
+            SiteFirewallRule::TYPE_COUNTRY => 'Country',
+            SiteFirewallRule::TYPE_CONTINENT => 'Continent',
+            SiteFirewallRule::TYPE_IP => 'IP',
+            SiteFirewallRule::TYPE_CIDR => 'CIDR',
+            default => 'Access',
+        };
+
+        $suffix = match (strtolower($action)) {
+            SiteFirewallRule::ACTION_ALLOW => 'Allowlist',
+            SiteFirewallRule::ACTION_CHALLENGE => 'Challenges',
+            default => 'Blocks',
+        };
+
+        return "{$typeLabel} {$suffix}";
     }
 }

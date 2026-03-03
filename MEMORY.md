@@ -826,3 +826,12 @@
 - Practical conclusion for user test mismatch:
   - rule is deployed on provider side;
   - continued access is most likely due to request geolocation not resolving to `RS` from tester network path (VPN/ISP/mobile egress).
+
+## Firewall Access Rule UX + Action Mapping (Latest)
+- Improved grouped rule naming for Access Control table and persisted rule targets:
+  - replaced legacy labels like `Country set (4)` / `Rule set (N)` with friendly labels.
+  - new labels are action-aware, e.g. `Country Blocks`, `Country Allowlist`, `Country Challenges`.
+  - added display fallback so legacy rows render friendly names without DB migration.
+- Corrected Bunny Shield action code mapping to match 5-mode order:
+  - `bypass=0`, `allow=1`, `block=2`, `challenge=3`, `log=4`.
+- Live fix applied to current custom list so it is in block mode (`action=2`) instead of allow/log.

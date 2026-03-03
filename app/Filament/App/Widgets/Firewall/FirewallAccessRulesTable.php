@@ -49,9 +49,24 @@ class FirewallAccessRulesTable extends TableWidget
                     ->label('Target')
                     ->formatStateUsing(function (string $state, SiteFirewallRule $record): string {
                         $count = (int) data_get($record->meta, 'entry_count', 0);
+                        $isLegacySetLabel = preg_match('/\bset\s*\(\d+\)\b/i', $state) === 1;
 
-                        if ($count > 1 && $record->rule_type === SiteFirewallRule::TYPE_COUNTRY) {
-                            return "Country set ({$count})";
+                        if ($count > 1 || $isLegacySetLabel) {
+                            $typeLabel = match ($record->rule_type) {
+                                SiteFirewallRule::TYPE_COUNTRY => 'Country',
+                                SiteFirewallRule::TYPE_CONTINENT => 'Continent',
+                                SiteFirewallRule::TYPE_IP => 'IP',
+                                SiteFirewallRule::TYPE_CIDR => 'CIDR',
+                                default => 'Access',
+                            };
+
+                            $suffix = match (strtolower($record->action)) {
+                                SiteFirewallRule::ACTION_ALLOW => 'Allowlist',
+                                SiteFirewallRule::ACTION_CHALLENGE => 'Challenges',
+                                default => 'Blocks',
+                            };
+
+                            return "{$typeLabel} {$suffix}";
                         }
 
                         return $state;
