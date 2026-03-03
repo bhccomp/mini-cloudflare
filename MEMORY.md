@@ -843,3 +843,26 @@
   - `resources/views/components/filament/app/settings/layout-styles.blade.php` (`.fp-protection-shell`)
   - `resources/views/filament/app/pages/site-status-hub.blade.php` (`.fp-status-shell`)
 - Refreshed optimized caches after change (`php artisan optimize`).
+
+## Status Hub Live Dashboard Refresh (Latest)
+- Refactored Status Hub behavior after onboarding completes (`Live / Protected`):
+  - onboarding/provisioning flow is hidden once site is live.
+  - page now acts as a compact dashboard.
+- Added a clear Simple vs Pro difference on live status hub:
+  - Simple: compact high-level cards only (`SiteSignalsStats`, `BandwidthUsageStats`).
+  - Pro: advanced analytics-focused charts only (no WAF map/tables):
+    - `Regional Traffic Share`
+    - `Cache Delivery Split`
+    - `Regional Threat Profile`
+    - `Security Posture Trend` (new)
+- Removed WAF-heavy widgets from Status Hub Pro view (map, attack breakdown, top countries, top IPs).
+- Removed top Status Hub hero section/card in live mode to reduce page length.
+- Layout tuning for Pro view:
+  - enforced two-column paired rows:
+    - `Regional Traffic Share` + `Cache Delivery Split`
+    - `Regional Threat Profile` + `Security Posture Trend`
+- Visual consistency fix:
+  - implemented Filament widget equal-height behavior for side-by-side cards.
+  - added fixed chart canvas height for no-aspect-ratio chart widgets to prevent uneven pair heights.
+- Cleanup:
+  - removed unused interim widget file `StatusHubLiveServiceStats`.

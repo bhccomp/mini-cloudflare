@@ -2,6 +2,12 @@
 
 namespace App\Filament\App\Pages;
 
+use App\Filament\App\Widgets\BandwidthUsageStats;
+use App\Filament\App\Widgets\CacheDistributionChart;
+use App\Filament\App\Widgets\SecurityPostureTrendChart;
+use App\Filament\App\Widgets\RegionalThreatLevelChart;
+use App\Filament\App\Widgets\RegionalTrafficShareChart;
+use App\Filament\App\Widgets\SiteSignalsStats;
 use App\Filament\App\Resources\SiteResource;
 use App\Jobs\CheckAcmDnsValidationJob;
 use App\Models\Site;
@@ -34,9 +40,57 @@ class SiteStatusHubPage extends BaseProtectionPage
         ];
     }
 
+    protected function getHeaderWidgets(): array
+    {
+        if (! $this->site || ! $this->isLiveProtected()) {
+            return [];
+        }
+
+        if ($this->isSimpleMode()) {
+            return [
+                SiteSignalsStats::class,
+                BandwidthUsageStats::class,
+            ];
+        }
+
+        return [
+            BandwidthUsageStats::class,
+            RegionalTrafficShareChart::class,
+            CacheDistributionChart::class,
+            RegionalThreatLevelChart::class,
+            SecurityPostureTrendChart::class,
+        ];
+    }
+
+    public function getHeaderWidgetsColumns(): int|array
+    {
+        if ($this->isSimpleMode()) {
+            return 1;
+        }
+
+        return [
+            'md' => 2,
+            'xl' => 4,
+        ];
+    }
+
     public function isBunnyFlow(): bool
     {
         return ($this->site?->provider ?? '') === Site::PROVIDER_BUNNY;
+    }
+
+    public function isLiveProtected(): bool
+    {
+        if (! $this->site) {
+            return false;
+        }
+
+        if ($this->isBunnyFlow()) {
+            return $this->site->onboarding_status === Site::ONBOARDING_LIVE
+                || $this->site->status === Site::STATUS_ACTIVE;
+        }
+
+        return $this->site->status === Site::STATUS_ACTIVE;
     }
 
     public function steps(): array
