@@ -2,9 +2,11 @@
 
 namespace App\Services\Bunny;
 
+use App\Models\EdgeRequestLog;
 use App\Models\Site;
 use App\Models\SiteAnalyticsMetric;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 
 class BunnyAnalyticsService
 {
@@ -18,10 +20,14 @@ class BunnyAnalyticsService
         }
 
         $stats = $this->fetchStats($zoneId);
-        $events = collect($this->logs->recentLogs($site, 400));
+        $events = $this->localEvents($site);
+        if ($events->isEmpty()) {
+            $events = collect($this->logs->recentLogs($site, 400));
+        }
         $requestsSeries = $this->chartSeries($stats, ['RequestsServedChart']);
         $error4xxSeries = $this->chartSeries($stats, ['Error4xxChart']);
         $error5xxSeries = $this->chartSeries($stats, ['Error5xxChart']);
+        $monthlyBandwidthBytes = $this->fetchMonthlyBandwidthBytes($zoneId);
 
         $total24h = (int) ($this->readNumber($stats, ['requests', 'Requests', 'totalRequests', 'TotalRequests', 'TotalRequestsServed']) ?? $events->count());
         $cacheHitRatio = (float) ($this->readNumber($stats, ['cacheHitRate', 'CacheHitRate', 'cacheHitRatio', 'CacheHitRatio']) ?? 0);
@@ -78,6 +84,10 @@ class BunnyAnalyticsService
             'source' => [
                 'mode' => 'bunny_live',
                 'zone_id' => $zoneId,
+                'monthly_bandwidth_bytes' => $monthlyBandwidthBytes,
+                'monthly_bandwidth_gb' => $monthlyBandwidthBytes !== null
+                    ? round($monthlyBandwidthBytes / 1073741824, 4)
+                    : null,
             ],
             'captured_at' => now(),
         ];
@@ -222,5 +232,48 @@ class BunnyAnalyticsService
             in_array($country, ['BR', 'AR', 'CL', 'CO', 'PE'], true) => 'South America',
             default => 'Other',
         };
+    }
+
+    /**
+     * @return Collection<int, array<string, mixed>>
+     */
+    protected function localEvents(Site $site): Collection
+    {
+        return EdgeRequestLog::query()
+            ->where('site_id', $site->id)
+            ->where('event_at', '>=', now()->subDays(7))
+            ->latest('event_at')
+            ->limit(800)
+            ->get()
+            ->map(function (EdgeRequestLog $log): array {
+                return [
+                    'timestamp' => $log->event_at,
+                    'action' => strtoupper((string) ($log->action ?? 'ALLOW')),
+                    'ip' => (string) ($log->ip ?? '-'),
+                    'country' => strtoupper((string) ($log->country ?? '??')),
+                    'method' => strtoupper((string) ($log->method ?? 'GET')),
+                    'uri' => (string) ($log->path ?? '/'),
+                    'rule' => (string) ($log->rule ?? 'edge'),
+                    'status_code' => (int) ($log->status_code ?? 200),
+                ];
+            })
+            ->values();
+    }
+
+    protected function fetchMonthlyBandwidthBytes(int $zoneId): ?int
+    {
+        if ($zoneId <= 0) {
+            return null;
+        }
+
+        $response = $this->api->client()->get("/pullzone/{$zoneId}");
+
+        if (! $response->successful()) {
+            return null;
+        }
+
+        $bytes = Arr::get($response->json(), 'MonthlyBandwidthUsed');
+
+        return is_numeric($bytes) ? (int) $bytes : null;
     }
 }

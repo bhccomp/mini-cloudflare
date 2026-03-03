@@ -866,3 +866,18 @@
   - added fixed chart canvas height for no-aspect-ratio chart widgets to prevent uneven pair heights.
 - Cleanup:
   - removed unused interim widget file `StatusHubLiveServiceStats`.
+
+## Bunny Analytics Accuracy Fix (Latest)
+- Resolved mismatch where dashboard showed `Blocked Requests (24h) = 0` despite blocked/challenge actions existing in ingested edge logs.
+- Root cause:
+  - Bunny analytics sync path was relying on API/fallback event source that did not fully reflect local ingested security actions.
+- Implemented fix in `BunnyAnalyticsService`:
+  - prefer local `edge_request_logs` events for blocked/allowed/trend/regional calculations;
+  - fallback to remote recent logs only when local events are unavailable.
+- Bandwidth usage source corrected:
+  - added pull-zone lookup to fetch real `MonthlyBandwidthUsed` bytes;
+  - persisted to `site_analytics_metrics.source.monthly_bandwidth_bytes` and `monthly_bandwidth_gb`;
+  - this avoids request-based estimated monthly usage where live bytes are available.
+- Live verification performed for `nikolajocic.dev` (site `275`):
+  - metrics now persist non-zero blocked values from real logs;
+  - source now includes monthly bandwidth bytes from Bunny zone API.
