@@ -810,3 +810,19 @@
   - `php artisan optimize` passed
 - Backup branch created before rollout:
   - `backup/pre-ui-mode-20260227-202412`
+
+## Country Block Deployment Verification (Latest)
+- Ran live Bunny API verification for `nikolajocic.dev` after Serbia block report.
+- Confirmed active edge/shield resources:
+  - Pull zone: `fp-275-nikolajocic-dev` (`id=5392977`)
+  - Shield zone: `85227`
+- Confirmed custom country access list is deployed and enabled:
+  - `listId=27764`
+  - `isEnabled=true`
+  - `action=4` (block)
+  - `type=3` (country)
+  - deployed content includes `RS` (Serbia), plus `AF`, `AD`, `AZ`.
+- Confirmed domain traffic is served via edge network (response headers include `server: BunnyCDN-*` and `cdn-pullzone: 5392977`).
+- Practical conclusion for user test mismatch:
+  - rule is deployed on provider side;
+  - continued access is most likely due to request geolocation not resolving to `RS` from tester network path (VPN/ISP/mobile egress).
