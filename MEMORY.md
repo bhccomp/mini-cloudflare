@@ -1,5 +1,26 @@
 # MEMORY
 
+## Demo Site Seeding + Marketing Screenshot Data (Latest)
+- Added isolated demo site for screenshots:
+  - Domain: `example.com` (site id `495`)
+  - Seeded with high-volume analytics and firewall-style traffic for marketing captures.
+  - Real production site `nikolajocic.dev` remains on real data and was not modified by demo overrides.
+- Seeded/adjusted demo metrics for screenshot targets:
+  - Firewall summary target values applied for demo: total `239,518`, blocked `38,242`, suspicious `12,402`.
+  - Map/country emphasis: US requests boosted and overrideable (`92,563` target used for captures).
+  - Top IP table now supports demo override rows with high request/blocked counts.
+  - Demo “Last Sync” adjusted to show fresh state (about 1 minute ago) for capture quality.
+- Added demo-aware insight override hooks (gated by `site.provider_meta.demo_seeded = true`):
+  - `demo_suspicious_requests_24h`
+  - `demo_block_ratio`
+  - `demo_suspicious_ratio`
+  - `demo_top_countries`
+  - `demo_top_ips`
+- Overview parity fix:
+  - Security & Protection overview summary can use seeded analytics totals for demo sites so numbers align across Overview/Firewall/Analytics.
+- Threat label update (global UI copy):
+  - Replaced threat level text `Degraded` -> `Active Mitigation`.
+
 ## Global Topbar AJAX Search (Latest)
 - Added a new global AJAX search in App panel topbar (right side, near avatar) using Livewire + Filament dropdowns.
 - Search scope includes:
@@ -29,7 +50,11 @@
 - Added middleware `RedirectUnauthenticatedAppToLogin` and wired it into web + app panel middleware stack.
 - Added componentized marketing frontend under `resources/views/components/marketing/*` and `resources/views/marketing/*`:
   - Hero updated with strong positioning copy and proof strip.
-  - New Dashboard Preview section with screenshot-style placeholder and concrete controls list.
+  - Dashboard Preview section now uses a real dashboard screenshot in a framed card style.
+  - Added click-to-zoom modal behavior for preview image (close button + ESC + backdrop close).
+  - Added optimized public preview assets:
+    - `public/images/dashboard-preview.webp`
+    - `public/images/dashboard-preview.png`
   - Problem section tightened to concrete pain points.
   - Features rewritten with specific capabilities (country/IP/CIDR, rate limiting, origin exposure/health, anomaly detection, alerts).
   - Pricing clarified by tier with concrete limits and CTA destinations.
