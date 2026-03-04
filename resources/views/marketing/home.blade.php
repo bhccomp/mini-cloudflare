@@ -33,15 +33,13 @@
 
             <main>
                 <x-marketing.hero />
-                <x-marketing.assisted-onboarding />
-                <x-marketing.built-for-humans />
-                <x-marketing.dashboard-preview />
-                <x-marketing.problem />
+                <x-marketing.human-friendly-onboarding />
+                <x-marketing.safe-dns-cutover />
+                <x-marketing.security-dashboard-section />
+                <x-marketing.global-edge-protection />
+                <x-marketing.platform-architecture />
                 <x-marketing.features />
-                <x-marketing.how-it-works />
                 <x-marketing.pricing />
-                <x-marketing.credibility />
-                <x-marketing.faq />
             </main>
 
             <x-marketing.footer />

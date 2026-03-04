@@ -110,3 +110,31 @@ Bunny credentials:
   - Filament panels (`/app`, `/admin`) use the Shield Phage wordmark via panel provider `brandLogo(...)`.
 - Hero background asset currently used by marketing hero:
   - `public/images/hero-banner-new.png`
+
+## Landing Page Section Layout (Current)
+- Hero section remains custom and intentionally separate.
+- Home page section composition after hero:
+  - `human-friendly-onboarding`
+  - `safe-dns-cutover`
+  - `security-dashboard-section`
+  - `global-edge-protection`
+  - `platform-architecture`
+  - `features`
+  - `pricing`
+- Main landing assembly file:
+  - `resources/views/marketing/home.blade.php`
+
+## Marketing Design Assets
+- Imported design image set lives in:
+  - `public/design-assets/`
+- Current section image usage:
+  - `onboarding-team.png` (Human-Friendly Onboarding)
+  - `dns-cutover-ui.png` (Safe DNS Cutover)
+  - `dashboard-laptop.png` (Security Dashboard Built for Humans)
+  - `world-map-security.png` (Global Edge Protection)
+  - `architecture-diagram.png` (Platform Architecture)
+
+## Frontend Build Note
+- After changing Blade/Tailwind section classes on marketing pages, run:
+  - `pnpm build`
+- This ensures new utility classes are included in compiled CSS and layout changes appear in production.
