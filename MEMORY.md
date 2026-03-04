@@ -1,5 +1,32 @@
 # MEMORY
 
+## Landing Page Flow, Section Rhythm, and Mobile Navigation (Latest)
+- Marketing landing page structure was iterated heavily to reduce the “single poster” effect and improve scan flow:
+  - Added strict alternating section backgrounds from post-hero through pricing with subtle separators:
+    - `A = bg-[#020817]`, `B = bg-[#041427]`
+    - Each section now uses `border-y border-white/5` and a subtle gradient overlay for transition clarity.
+  - Introduced **Edge Protection in Numbers** section (4 metrics cards) to break up consecutive large illustration blocks.
+  - Reordered layout so **Core Security Capabilities** sits between large illustration sections for better rhythm.
+- Illustration/content composition updates:
+  - Converted **Global Edge Protection** and **How FirePhage Protects Your Infrastructure** into split desktop layouts:
+    - Global Edge Protection: text left, illustration right.
+    - Infrastructure Protection: illustration left, text right.
+  - Replaced both sections with human-readable paragraphs + bullet lists.
+  - Increased diagram sizing to improve presence and reduce empty vertical feel.
+- Pricing hierarchy improvements:
+  - Featured middle plan now visually dominant (`scale-105`, stronger cyan border, `shadow-lg`).
+  - Added **Most Popular** badge to featured plan.
+  - CTA buttons standardized to full width with stronger hover states.
+- Mobile navigation:
+  - Added responsive hamburger (“sandwich”) menu for small screens on the marketing header.
+  - Desktop nav remains visible on `md+`; hamburger + dropdown menu only on small screens.
+  - Mobile menu closes on link click and `Escape`.
+- Added/updated marketing assets and components used during redesign iterations:
+  - New component: `resources/views/components/marketing/edge-protection-numbers.blade.php`
+  - Additional local image assets staged for marketing experiments:
+    - `banner.png`, `new-banner.png`, `white-banner.png`, `draft.png`, `waf_overview.png`
+    - `public/images/hero-banner.png`, `public/images/hero-banner-light.png`
+
 ## Shield Phage Branding + Human-Readable Marketing Refresh (Latest)
 - Adopted selected logo direction: **Shield Phage**.
   - Added reusable logo assets:

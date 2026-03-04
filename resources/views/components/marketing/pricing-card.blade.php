@@ -8,10 +8,16 @@
 ])
 
 <article @class([
-    'flex h-full flex-col rounded-2xl p-6',
-    'border border-cyan-400/45 bg-slate-900/70 shadow-[0_0_0_1px_rgba(34,211,238,0.2)]' => $featured,
+    'relative flex h-full flex-col rounded-2xl p-6',
+    'scale-105 border border-cyan-400 bg-slate-900/70 shadow-lg' => $featured,
     'border border-slate-800 bg-slate-900/60' => ! $featured,
 ])>
+    @if($featured)
+        <div class="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full border border-cyan-300/40 bg-cyan-400 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-950">
+            Most Popular
+        </div>
+    @endif
+
     <p @class([
         'text-xs uppercase tracking-[0.12em]',
         'text-cyan-300' => $featured,
@@ -27,5 +33,5 @@
         {{ $slot }}
     </ul>
 
-    <a href="{{ $ctaHref }}" class="mt-auto pt-8 inline-flex rounded-lg bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300">{{ $ctaLabel }}</a>
+    <a href="{{ $ctaHref }}" class="mt-auto w-full rounded-lg bg-cyan-500 py-3 text-center text-sm font-medium text-slate-950 hover:bg-cyan-400 hover:text-black">{{ $ctaLabel }}</a>
 </article>

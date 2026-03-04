@@ -80,6 +80,21 @@ class BunnyFirewallInsightsService
 
         $total = $events->count();
         $allowed = max(0, $total - $blocked);
+        $metric = $site->analyticsMetric ?: $this->analytics->syncSiteMetrics($site);
+        $isDemoSeed = (bool) data_get($site->provider_meta, 'demo_seeded', false);
+        $suspicious = null;
+        $blockRatioOverride = null;
+        $suspiciousRatioOverride = null;
+
+        // Demo/screenshot sites should reflect seeded analytics totals on summary cards.
+        if ($isDemoSeed && $metric) {
+            $total = (int) ($metric->total_requests_24h ?? $total);
+            $blocked = (int) ($metric->blocked_requests_24h ?? $blocked);
+            $allowed = max(0, (int) ($metric->allowed_requests_24h ?? ($total - $blocked)));
+            $suspicious = (int) data_get($site->provider_meta, 'demo_suspicious_requests_24h', 0);
+            $blockRatioOverride = data_get($site->provider_meta, 'demo_block_ratio');
+            $suspiciousRatioOverride = data_get($site->provider_meta, 'demo_suspicious_ratio');
+        }
 
         $topCountries = $events
             ->groupBy('country')
@@ -88,6 +103,23 @@ class BunnyFirewallInsightsService
             ->take(10)
             ->values()
             ->all();
+
+        if ($isDemoSeed) {
+            $demoTopCountries = (array) data_get($site->provider_meta, 'demo_top_countries', []);
+
+            if ($demoTopCountries !== []) {
+                $topCountries = collect($demoTopCountries)
+                    ->map(function (array $row): array {
+                        return [
+                            'country' => strtoupper((string) ($row['country'] ?? 'US')),
+                            'requests' => max(0, (int) ($row['requests'] ?? 0)),
+                        ];
+                    })
+                    ->filter(fn (array $row): bool => $row['country'] !== '')
+                    ->values()
+                    ->all();
+            }
+        }
 
         $topIps = $events
             ->groupBy('ip')
@@ -101,13 +133,37 @@ class BunnyFirewallInsightsService
             ->values()
             ->all();
 
+        if ($isDemoSeed) {
+            $demoTopIps = (array) data_get($site->provider_meta, 'demo_top_ips', []);
+
+            if ($demoTopIps !== []) {
+                $topIps = collect($demoTopIps)
+                    ->map(function (array $row): array {
+                        return [
+                            'ip' => (string) ($row['ip'] ?? ''),
+                            'requests' => max(0, (int) ($row['requests'] ?? 0)),
+                            'blocked' => max(0, (int) ($row['blocked'] ?? 0)),
+                        ];
+                    })
+                    ->filter(fn (array $row): bool => $row['ip'] !== '')
+                    ->values()
+                    ->all();
+            }
+        }
+
         return [
             'summary' => [
                 'total' => $total,
                 'blocked' => $blocked,
                 'allowed' => $allowed,
+                'suspicious' => $suspicious,
                 'counted' => 0,
-                'block_ratio' => $total > 0 ? round(($blocked / $total) * 100, 2) : 0,
+                'block_ratio' => is_numeric($blockRatioOverride)
+                    ? (float) $blockRatioOverride
+                    : ($total > 0 ? round(($blocked / $total) * 100, 2) : 0),
+                'suspicious_ratio' => is_numeric($suspiciousRatioOverride)
+                    ? (float) $suspiciousRatioOverride
+                    : null,
             ],
             'top_countries' => $topCountries,
             'top_ips' => $topIps,

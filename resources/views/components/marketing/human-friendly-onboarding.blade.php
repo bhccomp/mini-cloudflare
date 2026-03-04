@@ -1,7 +1,8 @@
-<section class="py-16 lg:py-20">
-    <div class="mx-auto max-w-6xl px-6">
-        <div class="grid grid-cols-1 items-center gap-10 md:grid-cols-12">
-            <div class="md:col-span-5">
+<section class="relative w-full border-y border-white/5 bg-[#020817] py-28">
+    <div class="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/0 via-white/0 to-white/[0.03]" aria-hidden="true"></div>
+    <div class="relative z-10 mx-auto max-w-7xl px-6 lg:px-10">
+        <div class="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
+            <div>
                 <h2 class="text-3xl font-semibold text-white">Human-Friendly Onboarding</h2>
                 <p class="mt-4 text-sm leading-7 text-slate-300">
                     Our team can handle the entire onboarding process for you.
@@ -20,11 +21,12 @@
                 </a>
             </div>
 
-            <div class="md:col-span-7">
+            <div class="relative flex justify-center lg:justify-end">
+                <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_65%_45%,rgba(34,211,238,0.22),transparent_62%)] blur-3xl opacity-65" aria-hidden="true"></div>
                 <img
                     src="{{ asset('design-assets/onboarding-team.png') }}"
                     alt="Onboarding support team illustration"
-                    class="mx-auto w-full max-w-[720px]"
+                    class="relative z-10 w-full max-w-[1100px] rounded-none shadow-none"
                     loading="lazy"
                     decoding="async"
                 >

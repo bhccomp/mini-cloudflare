@@ -34,13 +34,19 @@ class FirewallInsightsPresenter
 
         return match (true) {
             $ratio >= 30 => 'Under Attack',
-            $ratio >= 12 => 'Degraded',
+            $ratio >= 12 => 'Active Mitigation',
             default => 'Healthy',
         };
     }
 
     public function suspiciousRequests(array $insights): int
     {
+        $override = data_get($insights, 'summary.suspicious');
+
+        if (is_numeric($override)) {
+            return max(0, (int) $override);
+        }
+
         $total = (int) data_get($insights, 'summary.total', 0);
         $blocked = (int) data_get($insights, 'summary.blocked', 0);
 
@@ -79,7 +85,10 @@ class FirewallInsightsPresenter
 
         $max = max(1, (int) collect($countries)->max('requests'));
         $blockedPct = (float) data_get($insights, 'summary.block_ratio', 0);
-        $suspiciousPct = min(80.0, round($blockedPct * 0.8, 2));
+        $suspiciousOverride = data_get($insights, 'summary.suspicious_ratio');
+        $suspiciousPct = is_numeric($suspiciousOverride)
+            ? (float) $suspiciousOverride
+            : min(80.0, round($blockedPct * 0.8, 2));
 
         return collect($countries)
             ->map(function (array $row) use ($coords, $max, $blockedPct, $suspiciousPct): ?array {
