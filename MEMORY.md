@@ -1,4 +1,24 @@
 # MEMORY
+
+## Public Website + Auth Entry Routing + Conversion Landing (Latest)
+- Root route is now a public marketing site (no redirect to `/app`).
+- Auth routing behavior:
+  - `/app` remains dashboard entry and protected.
+  - Unauthenticated `/app` requests now redirect to `/login`.
+  - `/login` redirects to Filament app login at `/app/login`.
+  - `/register` currently routes to `/app/login` (safe auth entrypoint).
+- Added middleware `RedirectUnauthenticatedAppToLogin` and wired it into web + app panel middleware stack.
+- Added componentized marketing frontend under `resources/views/components/marketing/*` and `resources/views/marketing/*`:
+  - Hero updated with strong positioning copy and proof strip.
+  - New Dashboard Preview section with screenshot-style placeholder and concrete controls list.
+  - Problem section tightened to concrete pain points.
+  - Features rewritten with specific capabilities (country/IP/CIDR, rate limiting, origin exposure/health, anomaly detection, alerts).
+  - Pricing clarified by tier with concrete limits and CTA destinations.
+  - Added credibility section and contact page (`/contact`).
+  - Footer includes login/contact links and placeholders for terms/privacy.
+- SEO/OG tags updated for stronger positioning on homepage.
+- Avatar media fix: created missing `public/storage` symlink so uploaded profile avatars load correctly.
+- Profile page UX fix: added Breezy view overrides to right-align update buttons and increase vertical spacing between sections/forms.
 ## Security & Protection Navigation + Shield + Availability Monitor (Latest)
 - Shield onboarding and existing-site linkage:
   - Added auto ensure/link of Shield zone during Bunny provisioning.
