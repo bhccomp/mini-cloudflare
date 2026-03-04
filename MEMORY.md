@@ -9,7 +9,7 @@
   - Firewall summary target values applied for demo: total `239,518`, blocked `38,242`, suspicious `12,402`.
   - Map/country emphasis: US requests boosted and overrideable (`92,563` target used for captures).
   - Top IP table now supports demo override rows with high request/blocked counts.
-  - Demo “Last Sync” adjusted to show fresh state (about 1 minute ago) for capture quality.
+- Demo “Last Sync” is now forced to show `1 minute ago` continuously for demo-seeded sites in UI widgets/pages.
 - Added demo-aware insight override hooks (gated by `site.provider_meta.demo_seeded = true`):
   - `demo_suspicious_requests_24h`
   - `demo_block_ratio`
@@ -20,6 +20,10 @@
   - Security & Protection overview summary can use seeded analytics totals for demo sites so numbers align across Overview/Firewall/Analytics.
 - Threat label update (global UI copy):
   - Replaced threat level text `Degraded` -> `Active Mitigation`.
+- Added `Site` helper methods for demo-aware sync freshness:
+  - `isDemoSeeded()`
+  - `syncFreshnessForHumans($fallback)`
+  - Wired into Firewall Threat Summary widget and protection pages (`Analytics`, `CDN`, `Cache`).
 
 ## Global Topbar AJAX Search (Latest)
 - Added a new global AJAX search in App panel topbar (right side, near avatar) using Livewire + Filament dropdowns.
@@ -51,7 +55,7 @@
 - Added componentized marketing frontend under `resources/views/components/marketing/*` and `resources/views/marketing/*`:
   - Hero updated with strong positioning copy and proof strip.
   - Dashboard Preview section now uses a real dashboard screenshot in a framed card style.
-  - Added click-to-zoom modal behavior for preview image (close button + ESC + backdrop close).
+  - Removed preview zoom/lightbox interactions; screenshot is now static with no click/fullscreen effects.
   - Added optimized public preview assets:
     - `public/images/dashboard-preview.webp`
     - `public/images/dashboard-preview.png`

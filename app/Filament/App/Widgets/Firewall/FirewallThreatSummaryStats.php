@@ -33,7 +33,7 @@ class FirewallThreatSummaryStats extends StatsOverviewWidget
 
         $threatColor = match ($threatLevel) {
             'Under Attack' => 'danger',
-            'Degraded' => 'warning',
+            'Active Mitigation' => 'warning',
             default => 'success',
         };
 
@@ -54,7 +54,7 @@ class FirewallThreatSummaryStats extends StatsOverviewWidget
                 ->description('Potential risk signals')
                 ->descriptionIcon('heroicon-m-exclamation-triangle')
                 ->color('warning'),
-            Stat::make('Last Sync', $site->analyticsMetric?->captured_at?->diffForHumans() ?: 'No sync yet')
+            Stat::make('Last Sync', $site->syncFreshnessForHumans('No sync yet'))
                 ->description('Telemetry freshness')
                 ->descriptionIcon('heroicon-m-clock')
                 ->color('gray'),

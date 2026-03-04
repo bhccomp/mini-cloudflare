@@ -40,7 +40,7 @@
                     ['label' => 'Included Usage', 'value' => number_format((float) $bandwidthUsage['percent_used'], 2) . '%' . ((bool) $bandwidthUsage['warning'] ? ' (Warning: close to limit)' : '')],
                     ['label' => 'Cache Hit %', 'value' => $m && $m->cache_hit_ratio !== null ? number_format((float) $m->cache_hit_ratio, 2) . '%' : 'No telemetry yet'],
                     ['label' => 'Origin Offload %', 'value' => number_format($this->originOffloadRatio(), 2) . '%'],
-                    ['label' => 'Last Sync', 'value' => $m?->captured_at?->diffForHumans() ?: 'Not synced yet'],
+                    ['label' => 'Last Sync', 'value' => $this->site->syncFreshnessForHumans('Not synced yet')],
                 ]" />
             </x-filament::section>
 

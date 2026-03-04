@@ -31,7 +31,7 @@
                     ['label' => 'Cache Policy', 'value' => 'Managed by Edge Network'],
                     ['label' => 'Cache Hit Ratio', 'value' => $this->metricCacheHitRatio()],
                     ['label' => 'Last Action', 'value' => $this->lastAction('cloudfront.invalidate')],
-                    ['label' => 'Last Sync', 'value' => $this->site->analyticsMetric?->captured_at?->diffForHumans() ?: 'Not synced yet'],
+                    ['label' => 'Last Sync', 'value' => $this->site->syncFreshnessForHumans('Not synced yet')],
                 ]" />
             </x-filament::section>
 

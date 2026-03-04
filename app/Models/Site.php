@@ -152,6 +152,20 @@ class Site extends Model
         return $this->hasMany(SiteAvailabilityCheck::class);
     }
 
+    public function isDemoSeeded(): bool
+    {
+        return (bool) data_get($this->provider_meta, 'demo_seeded', false);
+    }
+
+    public function syncFreshnessForHumans(string $fallback = 'No sync yet'): string
+    {
+        $syncAt = $this->isDemoSeeded()
+            ? now()->subMinute()
+            : ($this->analyticsMetric?->captured_at ?? $this->last_checked_at);
+
+        return $syncAt?->diffForHumans() ?? $fallback;
+    }
+
     public static function statuses(): array
     {
         return [

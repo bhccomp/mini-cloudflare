@@ -26,7 +26,7 @@
                     ['label' => 'Blocked (24h)', 'value' => number_format((int) ($m->blocked_requests_24h ?? 0))],
                     ['label' => 'Block Ratio', 'value' => $m && (int) ($m->total_requests_24h ?? 0) > 0 ? number_format(((float) ($m->blocked_requests_24h ?? 0) / (float) max(1, (int) ($m->total_requests_24h ?? 0))) * 100, 2) . '%' : 'No telemetry yet'],
                     ['label' => 'Telemetry Status', 'value' => $this->telemetryStatus()],
-                    ['label' => 'Last Telemetry Sync', 'value' => $m?->captured_at?->diffForHumans() ?: 'Never'],
+                    ['label' => 'Last Telemetry Sync', 'value' => $this->site->syncFreshnessForHumans('Never')],
                 ]" />
             </x-filament::section>
 
