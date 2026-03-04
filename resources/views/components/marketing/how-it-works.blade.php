@@ -9,8 +9,8 @@
             </article>
             <article class="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
                 <p class="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-300">Step 2</p>
-                <h3 class="mt-2 text-lg font-semibold text-white">Point DNS to the edge</h3>
-                <p class="mt-2 text-sm text-slate-300">Update DNS with guided records and verify cutover safely.</p>
+                <h3 class="mt-2 text-lg font-semibold text-white">Point DNS to our protection network</h3>
+                <p class="mt-2 text-sm text-slate-300">Don&apos;t want to touch DNS? FirePhage team can do this for you for free.</p>
             </article>
             <article class="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
                 <p class="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-300">Step 3</p>

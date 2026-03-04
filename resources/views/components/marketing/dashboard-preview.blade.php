@@ -2,11 +2,11 @@
     <div class="mx-auto grid w-full max-w-7xl gap-8 px-6 py-16 lg:grid-cols-12 lg:px-8 lg:py-20">
         <div class="order-2 lg:order-1 lg:col-span-5">
             <h2 class="text-3xl font-semibold text-white">See What You'll Control</h2>
-            <p class="mt-3 text-sm text-slate-300">A single dashboard for WAF rules, origin security, and monitoring.</p>
+            <p class="mt-3 text-sm text-slate-300">A single dashboard for WAF (Firewall rules), origin IP protection, and monitoring.</p>
             <ul class="mt-6 space-y-3 text-sm text-slate-200">
-                <li>Block by country, IP, CIDR</li>
+                <li>Block by country or IP address</li>
                 <li>Rate limiting presets</li>
-                <li>Origin exposure status &amp; policy</li>
+                <li>Origin IP protection status &amp; policy</li>
                 <li>Uptime + error spikes (5xx)</li>
             </ul>
         </div>

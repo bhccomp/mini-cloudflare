@@ -35,7 +35,9 @@ class UserPanelProvider extends PanelProvider
                 'primary' => Color::Blue,
             ])
             ->favicon(asset('favicon.svg'))
-            ->brandName('FirePhage Security')
+            ->brandLogo(asset('images/logo-shield-phage-wordmark.svg'))
+            ->brandLogoHeight('2rem')
+            ->brandName('FirePhage')
             ->discoverResources(in: app_path('Filament/App/Resources'), for: 'App\\Filament\\App\\Resources')
             ->discoverPages(in: app_path('Filament/App/Pages'), for: 'App\\Filament\\App\\Pages')
             ->pages([

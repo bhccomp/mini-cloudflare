@@ -30,7 +30,9 @@ class AdminPanelProvider extends PanelProvider
                 'primary' => Color::Amber,
             ])
             ->favicon(asset('favicon.svg'))
-            ->brandName('FirePhage Admin')
+            ->brandLogo(asset('images/logo-shield-phage-wordmark.svg'))
+            ->brandLogoHeight('2rem')
+            ->brandName('FirePhage')
             ->discoverResources(in: app_path('Filament/Admin/Resources'), for: 'App\\Filament\\Admin\\Resources')
             ->discoverPages(in: app_path('Filament/Admin/Pages'), for: 'App\\Filament\\Admin\\Pages')
             ->pages([

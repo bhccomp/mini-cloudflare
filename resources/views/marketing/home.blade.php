@@ -4,10 +4,10 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>FirePhage | Shield Your Origin and Control Edge Traffic</title>
-        <meta name="description" content="FirePhage combines edge WAF protection, origin exposure detection, and availability monitoring in one simple dashboard.">
+        <meta name="description" content="FirePhage combines WAF (Firewall rules), origin IP protection, and availability monitoring in one simple dashboard.">
         <meta property="og:type" content="website">
         <meta property="og:title" content="FirePhage | Shield Your Origin and Control Edge Traffic">
-        <meta property="og:description" content="Edge WAF protection, origin exposure detection, and monitoring in one clear dashboard.">
+        <meta property="og:description" content="WAF (Firewall rules), origin IP protection, and monitoring in one clear dashboard.">
         <meta property="og:url" content="{{ url('/') }}">
         <meta property="og:site_name" content="FirePhage">
         <meta name="theme-color" content="#030712">
@@ -19,7 +19,10 @@
             <div class="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_20%_20%,rgba(14,165,233,0.24),transparent_35%),radial-gradient(circle_at_80%_0%,rgba(56,189,248,0.18),transparent_30%),linear-gradient(to_bottom,rgba(2,6,23,1),rgba(3,7,18,1))]"></div>
 
             <header class="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-6 lg:px-8">
-                <a href="{{ url('/') }}" class="text-sm font-semibold tracking-wide text-cyan-300">FirePhage</a>
+                <a href="{{ url('/') }}" class="inline-flex items-center gap-2 text-sm font-semibold tracking-wide text-cyan-300">
+                    <img src="{{ asset('images/logo-shield-phage-mark.svg') }}" alt="FirePhage logo" class="h-5 w-5" loading="eager" decoding="async">
+                    <span>FirePhage</span>
+                </a>
                 <nav class="flex items-center gap-5 text-sm text-slate-300">
                     <a href="#features" class="hover:text-white">Features</a>
                     <a href="#pricing" class="hover:text-white">Pricing</a>
@@ -30,6 +33,8 @@
 
             <main>
                 <x-marketing.hero />
+                <x-marketing.assisted-onboarding />
+                <x-marketing.built-for-humans />
                 <x-marketing.dashboard-preview />
                 <x-marketing.problem />
                 <x-marketing.features />

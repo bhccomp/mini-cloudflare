@@ -1,5 +1,34 @@
 # MEMORY
 
+## Shield Phage Branding + Human-Readable Marketing Refresh (Latest)
+- Adopted selected logo direction: **Shield Phage**.
+  - Added reusable logo assets:
+    - `public/images/logo-shield-phage-mark.svg`
+    - `public/images/logo-shield-phage-wordmark.svg`
+  - Public marketing header now uses icon + inline `FirePhage` text.
+  - Filament App/Admin panels now use Shield Phage wordmark via `brandLogo(...)`.
+  - Added marketing logo concept board page at `/logos`:
+    - Route: `Route::view('/logos', 'marketing.logos')->name('logos')`
+    - View: `resources/views/marketing/logos.blade.php`
+- Marketing messaging reworked for non-technical audience (hero layout/background intentionally left as-is for now):
+  - Added new section under hero:
+    - **Free Assisted Onboarding (We&apos;ll handle DNS for you)**
+    - Includes plain-language explanation, practical bullets, and CTA.
+  - Added new section near dashboard preview:
+    - **A dashboard built for humans**
+    - Highlights plain-language summary, top sources, simple actions, useful alerts, and example message callout.
+  - Replaced threat explanation block with:
+    - **Why sites get hit (even when you think you&apos;re protected)**
+    - Human-readable bullets and simple closing statement.
+  - Updated How It Works Step 2 to explicitly state:
+    - FirePhage can handle DNS setup for free.
+  - Pricing updated to make free assisted onboarding highly visible:
+    - Added prominent onboarding line above plans and repeated line inside each plan card.
+- Marketing copy cleanup:
+  - `origin exposure detection` -> `origin IP protection` (marketing contexts).
+  - Added first-use clarification: `WAF (Firewall rules)`.
+  - Switched `controls` -> `settings` where clearer for general audience.
+
 ## Demo Site Seeding + Marketing Screenshot Data (Latest)
 - Added isolated demo site for screenshots:
   - Domain: `example.com` (site id `495`)
