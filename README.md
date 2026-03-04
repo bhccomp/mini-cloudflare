@@ -96,3 +96,17 @@ Bunny credentials:
 ## Notes
 - Keep secrets in `.env` only, never in git.
 - `required_dns_records` stores customer-facing DNS steps for validation and traffic cutover.
+
+## Branding & Marketing
+- Public marketing pages:
+  - Home: `/`
+  - Contact: `/contact`
+  - Logo concept board: `/logos`
+- Active brand mark:
+  - Shield Phage icon: `public/images/logo-shield-phage-mark.svg`
+  - Shield Phage wordmark (dashboard panels): `public/images/logo-shield-phage-wordmark.svg`
+- Branding wiring:
+  - Marketing header uses icon + `FirePhage` text inline.
+  - Filament panels (`/app`, `/admin`) use the Shield Phage wordmark via panel provider `brandLogo(...)`.
+- Hero background asset currently used by marketing hero:
+  - `public/images/hero-banner-new.png`
