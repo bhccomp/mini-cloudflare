@@ -35,7 +35,7 @@ class UserPanelProvider extends PanelProvider
                 'primary' => Color::Blue,
             ])
             ->favicon(asset('favicon.svg'))
-            ->brandName('FirePhage WAF')
+            ->brandName('FirePhage Security')
             ->discoverResources(in: app_path('Filament/App/Resources'), for: 'App\\Filament\\App\\Resources')
             ->discoverPages(in: app_path('Filament/App/Pages'), for: 'App\\Filament\\App\\Pages')
             ->pages([
@@ -65,6 +65,10 @@ class UserPanelProvider extends PanelProvider
             ->renderHook(
                 PanelsRenderHook::TOPBAR_START,
                 fn (): \Illuminate\Contracts\View\View => view('filament.app.components.topbar-site-switcher'),
+            )
+            ->renderHook(
+                PanelsRenderHook::TOPBAR_END,
+                fn (): \Illuminate\Contracts\View\View => view('filament.app.components.topbar-global-search'),
             )
             ->renderHook(
                 PanelsRenderHook::HEAD_END,

@@ -1,5 +1,24 @@
 # MEMORY
 
+## Global Topbar AJAX Search (Latest)
+- Added a new global AJAX search in App panel topbar (right side, near avatar) using Livewire + Filament dropdowns.
+- Search scope includes:
+  - App pages (Status Hub, Overview, WAF, DDoS, Rate Limiting, SSL/TLS, CDN, Cache, Origin, Analytics, Availability Monitor)
+  - App resources (Sites, Alert Rules, Alert Channels, Alert Events)
+  - Organization sites (with status badges)
+- Added Livewire component:
+  - `app/Livewire/Filament/App/GlobalSearch.php`
+- Added views:
+  - `resources/views/livewire/filament/app/global-search.blade.php`
+  - `resources/views/filament/app/components/topbar-global-search.blade.php`
+- Wired with Filament render hook:
+  - `PanelsRenderHook::TOPBAR_END` in `app/Providers/Filament/UserPanelProvider.php`
+- UX behavior:
+  - Debounced live query
+  - Click result navigates immediately (site results open Status Hub with `site_id`)
+  - Provider-neutral labels and Filament-native styling
+
+
 ## Public Website + Auth Entry Routing + Conversion Landing (Latest)
 - Root route is now a public marketing site (no redirect to `/app`).
 - Auth routing behavior:
