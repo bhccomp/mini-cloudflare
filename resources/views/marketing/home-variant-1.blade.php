@@ -92,6 +92,65 @@
                 color: var(--fp-accent-hover) !important;
             }
 
+            .theme-v1 .hero-laptop {
+                position: relative;
+                display: inline-block;
+                max-width: 100%;
+            }
+
+            .theme-v1 .hero-laptop::after {
+                content: "";
+                position: absolute;
+                bottom: -30px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 65%;
+                height: 90px;
+                background: radial-gradient(
+                    ellipse at center,
+                    rgba(90,120,255,0.35) 0%,
+                    rgba(90,120,255,0.15) 40%,
+                    rgba(90,120,255,0.05) 60%,
+                    transparent 75%
+                );
+                filter: blur(30px);
+                z-index: -1;
+                pointer-events: none;
+            }
+
+            .theme-v1 .hero-laptop img {
+                width: 100%;
+                max-width: 480px;
+                transform: scale(1.35);
+                transform-origin: center center;
+                transition: transform 0.4s ease;
+            }
+
+            .theme-v1 .hero-laptop:hover img {
+                transform: translateY(-6px) scale(1.35);
+            }
+
+            @media (min-width: 768px) {
+                .theme-v1 .hero-laptop img {
+                    max-width: 620px;
+                }
+            }
+
+            @media (min-width: 1280px) {
+                .theme-v1 .hero-laptop img {
+                    max-width: 720px;
+                }
+            }
+
+            @media (max-width: 767px) {
+                .theme-v1 .hero-laptop::after {
+                    width: 72%;
+                    height: 64px;
+                    bottom: -22px;
+                    filter: blur(22px);
+                }
+            }
+
         </style>
     </head>
     <body class="theme-v1 bg-slate-950 text-slate-100 antialiased">
@@ -135,11 +194,12 @@
             </header>
 
             <main>
-                <x-marketing.hero />
+                <x-marketing.hero-variant-1 />
                 <x-marketing.trust-badges />
-                <x-marketing.human-friendly-onboarding />
+                <x-marketing.human-friendly-onboarding-variant-1 />
                 <x-marketing.safe-dns-cutover />
                 <x-marketing.security-dashboard-section />
+                <x-marketing.availability-monitoring-variant-1 />
                 <x-marketing.real-attack-example />
                 <x-marketing.edge-protection-numbers />
                 <x-marketing.global-edge-protection />
