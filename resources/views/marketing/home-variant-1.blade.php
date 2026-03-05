@@ -92,6 +92,36 @@
                 color: var(--fp-accent-hover) !important;
             }
 
+            .theme-v1 {
+                --fp-section-y-mobile: 4rem;
+                --fp-section-y-tablet: 5rem;
+                --fp-section-y-desktop: 6rem;
+            }
+
+            /* Consistent section rhythm for home-variant-1 (except hero top) */
+            .theme-v1 main > section:not(:first-of-type) {
+                padding-top: var(--fp-section-y-mobile) !important;
+                padding-bottom: var(--fp-section-y-mobile) !important;
+            }
+
+            .theme-v1 main > section + section {
+                margin-top: 0 !important;
+            }
+
+            @media (min-width: 768px) {
+                .theme-v1 main > section:not(:first-of-type) {
+                    padding-top: var(--fp-section-y-tablet) !important;
+                    padding-bottom: var(--fp-section-y-tablet) !important;
+                }
+            }
+
+            @media (min-width: 1280px) {
+                .theme-v1 main > section:not(:first-of-type) {
+                    padding-top: var(--fp-section-y-desktop) !important;
+                    padding-bottom: var(--fp-section-y-desktop) !important;
+                }
+            }
+
             .theme-v1 .hero-laptop {
                 position: relative;
                 display: inline-block;

@@ -14,7 +14,7 @@
         ></div>
     </div>
 
-    <div class="relative z-10 mx-auto w-full max-w-7xl px-6 pb-32 pt-40 lg:px-8 lg:pb-32 lg:pt-52">
+    <div class="relative z-10 mx-auto w-full max-w-7xl px-6 pb-20 pt-40 lg:px-8 lg:pb-24 lg:pt-52">
         <div class="grid grid-cols-1 items-center gap-10 lg:grid-cols-2 lg:gap-12">
             <div class="max-w-3xl pt-8">
                     <p class="mb-4 inline-flex rounded-full border border-cyan-400/30 bg-cyan-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">Security Platform</p>
