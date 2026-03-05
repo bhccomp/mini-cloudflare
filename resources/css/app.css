@@ -11,6 +11,17 @@
 }
 
 @layer components {
+    .hero-visual-laptop {
+        width: 100%;
+        max-width: 480px;
+        height: auto;
+        filter: drop-shadow(0 18px 36px rgba(34, 211, 238, 0.18));
+    }
+
+    .attack-proof-card {
+        box-shadow: 0 18px 42px rgba(2, 8, 23, 0.35);
+    }
+
     .feature-illustration {
         width: 100%;
         height: auto;
@@ -36,6 +47,10 @@
     }
 
     @media (min-width: 768px) {
+        .hero-visual-laptop {
+            max-width: 600px;
+        }
+
         .feature-illustration--onboarding {
             max-width: 600px;
         }
@@ -55,6 +70,10 @@
     }
 
     @media (min-width: 1280px) {
+        .hero-visual-laptop {
+            max-width: 700px;
+        }
+
         .feature-illustration--onboarding {
             max-width: 920px;
             width: 132%;

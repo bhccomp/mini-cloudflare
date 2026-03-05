@@ -136,9 +136,11 @@
 
             <main>
                 <x-marketing.hero />
+                <x-marketing.trust-badges />
                 <x-marketing.human-friendly-onboarding />
                 <x-marketing.safe-dns-cutover />
                 <x-marketing.security-dashboard-section />
+                <x-marketing.real-attack-example />
                 <x-marketing.edge-protection-numbers />
                 <x-marketing.global-edge-protection />
                 <x-marketing.features />
