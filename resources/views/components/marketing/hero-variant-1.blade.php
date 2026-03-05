@@ -1,4 +1,4 @@
-<section class="relative overflow-hidden">
+<section class="relative overflow-hidden pb-20 lg:pb-28">
     <div class="pointer-events-none absolute inset-0 z-0" aria-hidden="true">
         <img
             src="{{ asset('images/hero-banner-new.png') }}"
@@ -14,7 +14,7 @@
         ></div>
     </div>
 
-    <div class="relative z-10 mx-auto w-full max-w-7xl px-6 pb-20 pt-40 lg:px-8 lg:pb-24 lg:pt-52">
+    <div class="relative z-10 mx-auto w-full max-w-7xl px-6 pb-36 pt-28 lg:px-8 lg:pb-44 lg:pt-40">
         <div class="grid grid-cols-1 items-center gap-10 lg:grid-cols-2 lg:gap-12">
             <div class="max-w-3xl pt-8">
                     <p class="mb-4 inline-flex rounded-full border border-cyan-400/30 bg-cyan-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">Security Platform</p>
@@ -63,7 +63,7 @@
             </div>
         </div>
 
-        <div class="mt-10 text-center">
+        <div class="mt-10 mb-5 pb-8 text-center lg:pb-10">
             <p class="text-sm font-semibold uppercase tracking-[0.14em] text-cyan-200/90">Perfect for</p>
             <div class="mt-4 flex flex-wrap items-center justify-center gap-3">
                 @foreach (['WordPress websites', 'Agencies managing multiple sites', 'High-traffic e-commerce stores', 'SaaS platforms and APIs'] as $item)

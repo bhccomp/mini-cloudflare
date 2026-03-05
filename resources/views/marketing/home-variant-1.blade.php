@@ -179,33 +179,23 @@
                 color: var(--fp-accent-hover) !important;
             }
 
-            .theme-v1 {
-                --fp-section-y-mobile: 4rem;
-                --fp-section-y-tablet: 5rem;
-                --fp-section-y-desktop: 6rem;
-            }
-
-            /* Consistent section rhythm for home-variant-1 (except hero top) */
-            .theme-v1 main > section:not(:first-of-type) {
-                padding-top: var(--fp-section-y-mobile) !important;
-                padding-bottom: var(--fp-section-y-mobile) !important;
-            }
-
-            .theme-v1 main > section + section {
-                margin-top: 0 !important;
+            /* Availability Monitoring (section 5) explicit tighter spacing */
+            .theme-v1 main > section:nth-of-type(5) {
+                padding-top: 2.75rem !important;
+                padding-bottom: 2.75rem !important;
             }
 
             @media (min-width: 768px) {
-                .theme-v1 main > section:not(:first-of-type) {
-                    padding-top: var(--fp-section-y-tablet) !important;
-                    padding-bottom: var(--fp-section-y-tablet) !important;
+                .theme-v1 main > section:nth-of-type(5) {
+                    padding-top: 3.5rem !important;
+                    padding-bottom: 3.5rem !important;
                 }
             }
 
             @media (min-width: 1280px) {
-                .theme-v1 main > section:not(:first-of-type) {
-                    padding-top: var(--fp-section-y-desktop) !important;
-                    padding-bottom: var(--fp-section-y-desktop) !important;
+                .theme-v1 main > section:nth-of-type(5) {
+                    padding-top: 4rem !important;
+                    padding-bottom: 4rem !important;
                 }
             }
 
@@ -312,7 +302,6 @@
 
             <main>
                 <x-marketing.hero-variant-1 />
-                <x-marketing.trust-badges />
                 <x-marketing.human-friendly-onboarding-variant-1 />
                 <x-marketing.safe-dns-cutover />
                 <x-marketing.security-dashboard-section />

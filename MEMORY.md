@@ -1,5 +1,30 @@
 # MEMORY
 
+## Home Variant 1 Conversion + Rhythm Fixes (Latest)
+- Scope constrained to `home-variant-1` only (no changes to other variants/shared marketing layout templates).
+- Added variant-specific hero and onboarding components:
+  - `resources/views/components/marketing/hero-variant-1.blade.php`
+  - `resources/views/components/marketing/human-friendly-onboarding-variant-1.blade.php`
+- Hero improvements for clarity and conversion:
+  - Stronger non-technical positioning copy for website owners.
+  - Added supporting compatibility line (WordPress, WooCommerce, Laravel, APIs, SaaS).
+  - Added lightweight “Perfect for” micro-block inside hero.
+  - Increased hero laptop visual prominence and added grounded glow treatment.
+- Added variant-only monitoring proof/features:
+  - New section component `resources/views/components/marketing/availability-monitoring-variant-1.blade.php`
+  - Includes availability bullets, integrations row (`Slack`, `Email`, `SMS`, `Webhooks`), and helper copy.
+  - Added uploaded image asset integration: `public/design-assets/monitor-alerts.png`.
+- Monitoring section restyled to match feature-section pattern:
+  - Removed outer oversized boxed panel.
+  - Kept clean 2-column structure with subtle image glow/shadow.
+- Vertical rhythm cleanup iteration:
+  - Implemented stricter variant-scoped section spacing rules.
+  - Removed conflicting duplicate spacing rule blocks in `home-variant-1`.
+  - Applied explicit tighter spacing for the monitoring section to prevent excessive whitespace.
+  - Hero bottom spacing adjusted to preserve background continuity (space inside hero instead of external gap block).
+- Operational:
+  - Repeated cache/build refresh during tuning (`php artisan optimize`, `pnpm build`) to ensure changes render immediately.
+
 ## Marketing Variants + Transparent Illustration Rebalance (Latest)
 - Added three clone landing pages for rapid visual/theme A/B/C comparison:
   - Routes:
