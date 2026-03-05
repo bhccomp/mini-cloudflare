@@ -30,9 +30,14 @@
         max-width: 520px;
     }
 
+    .feature-illustration--map {
+        max-width: 520px;
+        margin-inline: 0 auto;
+    }
+
     @media (min-width: 768px) {
         .feature-illustration--onboarding {
-            max-width: 540px;
+            max-width: 600px;
         }
 
         .feature-illustration--dns {
@@ -42,11 +47,20 @@
         .feature-illustration--laptop {
             max-width: 610px;
         }
+
+        .feature-illustration--map {
+            max-width: 620px;
+            margin-inline: 0 auto;
+        }
     }
 
     @media (min-width: 1280px) {
         .feature-illustration--onboarding {
-            max-width: 620px;
+            max-width: 920px;
+            width: 132%;
+            max-width: none;
+            transform: translateX(6%) scale(1.06);
+            transform-origin: right center;
         }
 
         .feature-illustration--dns {
@@ -55,6 +69,15 @@
 
         .feature-illustration--laptop {
             max-width: 680px;
+        }
+
+        .feature-illustration--map {
+            max-width: 1020px;
+            width: 138%;
+            max-width: none;
+            transform: translateX(-18%) scale(1.08);
+            transform-origin: center center;
+            margin-inline: 0 auto;
         }
     }
 }

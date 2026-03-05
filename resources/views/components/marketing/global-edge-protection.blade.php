@@ -20,7 +20,9 @@
                 <img
                     src="{{ asset('design-assets/world-map-security.png') }}"
                     alt="Global edge protection map illustration"
-                    class="relative z-10 mx-auto w-full max-w-[1200px]"
+                    class="feature-illustration feature-illustration--map relative z-10"
+                    width="1536"
+                    height="1024"
                     loading="lazy"
                     decoding="async"
                 >

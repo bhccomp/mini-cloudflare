@@ -1,5 +1,32 @@
 # MEMORY
 
+## Marketing Variants + Transparent Illustration Rebalance (Latest)
+- Added three clone landing pages for rapid visual/theme A/B/C comparison:
+  - Routes:
+    - `/home-variant-1` (`home.variant1`)
+    - `/home-variant-2` (`home.variant2`)
+    - `/home-variant-3` (`home.variant3`)
+  - Views:
+    - `resources/views/marketing/home-variant-1.blade.php`
+    - `resources/views/marketing/home-variant-2.blade.php`
+    - `resources/views/marketing/home-variant-3.blade.php`
+- Added/updated design assets in `public/design-assets/` and re-used componentized marketing sections across all variants.
+- Balanced transparent PNG illustrations that became visually too small after background removal:
+  - Added reusable CSS illustration utilities in `resources/css/app.css`:
+    - `.feature-illustration`
+    - `.feature-illustration--onboarding`
+    - `.feature-illustration--dns`
+    - `.feature-illustration--laptop`
+    - `.feature-illustration--map`
+  - Added explicit image dimensions (`1536x1024`) on key section `<img>` tags to reduce layout shift.
+  - Increased desktop presence for onboarding, DNS cutover, dashboard laptop, and map illustrations with responsive max-width rules.
+  - Added subtle drop-shadow/glow for transparent assets so they remain readable on dark backgrounds.
+- Global Edge Protection map spacing tweak:
+  - Shifted map visual left on XL (`translateX(-18%)`) to reduce gap vs adjacent text and align with other section composition.
+- Operational:
+  - Rebuilt frontend assets repeatedly after CSS changes (`pnpm build`).
+  - Refreshed Laravel caches (`php artisan optimize`, `optimize:clear`) to ensure new visuals are served immediately.
+
 ## Landing Page Flow, Section Rhythm, and Mobile Navigation (Latest)
 - Marketing landing page structure was iterated heavily to reduce the “single poster” effect and improve scan flow:
   - Added strict alternating section backgrounds from post-hero through pricing with subtle separators:
