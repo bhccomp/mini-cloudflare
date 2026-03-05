@@ -24,8 +24,95 @@
                 --fp-border: rgba(255, 255, 255, 0.06);
                 --fp-glow: rgba(124, 58, 237, 0.2);
                 --fp-btn-text: #FFFFFF;
+                --fp-section-y-mobile: 4rem;
+                --fp-section-y-tablet: 5rem;
+                --fp-section-y-desktop: 6rem;
+                --fp-section-y-tight-mobile: 3rem;
+                --fp-section-y-tight-tablet: 4rem;
+                --fp-section-y-tight-desktop: 5rem;
                 background: var(--fp-bg);
                 color: var(--fp-text);
+            }
+
+            /* Canonical section rhythm: home-variant-1 only */
+            .theme-v1 main > section:nth-of-type(n + 3) {
+                padding-top: var(--fp-section-y-mobile) !important;
+                padding-bottom: var(--fp-section-y-mobile) !important;
+                margin-top: 0 !important;
+                margin-bottom: 0 !important;
+            }
+
+            @media (min-width: 768px) {
+                .theme-v1 main > section:nth-of-type(n + 3) {
+                    padding-top: var(--fp-section-y-tablet) !important;
+                    padding-bottom: var(--fp-section-y-tablet) !important;
+                }
+            }
+
+            @media (min-width: 1280px) {
+                .theme-v1 main > section:nth-of-type(n + 3) {
+                    padding-top: var(--fp-section-y-desktop) !important;
+                    padding-bottom: var(--fp-section-y-desktop) !important;
+                }
+            }
+
+            /* Remove conflicting inner wrapper spacing from shared sections */
+            .theme-v1 main > section:nth-of-type(n + 3) > div[class*="py-"] {
+                padding-top: 0 !important;
+                padding-bottom: 0 !important;
+                margin-top: 0 !important;
+                margin-bottom: 0 !important;
+            }
+
+            .theme-v1 main > section:nth-of-type(n + 3) > div.relative.z-10 > div[class*="py-"] {
+                padding-top: 0 !important;
+                padding-bottom: 0 !important;
+                margin-top: 0 !important;
+                margin-bottom: 0 !important;
+            }
+
+            /* Internal rhythm normalization */
+            .theme-v1 main > section:nth-of-type(n + 3) h2 {
+                margin-top: 0 !important;
+                margin-bottom: 1rem !important;
+            }
+
+            .theme-v1 main > section:nth-of-type(n + 3) h2 + p {
+                margin-top: 0 !important;
+                margin-bottom: 1.5rem !important;
+            }
+
+            .theme-v1 main > section:nth-of-type(n + 3) .grid {
+                row-gap: 1.75rem;
+            }
+
+            @media (min-width: 1024px) {
+                .theme-v1 main > section:nth-of-type(n + 3) .grid {
+                    column-gap: 3rem;
+                }
+            }
+
+            /* Explicit tight pair: monitoring + real attacks */
+            .theme-v1 main > section:nth-of-type(6),
+            .theme-v1 main > section:nth-of-type(7) {
+                padding-top: var(--fp-section-y-tight-mobile) !important;
+                padding-bottom: var(--fp-section-y-tight-mobile) !important;
+            }
+
+            @media (min-width: 768px) {
+                .theme-v1 main > section:nth-of-type(6),
+                .theme-v1 main > section:nth-of-type(7) {
+                    padding-top: var(--fp-section-y-tight-tablet) !important;
+                    padding-bottom: var(--fp-section-y-tight-tablet) !important;
+                }
+            }
+
+            @media (min-width: 1280px) {
+                .theme-v1 main > section:nth-of-type(6),
+                .theme-v1 main > section:nth-of-type(7) {
+                    padding-top: var(--fp-section-y-tight-desktop) !important;
+                    padding-bottom: var(--fp-section-y-tight-desktop) !important;
+                }
             }
 
             .theme-v1 .relative.isolate.overflow-hidden > .pointer-events-none.absolute.inset-0.-z-10 {
