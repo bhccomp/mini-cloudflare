@@ -7,7 +7,9 @@
                 <img
                     src="{{ asset('design-assets/dns-cutover-ui.png') }}"
                     alt="DNS cutover interface illustration"
-                    class="relative z-10 w-full max-w-[1100px] rounded-none shadow-none"
+                    class="feature-illustration feature-illustration--dns relative z-10 rounded-none"
+                    width="1536"
+                    height="1024"
                     loading="lazy"
                     decoding="async"
                 >

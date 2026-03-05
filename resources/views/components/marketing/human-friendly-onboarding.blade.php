@@ -26,7 +26,9 @@
                 <img
                     src="{{ asset('design-assets/onboarding-team.png') }}"
                     alt="Onboarding support team illustration"
-                    class="relative z-10 w-full max-w-[1100px] rounded-none shadow-none"
+                    class="feature-illustration feature-illustration--onboarding relative z-10 rounded-none"
+                    width="1536"
+                    height="1024"
                     loading="lazy"
                     decoding="async"
                 >
