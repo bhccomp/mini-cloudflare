@@ -18,10 +18,10 @@
         <div class="grid grid-cols-1 items-center gap-10 lg:grid-cols-2 lg:gap-12">
             <div class="max-w-3xl pt-8">
                     <p class="mb-4 inline-flex rounded-full border border-cyan-400/30 bg-cyan-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">Security Platform</p>
-                    <h1 class="mb-5 text-balance text-4xl font-semibold leading-[1.06] text-white sm:text-5xl lg:text-6xl">Shield Your Origin. Control Traffic at the Edge.</h1>
+                    <h1 class="mb-5 text-balance text-4xl font-semibold leading-[1.06] text-white sm:text-5xl lg:text-6xl">Stop Attacks Before They Reach Your Server</h1>
                     <p class="text-lg leading-8 text-slate-200/85">
-                        FirePhage protects your website before attacks reach your server.
-                        Stop malicious traffic, protect your origin, and monitor security in a simple human-friendly dashboard.
+                        FirePage shields your origin at the global edge.
+                        No infrastructure to manage. Pay only for what you use.
                     </p>
                     <p class="mt-3 text-sm text-slate-300/90">Works with WordPress, WooCommerce, Laravel, APIs and modern SaaS platforms.</p>
 
@@ -33,7 +33,7 @@
 
                     <div class="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-start">
                         <a href="{{ url('/register') }}" class="w-full rounded-xl bg-cyan-400 px-6 py-3 text-center text-sm font-semibold text-slate-950 shadow-[0_0_0_1px_rgba(34,211,238,0.24),0_0_22px_rgba(34,211,238,0.22)] hover:bg-cyan-300 sm:w-auto">Start Protecting Your Site</a>
-                        <a href="#dashboard-preview" class="w-full rounded-xl border border-slate-700 px-6 py-3 text-center text-sm font-semibold text-slate-100 hover:border-slate-500 sm:w-auto">View Dashboard Demo</a>
+                        <a href="#dashboard-preview" class="w-full rounded-xl border border-slate-700 px-6 py-3 text-center text-sm font-semibold text-slate-100 hover:border-slate-500 sm:w-auto">View live demo dashboard</a>
                     </div>
 
                     <div class="mt-6 flex flex-wrap gap-x-3 gap-y-2 text-xs text-slate-400">
@@ -69,6 +69,12 @@
                 @foreach (['WordPress websites', 'Agencies managing multiple sites', 'High-traffic e-commerce stores', 'SaaS platforms and APIs'] as $item)
                     <span class="rounded-full border border-white/10 bg-slate-900/65 px-4 py-2 text-sm text-slate-200">{{ $item }}</span>
                 @endforeach
+            </div>
+
+            <div class="mt-5 flex justify-center">
+                <span class="rounded-full border border-white/10 bg-slate-900/65 px-5 py-2 text-sm text-slate-200">
+                    Already protecting 40+ websites • 3.2 million requests filtered last month • 99.9% attack mitigation
+                </span>
             </div>
         </div>
     </div>

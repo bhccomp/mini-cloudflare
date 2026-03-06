@@ -310,11 +310,11 @@
                 <x-marketing.edge-protection-numbers />
                 <x-marketing.global-edge-protection />
                 <x-marketing.features />
-                <x-marketing.platform-architecture />
-                <x-marketing.pricing />
+                <x-marketing.platform-architecture-variant-1 />
+                <x-marketing.pricing-variant-1 />
             </main>
 
-            <x-marketing.footer />
+            <x-marketing.footer-variant-1 />
         </div>
         <script>
             (() => {

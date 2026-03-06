@@ -19,7 +19,7 @@
                 </ul>
 
                 <a href="{{ url('/register') }}" class="mt-8 inline-flex rounded-lg bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950 hover:bg-cyan-300">
-                    Start onboarding
+                    Start protecting now
                 </a>
             </div>
 

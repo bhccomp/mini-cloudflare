@@ -1070,3 +1070,33 @@
   - added `avatar_url` to fillable fields
 - Added DB migration for `users.avatar_url` and ran migrations.
 - Result: users can manage profile info (name/email), password, and avatar through plugin-provided My Profile page at `/app/my-profile`.
+
+## Home Variant 1 Copy + Pricing Refresh (Latest)
+- Scope constrained to `home-variant-1` only (no shared layout/other variants changed).
+- Hero updates in `hero-variant-1`:
+  - headline set to: `Stop Attacks Before They Reach Your Server`
+  - subheadline updated to plain-language value proposition:
+    - `FirePage shields your origin at the global edge.`
+    - `No infrastructure to manage. Pay only for what you use.`
+  - secondary CTA label updated to `View live demo dashboard`
+  - added centered trust line under hero badges:
+    - `Already protecting 40+ websites • 3.2 million requests filtered last month • 99.9% attack mitigation`
+- Onboarding CTA text update in `human-friendly-onboarding-variant-1`:
+  - `Start onboarding` -> `Start protecting now`
+- Added variant-specific architecture component:
+  - `platform-architecture-variant-1.blade.php`
+  - title changed to `How FirePage Protects You Today`
+  - first sentence changed to:
+    - `Every request passes through FirePage's global edge network where we automatically filter malicious traffic before it ever touches your origin server.`
+- Added variant-specific pricing component:
+  - `pricing-variant-1.blade.php`
+  - replaced pricing content with Starter / Growth (Most Popular) / Enterprise plan copy
+  - added note under cards:
+    - `No setup fees • Cancel anytime • Built while we validate and scale`
+- Added variant-specific footer component:
+  - `footer-variant-1.blade.php`
+  - footer text set to: `© 2025 FirePage. All rights reserved.`
+- Wired `home-variant-1.blade.php` to include variant-specific components:
+  - platform architecture -> `platform-architecture-variant-1`
+  - pricing -> `pricing-variant-1`
+  - footer -> `footer-variant-1`
