@@ -6,6 +6,7 @@ use App\Models\Site;
 use App\Models\SystemSetting;
 use App\Services\Bunny\BunnyEdgeErrorPageService;
 use App\Services\Bunny\BunnyShieldAccessListService;
+use App\Services\Bunny\BunnyShieldSecurityService;
 use App\Services\Edge\EdgeProviderInterface;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Arr;
@@ -17,6 +18,7 @@ class BunnyCdnProvider implements EdgeProviderInterface
 {
     public function __construct(
         protected ?BunnyShieldAccessListService $shieldAccess = null,
+        protected ?BunnyShieldSecurityService $shieldSecurity = null,
         protected ?BunnyEdgeErrorPageService $edgeErrorPages = null,
     ) {}
 
@@ -81,6 +83,8 @@ class BunnyCdnProvider implements EdgeProviderInterface
 
         $shieldZoneId = null;
         $shieldMessage = null;
+        $shieldPlanStatus = 'inactive';
+        $shieldPlanMessage = null;
         try {
             $site->forceFill([
                 'provider_resource_id' => (string) $zoneId,
@@ -91,22 +95,21 @@ class BunnyCdnProvider implements EdgeProviderInterface
             ])->save();
 
             $shieldZoneId = $this->shieldAccess()->ensureShieldZone($site);
+
+            if ((bool) config('edge.bunny.shield_auto_upgrade_to_advanced', false)) {
+                $planResult = $this->shieldSecurity()->ensureAdvancedPlan($site, $shieldZoneId);
+                $shieldPlanStatus = ((bool) ($planResult['changed'] ?? false)) ? 'active' : 'unchanged';
+                $shieldPlanMessage = (string) ($planResult['message'] ?? 'Bunny Shield advanced plan is enabled.');
+            }
         } catch (\Throwable $e) {
             $shieldMessage = $e->getMessage();
+            $shieldPlanStatus = 'failed';
+            $shieldPlanMessage = $e->getMessage();
         }
 
         $edgeScriptStatus = 'inactive';
-        $edgeScriptId = (int) data_get($site->provider_meta, 'edge_error_script_id', 0);
-        $edgeScriptMessage = null;
-
-        try {
-            $edgeScriptResult = $this->syncEdgeErrorPages($site);
-            $edgeScriptStatus = (string) ($edgeScriptResult['status'] ?? 'active');
-            $edgeScriptId = (int) ($edgeScriptResult['script_id'] ?? $edgeScriptId);
-        } catch (\Throwable $e) {
-            $edgeScriptStatus = 'failed';
-            $edgeScriptMessage = $e->getMessage();
-        }
+        $edgeScriptId = null;
+        $edgeScriptMessage = 'Origin custom error pages are currently disabled.';
 
         $edgeDomain = $this->zoneEdgeDomain($zoneName);
         $hostnames = [$site->apex_domain];
@@ -148,7 +151,9 @@ class BunnyCdnProvider implements EdgeProviderInterface
                 'shield_zone_id' => $resolvedShieldZoneId,
                 'shield_status' => $resolvedShieldZoneId ? 'active' : 'pending',
                 'shield_last_error' => $shieldMessage,
-                'edge_error_script_id' => $edgeScriptId > 0 ? $edgeScriptId : null,
+                'shield_plan_status' => $shieldPlanStatus,
+                'shield_plan_message' => $shieldPlanMessage,
+                'edge_error_script_id' => $edgeScriptId,
                 'edge_error_script_status' => $edgeScriptStatus,
                 'edge_error_script_last_error' => $edgeScriptMessage,
                 'edge_domain' => $edgeDomain,
@@ -167,8 +172,10 @@ class BunnyCdnProvider implements EdgeProviderInterface
                 'Edge zone provisioned. Point DNS traffic records to the edge domain.',
                 $resolvedShieldZoneId ? 'Security zone has been enabled for this site.' : null,
                 $resolvedShieldZoneId ? null : 'Security zone setup is pending and will retry automatically.',
-                $edgeScriptStatus === 'active' ? 'Branded edge error pages are active for this site.' : null,
-                $edgeScriptStatus === 'failed' ? 'Branded edge error pages could not be attached automatically yet.' : null,
+                $shieldPlanStatus === 'active' ? 'Bunny Shield advanced plan has been enabled for this site.' : null,
+                $shieldPlanStatus === 'unchanged' ? $shieldPlanMessage : null,
+                $shieldPlanStatus === 'failed' ? 'Bunny Shield advanced plan could not be enabled automatically yet.' : null,
+                'Origin custom error pages are disabled for this site.',
             ])),
         ];
     }
@@ -299,7 +306,7 @@ class BunnyCdnProvider implements EdgeProviderInterface
             $zoneName,
             $this->resolvePreferredOriginUrl($site),
             strtolower((string) $site->apex_domain),
-            $this->edgeScriptOverrideForSite($site),
+            [],
         );
     }
 
@@ -372,7 +379,7 @@ class BunnyCdnProvider implements EdgeProviderInterface
             zoneName: $zoneName,
             originUrl: $originUrl,
             originHostHeader: $originHostHeader,
-            overrides: ['EdgeScriptId' => $scriptId],
+            overrides: ['MiddlewareScriptId' => $scriptId],
         ))->throw();
 
         $meta = is_array($site->provider_meta) ? $site->provider_meta : [];
@@ -713,7 +720,6 @@ class BunnyCdnProvider implements EdgeProviderInterface
             originUrl: $originUrl,
             originHostHeader: $originHostHeader,
             overrides: [
-                'EdgeScriptId' => (int) (Arr::get($zone, 'EdgeScriptId') ?: data_get($site->provider_meta, 'edge_error_script_id', 0)),
                 // Development mode bypasses cache and optimization.
                 'DisableCache' => $enabled,
                 'EnableOptimizers' => ! $enabled,
@@ -736,8 +742,9 @@ class BunnyCdnProvider implements EdgeProviderInterface
     {
         $zoneId = (int) ($site->provider_resource_id ?: data_get($site->provider_meta, 'zone_id', 0));
         $zoneIds = $this->collectRelatedZoneIds($site, $zoneId);
+        $shieldZoneIds = $this->collectRelatedShieldZoneIds($site, $zoneIds);
 
-        if ($zoneIds === []) {
+        if ($zoneIds === [] && $shieldZoneIds === []) {
             return [
                 'changed' => false,
                 'message' => 'No edge deployment is linked to this site.',
@@ -746,6 +753,15 @@ class BunnyCdnProvider implements EdgeProviderInterface
 
         $deleted = [];
         $failed = [];
+        $downgradedShieldZones = [];
+
+        foreach ($shieldZoneIds as $shieldZoneId) {
+            $result = $this->shieldSecurity()->downgradePlan($site, $shieldZoneId);
+
+            if ((bool) ($result['changed'] ?? false)) {
+                $downgradedShieldZones[] = $shieldZoneId;
+            }
+        }
 
         foreach ($zoneIds as $candidateId) {
             $response = $this->client()->delete("/pullzone/{$candidateId}");
@@ -763,10 +779,78 @@ class BunnyCdnProvider implements EdgeProviderInterface
             throw new \RuntimeException('Unable to delete edge deployment(s): '.implode(', ', $failed));
         }
 
+        $remainingZoneIds = $this->collectRelatedZoneIds($site, 0);
+        if ($remainingZoneIds !== []) {
+            throw new \RuntimeException('Unable to verify Bunny pull zone cleanup. Remaining zone ids: '.implode(', ', $remainingZoneIds));
+        }
+
+        $remainingShieldZoneIds = $this->collectRelatedShieldZoneIds($site, $deleted);
+        if ($shieldZoneIds !== [] && $remainingShieldZoneIds === []) {
+            return [
+                'changed' => $deleted !== [],
+                'message' => sprintf('Edge deployment deleted (%d) and Bunny Shield cleanup verified.', count($deleted)),
+                'deleted_zone_ids' => $deleted,
+                'downgraded_shield_zone_ids' => $downgradedShieldZones,
+                'verified_deleted_shield_zone_ids' => $shieldZoneIds,
+            ];
+        }
+
+        if ($remainingShieldZoneIds !== []) {
+            throw new \RuntimeException('Unable to verify Bunny Shield cleanup. Remaining shield zone ids: '.implode(', ', $remainingShieldZoneIds));
+        }
+
         return [
             'changed' => $deleted !== [],
             'message' => sprintf('Edge deployment deleted (%d).', count($deleted)),
             'deleted_zone_ids' => $deleted,
+            'downgraded_shield_zone_ids' => $downgradedShieldZones,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function setTroubleshootingMode(Site $site, bool $enabled): array
+    {
+        $meta = is_array($site->provider_meta) ? $site->provider_meta : [];
+        $snapshot = (array) data_get($meta, 'troubleshooting_snapshot', []);
+
+        if ($enabled) {
+            $snapshot = [
+                'development_mode' => (bool) $site->development_mode,
+                'waf_enabled' => (bool) data_get($this->shieldSecurity()->currentSettings($site), 'waf_enabled', true),
+            ];
+
+            $meta['troubleshooting_snapshot'] = $snapshot;
+        }
+
+        $targetDevelopmentMode = $enabled
+            ? true
+            : (bool) ($snapshot['development_mode'] ?? false);
+        $targetWafEnabled = $enabled
+            ? false
+            : (bool) ($snapshot['waf_enabled'] ?? true);
+
+        $development = $this->setDevelopmentMode($site, $targetDevelopmentMode);
+        $shield = $this->shieldSecurity()->setTroubleshootingMode($site, $enabled, $targetWafEnabled);
+
+        if (! $enabled) {
+            unset($meta['troubleshooting_snapshot']);
+        }
+
+        $meta['troubleshooting_mode'] = $enabled;
+        $meta['troubleshooting_mode_updated_at'] = now()->toIso8601String();
+        $site->forceFill(['provider_meta' => $meta])->save();
+
+        return [
+            'changed' => (bool) ($development['changed'] ?? false) || (bool) ($shield['changed'] ?? false),
+            'development_mode' => $targetDevelopmentMode,
+            'waf_enabled' => $targetWafEnabled,
+            'message' => $enabled
+                ? 'Troubleshooting mode enabled. Bunny WAF and edge caching are relaxed for testing.'
+                : 'Troubleshooting mode disabled. Bunny WAF and edge caching are restored.',
+            'development_result' => $development,
+            'shield_result' => $shield,
         ];
     }
 
@@ -849,6 +933,89 @@ class BunnyCdnProvider implements EdgeProviderInterface
             return [];
         } catch (\Throwable) {
             return [];
+        }
+    }
+
+    /**
+     * @param  list<int>  $pullZoneIds
+     * @return list<int>
+     */
+    protected function collectRelatedShieldZoneIds(Site $site, array $pullZoneIds = []): array
+    {
+        $storedIds = [];
+
+        $storedShieldZoneId = (int) data_get($site->provider_meta, 'shield_zone_id', 0);
+        if ($storedShieldZoneId > 0) {
+            $storedIds[] = $storedShieldZoneId;
+        }
+
+        $zones = $this->listShieldZones();
+        if ($zones === null) {
+            return array_values(array_unique($storedIds));
+        }
+
+        $ids = [];
+
+        foreach ($zones as $zone) {
+            $candidateId = (int) (Arr::get($zone, 'Id')
+                ?? Arr::get($zone, 'id')
+                ?? Arr::get($zone, 'shieldZoneId')
+                ?? Arr::get($zone, 'shield_zone_id')
+                ?? 0);
+
+            if ($candidateId <= 0) {
+                continue;
+            }
+
+            $linkedPullZoneId = (int) (Arr::get($zone, 'PullZoneId')
+                ?? Arr::get($zone, 'pullZoneId')
+                ?? Arr::get($zone, 'pull_zone_id')
+                ?? 0);
+
+            if (in_array($candidateId, $storedIds, true) || ($pullZoneIds !== [] && in_array($linkedPullZoneId, $pullZoneIds, true))) {
+                $ids[] = $candidateId;
+            }
+        }
+
+        return array_values(array_unique($ids));
+    }
+
+    /**
+     * @return list<array<string, mixed>>|null
+     */
+    protected function listShieldZones(): ?array
+    {
+        try {
+            $response = $this->client()->get('/shield/shield-zones', [
+                'page' => 1,
+                'perPage' => 200,
+            ]);
+
+            if (! $response->successful()) {
+                return null;
+            }
+
+            $payload = $response->json();
+
+            if (is_array($payload) && array_is_list($payload)) {
+                return $payload;
+            }
+
+            if (! is_array($payload)) {
+                return [];
+            }
+
+            foreach (['Items', 'items', 'data'] as $key) {
+                $items = Arr::get($payload, $key);
+
+                if (is_array($items) && array_is_list($items)) {
+                    return $items;
+                }
+            }
+
+            return [];
+        } catch (\Throwable) {
+            return null;
         }
     }
 
@@ -1044,13 +1211,8 @@ class BunnyCdnProvider implements EdgeProviderInterface
         return $this->edgeErrorPages ??= app(BunnyEdgeErrorPageService::class);
     }
 
-    /**
-     * @return array<string, mixed>
-     */
-    protected function edgeScriptOverrideForSite(Site $site): array
+    protected function shieldSecurity(): BunnyShieldSecurityService
     {
-        $scriptId = (int) data_get($site->provider_meta, 'edge_error_script_id', 0);
-
-        return $scriptId > 0 ? ['EdgeScriptId' => $scriptId] : [];
+        return $this->shieldSecurity ??= app(BunnyShieldSecurityService::class);
     }
 }

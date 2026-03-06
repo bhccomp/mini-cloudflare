@@ -40,6 +40,14 @@ class FirewallPage extends BaseProtectionPage
                 ->color('primary')
                 ->action('syncFirewallNow')
                 ->disabled(fn (): bool => ! $this->site),
+            Action::make('troubleshootingMode')
+                ->label(fn (): string => $this->isTroubleshootingMode()
+                    ? 'Disable Troubleshooting Mode'
+                    : 'Enable Troubleshooting Mode')
+                ->icon('heroicon-m-wrench-screwdriver')
+                ->color(fn (): string => $this->isTroubleshootingMode() ? 'warning' : 'gray')
+                ->action('toggleTroubleshootingMode')
+                ->disabled(fn (): bool => ! $this->site),
             Action::make('accessControl')
                 ->label('Open WAF')
                 ->icon('heroicon-m-no-symbol')

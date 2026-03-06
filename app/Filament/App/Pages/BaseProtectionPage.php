@@ -8,6 +8,7 @@ use App\Jobs\InvalidateCloudFrontCacheJob;
 use App\Jobs\MarkSiteReadyForCutoverJob;
 use App\Jobs\ProvisionEdgeDeploymentJob;
 use App\Jobs\RequestAcmCertificateJob;
+use App\Jobs\ToggleTroubleshootingModeJob;
 use App\Jobs\ToggleDevelopmentModeJob;
 use App\Jobs\ToggleUnderAttackModeJob;
 use App\Models\AuditLog;
@@ -255,9 +256,38 @@ abstract class BaseProtectionPage extends Page
         }
     }
 
+    public function toggleTroubleshootingMode(): void
+    {
+        if (! $this->site) {
+            return;
+        }
+
+        if (! $this->throttle('toggle-troubleshooting-mode')) {
+            return;
+        }
+
+        try {
+            (new ToggleTroubleshootingModeJob($this->site->id, ! (bool) $this->site->troubleshooting_mode, auth()->id()))
+                ->handle(app(\App\Services\Edge\EdgeProviderManager::class));
+
+            $this->refreshSite();
+            $this->notify($this->isTroubleshootingMode()
+                ? 'Troubleshooting mode enabled'
+                : 'Troubleshooting mode disabled');
+        } catch (\Throwable $exception) {
+            report($exception);
+            $this->notify('Troubleshooting mode update failed');
+        }
+    }
+
     public function isDevelopmentMode(): bool
     {
         return (bool) ($this->site?->development_mode ?? false);
+    }
+
+    public function isTroubleshootingMode(): bool
+    {
+        return (bool) ($this->site?->troubleshooting_mode ?? false);
     }
 
     public function toggleHttpsEnforcement(): void

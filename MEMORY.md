@@ -1,5 +1,49 @@
 # MEMORY
 
+## Bunny Shield Advanced + Troubleshooting Mode + Strict Site Deletion (Latest)
+- Reframed Bunny custom-page behavior:
+  - Origin custom error pages are no longer part of active Bunny onboarding/provisioning flow.
+  - `app/Services/Edge/Providers/BunnyCdnProvider.php` now records origin custom pages as inactive/disabled instead of auto-attaching middleware during provisioning.
+  - Existing shared script/service code remains in the repo, but the platform now treats Shield/WAF pages and origin pages separately.
+- Added Bunny Shield Advanced onboarding hook:
+  - New config flags in `config/edge.php`:
+    - `bunny.shield_auto_upgrade_to_advanced`
+    - `bunny.shield_advanced_plan_type`
+  - New service method in `app/Services/Bunny/BunnyShieldSecurityService.php`:
+    - `ensureAdvancedPlan(Site $site, ?int $shieldZoneId = null)`
+  - Bunny provisioning now upgrades Shield to Advanced immediately after shield-zone creation/resolution when the feature flag is enabled.
+  - Provider meta now records Shield plan status/message and saved premium-plan state.
+- Added safer Bunny delete semantics:
+  - `app/Services/Edge/Providers/BunnyCdnProvider.php` delete flow now:
+    - downgrades/cancels Bunny Shield premium plan before teardown
+    - deletes related Bunny pull zones
+    - verifies matching pull zones are actually gone
+    - verifies related Shield zones are no longer listed/linked before allowing local deletion
+  - Local site deletion now uses explicit cleanup service:
+    - `app/Services/Sites/SiteDeletionService.php`
+    - Deletes site-scoped audit logs, alert channels, analytics, firewall rules, events, availability checks, edge request logs, and clears `users.selected_site_id` before removing the site row.
+- Added no-DNS-change troubleshooting mode:
+  - New persisted site flag:
+    - `sites.troubleshooting_mode`
+    - migration: `database/migrations/2026_03_06_210000_add_troubleshooting_mode_to_sites_table.php`
+  - New job:
+    - `app/Jobs/ToggleTroubleshootingModeJob.php`
+  - New Bunny behavior:
+    - enables Bunny development mode (cache/optimizer relaxation)
+    - disables Bunny Shield WAF while preserving a snapshot for later restoration
+    - implemented via:
+      - `BunnyCdnProvider::setTroubleshootingMode(...)`
+      - `BunnyShieldSecurityService::setTroubleshootingMode(...)`
+  - UI surfaced on visible user pages:
+    - WAF Overview header actions (`Sync now`, `Enable/Disable Troubleshooting Mode`, `Open WAF`, `Open DDoS`)
+    - Status Hub page section
+- CDN/Cache page timeout mitigation:
+  - `app/Filament/App/Pages/CdnPage.php` and `app/Filament/App/Pages/CachePage.php` no longer fetch live Bunny logs during page render.
+  - Both pages now read from local `edge_request_logs` to avoid Bunny API timeouts causing UI 504s.
+- Validation completed:
+  - `php artisan test tests/Unit/BunnyCdnProviderTest.php`
+  - `php artisan test tests/Unit/SiteDeletionServiceTest.php`
+
 ## Bunny Edge Error Pages + Shared Middleware (Latest)
 - Added a shared Bunny Edge Scripting workflow for branded edge-served error pages on new Bunny sites.
 - New service: `app/Services/Bunny/BunnyEdgeErrorPageService.php`

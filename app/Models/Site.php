@@ -68,6 +68,7 @@ class Site extends Model
         'required_dns_records',
         'under_attack',
         'development_mode',
+        'troubleshooting_mode',
     ];
 
     protected static function booted(): void
@@ -107,6 +108,7 @@ class Site extends Model
             'provider_meta' => 'array',
             'under_attack' => 'boolean',
             'development_mode' => 'boolean',
+            'troubleshooting_mode' => 'boolean',
             'last_provisioned_at' => 'datetime',
             'last_checked_at' => 'datetime',
         ];
@@ -140,6 +142,11 @@ class Site extends Model
     public function analyticsMetric(): HasOne
     {
         return $this->hasOne(SiteAnalyticsMetric::class);
+    }
+
+    public function edgeRequestLogs(): HasMany
+    {
+        return $this->hasMany(EdgeRequestLog::class);
     }
 
     public function firewallRules(): HasMany

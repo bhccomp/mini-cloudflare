@@ -117,4 +117,21 @@ class AwsCdnProvider implements EdgeProviderInterface
             'message' => 'Edge removal is not automated for this provider yet. Delete resources manually first.',
         ];
     }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function setTroubleshootingMode(Site $site, bool $enabled): array
+    {
+        $development = $this->setDevelopmentMode($site, $enabled);
+
+        return [
+            'changed' => (bool) ($development['changed'] ?? false),
+            'development_mode' => $enabled,
+            'message' => $enabled
+                ? 'Troubleshooting mode enabled. Edge cache controls are relaxed for testing.'
+                : 'Troubleshooting mode disabled. Standard edge behavior is restored.',
+            'development_result' => $development,
+        ];
+    }
 }

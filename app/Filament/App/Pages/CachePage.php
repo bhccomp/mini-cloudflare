@@ -3,8 +3,8 @@
 namespace App\Filament\App\Pages;
 
 use App\Models\AuditLog;
+use App\Models\EdgeRequestLog;
 use App\Models\Site;
-use App\Services\Bunny\BunnyLogsService;
 
 class CachePage extends BaseProtectionPage
 {
@@ -45,16 +45,17 @@ class CachePage extends BaseProtectionPage
             return [];
         }
 
-        if ($this->site->provider !== Site::PROVIDER_BUNNY) {
-            return [];
-        }
-
-        $rows = app(BunnyLogsService::class)->recentLogs($this->site, 300);
-
-        return collect($rows)
-            ->filter(fn (array $row): bool => (int) ($row['status_code'] ?? 200) >= 400)
-            ->groupBy(fn (array $row): string => (string) ($row['uri'] ?? '/'))
-            ->map(fn ($group, string $path): array => ['path' => $path, 'misses' => $group->count()])
+        return EdgeRequestLog::query()
+            ->where('site_id', $this->site->id)
+            ->where('event_at', '>=', now()->subDays(7))
+            ->where('status_code', '>=', 400)
+            ->selectRaw('path, count(*) as misses')
+            ->groupBy('path')
+            ->get()
+            ->map(fn (EdgeRequestLog $row): array => [
+                'path' => (string) ($row->path ?: '/'),
+                'misses' => (int) ($row->misses ?? 0),
+            ])
             ->sortByDesc('misses')
             ->take(10)
             ->values()

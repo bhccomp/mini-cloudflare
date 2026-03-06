@@ -7,6 +7,8 @@ use Illuminate\Support\Arr;
 
 class BunnyEdgeErrorPageService
 {
+    private const SCRIPT_TYPE_MIDDLEWARE = 2;
+
     private const SETTING_KEY = 'bunny';
 
     private const SCRIPT_NAME = 'firephage-edge-error-pages';
@@ -21,12 +23,17 @@ class BunnyEdgeErrorPageService
         $code = $this->buildMiddlewareSource();
         $created = false;
 
+        if ($scriptId > 0 && ! $this->isMiddlewareScript($scriptId)) {
+            $scriptId = 0;
+        }
+
         if ($scriptId <= 0) {
             $scriptId = $this->createScript($this->scriptName());
             $created = true;
         }
 
         $this->updateScriptCode($scriptId, $code);
+        $this->publishScript($scriptId);
         $this->persistScriptId($scriptId);
 
         return [
@@ -164,10 +171,12 @@ JS;
     protected function createScript(string $name): int
     {
         $payloads = [
+            ['Name' => $name, 'ScriptType' => self::SCRIPT_TYPE_MIDDLEWARE],
+            ['name' => $name, 'scriptType' => self::SCRIPT_TYPE_MIDDLEWARE],
+            ['Name' => $name, 'Type' => self::SCRIPT_TYPE_MIDDLEWARE],
+            ['name' => $name, 'type' => self::SCRIPT_TYPE_MIDDLEWARE],
             ['Name' => $name],
             ['name' => $name],
-            ['Name' => $name, 'Type' => 1],
-            ['name' => $name, 'type' => 1],
         ];
 
         $lastError = 'Unable to create Bunny edge script.';
@@ -195,15 +204,39 @@ JS;
         throw new \RuntimeException($lastError);
     }
 
+    protected function isMiddlewareScript(int $scriptId): bool
+    {
+        $response = $this->api->client()->get("/compute/script/{$scriptId}");
+
+        if (! $response->successful()) {
+            return false;
+        }
+
+        $type = Arr::get($response->json(), 'ScriptType');
+
+        return $type === self::SCRIPT_TYPE_MIDDLEWARE || $type === 'Middleware';
+    }
+
     protected function updateScriptCode(int $scriptId, string $code): void
     {
-        $response = $this->api->client()->put("/compute/script/{$scriptId}/code", [
+        $response = $this->api->client()->post("/compute/script/{$scriptId}/code", [
             'Code' => $code,
             'code' => $code,
         ]);
 
         if (! $response->successful()) {
             throw new \RuntimeException($this->responseError($response->json(), 'Unable to update Bunny edge script code.'));
+        }
+    }
+
+    protected function publishScript(int $scriptId): void
+    {
+        $response = $this->api->client()->post("/compute/script/{$scriptId}/publish", [
+            'Note' => 'FirePhage edge error pages',
+        ]);
+
+        if (! $response->successful() && $response->status() !== 204) {
+            throw new \RuntimeException($this->responseError($response->json(), 'Unable to publish Bunny edge script release.'));
         }
     }
 
@@ -242,10 +275,14 @@ JS;
     }
 
     /**
-     * @param  array<string, mixed>  $payload
+     * @param  array<string, mixed>|null  $payload
      */
-    protected function responseError(array $payload, string $fallback): string
+    protected function responseError(?array $payload, string $fallback): string
     {
+        if (! is_array($payload)) {
+            return $fallback;
+        }
+
         return (string) (
             Arr::get($payload, 'Message')
             ?? Arr::get($payload, 'message')

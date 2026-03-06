@@ -2,10 +2,10 @@
 
 namespace App\Filament\App\Pages;
 
+use App\Models\EdgeRequestLog;
 use App\Models\Site;
 use App\Services\Analytics\AnalyticsSyncManager;
 use App\Services\BandwidthUsageService;
-use App\Services\Bunny\BunnyLogsService;
 
 class CdnPage extends BaseProtectionPage
 {
@@ -104,23 +104,18 @@ class CdnPage extends BaseProtectionPage
             return [];
         }
 
-        if ($this->site->provider !== Site::PROVIDER_BUNNY) {
-            return [];
-        }
-
-        $rows = app(BunnyLogsService::class)->recentLogs($this->site, 400);
-
-        return collect($rows)
-            ->filter(fn (array $row): bool => (int) ($row['status_code'] ?? 0) < 400)
-            ->groupBy(fn (array $row): string => (string) ($row['uri'] ?? '/'))
-            ->map(function ($group, string $path): array {
-                $hits = $group->count();
-                $bytes = (int) $group->sum('bytes');
-
+        return EdgeRequestLog::query()
+            ->where('site_id', $this->site->id)
+            ->where('event_at', '>=', now()->subDays(7))
+            ->where('status_code', '<', 400)
+            ->selectRaw('path, count(*) as hits, coalesce(sum((meta->>\'bytes\')::bigint), 0) as bytes')
+            ->groupBy('path')
+            ->get()
+            ->map(function (EdgeRequestLog $row): array {
                 return [
-                    'path' => $path,
-                    'hits' => $hits,
-                    'bandwidth_mb' => round($bytes / 1048576, 2),
+                    'path' => (string) ($row->path ?: '/'),
+                    'hits' => (int) ($row->hits ?? 0),
+                    'bandwidth_mb' => round(((int) ($row->bytes ?? 0)) / 1048576, 2),
                 ];
             })
             ->sortByDesc('hits')

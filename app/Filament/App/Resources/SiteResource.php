@@ -14,6 +14,7 @@ use App\Models\Site;
 use App\Rules\ApexDomainRule;
 use App\Rules\OriginIpRule;
 use App\Services\Edge\EdgeProviderManager;
+use App\Services\Sites\SiteDeletionService;
 use Filament\Actions;
 use Filament\Forms;
 use Filament\Notifications\Notification;
@@ -529,18 +530,19 @@ class SiteResource extends Resource
                         AuditLog::create([
                             'actor_id' => auth()->id(),
                             'organization_id' => $record->organization_id,
-                            'site_id' => $record->id,
                             'action' => 'site.delete',
                             'status' => 'success',
-                            'message' => 'Site deleted.',
-                            'meta' => ['provider' => $provider->key(), 'provider_cleanup' => $result],
+                            'message' => 'Site deleted and cleanup completed.',
+                            'meta' => [
+                                'provider' => $provider->key(),
+                                'provider_cleanup' => $result,
+                                'local_cleanup' => app(SiteDeletionService::class)->deleteSite($record),
+                            ],
                         ]);
-
-                        $record->delete();
 
                         Notification::make()
                             ->title('Site deleted')
-                            ->body('Site and edge deployment removed successfully.')
+                            ->body('Site, Bunny resources, and local records removed successfully.')
                             ->success()
                             ->send();
 

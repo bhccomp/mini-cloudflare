@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\Models\SystemSetting;
 use App\Services\Bunny\BunnyEdgeErrorPageService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use ReflectionMethod;
 use Tests\TestCase;
 
 class BunnyEdgeErrorPageServiceTest extends TestCase
@@ -44,5 +45,22 @@ class BunnyEdgeErrorPageServiceTest extends TestCase
         $this->assertStringContainsString('status === 404', $source);
         $this->assertStringContainsString('status === 429', $source);
         $this->assertStringContainsString('500, 502, 503, 504', $source);
+    }
+
+    public function test_response_error_falls_back_when_bunny_returns_no_json_payload(): void
+    {
+        SystemSetting::query()->updateOrCreate(
+            ['key' => 'bunny'],
+            ['value' => ['api_key' => 'test-key'], 'is_encrypted' => false]
+        );
+
+        $service = app(BunnyEdgeErrorPageService::class);
+        $method = new ReflectionMethod($service, 'responseError');
+        $method->setAccessible(true);
+
+        $this->assertSame(
+            'fallback message',
+            $method->invoke($service, null, 'fallback message')
+        );
     }
 }

@@ -7,6 +7,8 @@ return [
 
     'bunny' => [
         'base_url' => env('BUNNY_API_BASE_URL', 'https://api.bunny.net'),
+        'shield_auto_upgrade_to_advanced' => env('BUNNY_SHIELD_AUTO_UPGRADE_TO_ADVANCED', false),
+        'shield_advanced_plan_type' => (int) env('BUNNY_SHIELD_ADVANCED_PLAN_TYPE', 0),
         'logging_base_url' => env('BUNNY_LOGGING_BASE_URL', 'https://logging.bunnycdn.com'),
         'logging_storage_zone_id' => (int) env('BUNNY_LOGGING_STORAGE_ZONE_ID', 0),
         'log_forwarding_enabled' => env('BUNNY_LOG_FORWARDING_ENABLED', false),

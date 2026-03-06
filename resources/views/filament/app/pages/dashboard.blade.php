@@ -4,7 +4,37 @@
     <div class="fp-protection-shell">
         @if (! $this->site)
             @include('filament.app.pages.protection.empty-state')
-        @elseif ($this->isSimpleMode())
+        @else
+            <x-filament::section
+                heading="Troubleshooting Mode"
+                description="Keep DNS on FirePhage/Bunny while disabling Bunny WAF and relaxing edge cache/optimizer behavior for testing."
+                icon="heroicon-o-wrench-screwdriver"
+            >
+                <x-slot name="afterHeader">
+                    <x-filament::badge :color="$this->isTroubleshootingMode() ? 'warning' : 'success'">
+                        {{ $this->isTroubleshootingMode() ? 'Enabled' : 'Disabled' }}
+                    </x-filament::badge>
+                </x-slot>
+
+                <p class="text-sm">
+                    Use this when testing whether edge filtering or caching is affecting an integration. Traffic still flows through Bunny; this is not a full DNS bypass.
+                </p>
+
+                <x-slot name="footer">
+                    <x-filament::actions alignment="end">
+                        <x-filament::button
+                            :color="$this->isTroubleshootingMode() ? 'warning' : 'gray'"
+                            wire:click="toggleTroubleshootingMode"
+                            wire:loading.attr="disabled"
+                            wire:target="toggleTroubleshootingMode"
+                        >
+                            {{ $this->isTroubleshootingMode() ? 'Disable Troubleshooting Mode' : 'Enable Troubleshooting Mode' }}
+                        </x-filament::button>
+                    </x-filament::actions>
+                </x-slot>
+            </x-filament::section>
+
+            @if ($this->isSimpleMode())
             <x-filament::section
                 heading="Simple Overview"
                 description="You are seeing a simplified experience focused on health, risk, bandwidth, and recent activity."
@@ -18,7 +48,7 @@
                     </x-filament::actions>
                 </x-slot>
             </x-filament::section>
-        @else
+            @else
             <x-filament.app.settings.card
                 title="Protection Control Stack"
                 description="Operate SSL, CDN, cache, firewall, and origin controls for the selected site."
@@ -114,6 +144,7 @@
                     </x-slot>
                 </x-filament.app.settings.section>
             </x-filament.app.settings.card>
+            @endif
         @endif
     </div>
 </x-filament-panels::page>

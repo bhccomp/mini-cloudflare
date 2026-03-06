@@ -39,6 +39,21 @@ class BunnyShieldSecurityService
                 ?? Arr::get($payload, 'WafEnabled')
                 ?? true
             ),
+            'premium_plan' => (bool) (
+                Arr::get($payload, 'premiumPlan')
+                ?? Arr::get($payload, 'PremiumPlan')
+                ?? false
+            ),
+            'plan_type' => (int) (
+                Arr::get($payload, 'planType')
+                ?? Arr::get($payload, 'PlanType')
+                ?? Arr::get($saved, 'plan_type', 0)
+            ),
+            'whitelabel_response_pages' => (bool) (
+                Arr::get($payload, 'whitelabelResponsePages')
+                ?? Arr::get($payload, 'WhitelabelResponsePages')
+                ?? false
+            ),
             'raw' => $payload,
         ];
     }
@@ -54,24 +69,17 @@ class BunnyShieldSecurityService
         $ddosSensitivity = $this->normalizeSensitivity((string) ($state['ddos_sensitivity'] ?? 'medium'));
         $botSensitivity = $this->normalizeSensitivity((string) ($state['bot_sensitivity'] ?? 'medium'));
         $challengeWindow = max(5, (int) ($state['challenge_window_minutes'] ?? 30));
+        $current = $this->normalizeEnvelope($this->api->client()->get("/shield/shield-zone/{$shieldZoneId}")->json());
 
-        $payload = [
-            'WafEnabled' => true,
-            'WafExecutionMode' => $this->sensitivityToCode($wafSensitivity),
-            'WafProfileId' => $this->sensitivityToCode($wafSensitivity),
-            'WafRealtimeThreatIntelligenceEnabled' => in_array($ddosSensitivity, ['high', 'extreme'], true),
-        ];
+        $payload = $this->buildShieldZonePatchPayload($shieldZoneId, $current, [
+            'wafEnabled' => true,
+            'wafExecutionMode' => $this->sensitivityToCode($wafSensitivity),
+            'wafRealtimeThreatIntelligenceEnabled' => in_array($ddosSensitivity, ['high', 'extreme'], true),
+            'wafProfileId' => $this->sensitivityToCode($wafSensitivity),
+            'whitelabelResponsePages' => true,
+        ], $challengeWindow);
 
-        $response = $this->api->client()->put("/shield/shield-zone/{$shieldZoneId}", $payload);
-
-        if (! $response->successful()) {
-            $response = $this->api->client()->put("/shield/shield-zone/{$shieldZoneId}", [
-                'wafEnabled' => true,
-                'wafExecutionMode' => $this->sensitivityToCode($wafSensitivity),
-                'wafProfileId' => $this->sensitivityToCode($wafSensitivity),
-                'wafRealtimeThreatIntelligenceEnabled' => in_array($ddosSensitivity, ['high', 'extreme'], true),
-            ]);
-        }
+        $response = $this->api->client()->patch('/shield/shield-zone', $payload);
 
         if (! $response->successful()) {
             throw new \RuntimeException($this->responseError($response, 'Unable to update security settings.'));
@@ -84,6 +92,7 @@ class BunnyShieldSecurityService
             'ddos_sensitivity' => $ddosSensitivity,
             'bot_sensitivity' => $botSensitivity,
             'challenge_window_minutes' => $challengeWindow,
+            'whitelabel_response_pages' => true,
             'updated_at' => now()->toIso8601String(),
         ];
         $site->forceFill(['provider_meta' => $meta])->save();
@@ -91,6 +100,183 @@ class BunnyShieldSecurityService
         return [
             'shield_zone_id' => $shieldZoneId,
             'updated' => true,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function ensureAdvancedPlan(Site $site, ?int $shieldZoneId = null): array
+    {
+        $shieldZoneId ??= $this->accessLists->ensureShieldZone($site);
+        $planType = (int) config('edge.bunny.shield_advanced_plan_type', 0);
+
+        $currentResponse = $this->api->client()->get("/shield/shield-zone/{$shieldZoneId}");
+        if (! $currentResponse->successful()) {
+            throw new \RuntimeException($this->responseError($currentResponse, 'Unable to load Bunny Shield plan details.'));
+        }
+
+        $current = $this->normalizeEnvelope($currentResponse->json());
+        $premiumPlan = (bool) (
+            Arr::get($current, 'premiumPlan')
+            ?? Arr::get($current, 'PremiumPlan')
+            ?? false
+        );
+        $currentPlanType = (int) (
+            Arr::get($current, 'planType')
+            ?? Arr::get($current, 'PlanType')
+            ?? 0
+        );
+
+        if ($premiumPlan && $currentPlanType === $planType) {
+            return [
+                'shield_zone_id' => $shieldZoneId,
+                'changed' => false,
+                'message' => 'Bunny Shield advanced plan is already enabled.',
+            ];
+        }
+
+        $payload = $this->buildShieldZonePatchPayload($shieldZoneId, $current, [
+            'premiumPlan' => true,
+            'planType' => $planType,
+            'whitelabelResponsePages' => true,
+        ]);
+
+        $response = $this->api->client()->patch('/shield/shield-zone', $payload);
+
+        if (! $response->successful()) {
+            throw new \RuntimeException($this->responseError($response, 'Unable to enable Bunny Shield advanced plan.'));
+        }
+
+        $meta = is_array($site->provider_meta) ? $site->provider_meta : [];
+        $meta['shield_plan'] = 'advanced';
+        $meta['shield_premium_plan'] = true;
+        $meta['shield_plan_type'] = $planType;
+        $meta['shield_plan_upgraded_at'] = now()->toIso8601String();
+        $site->forceFill(['provider_meta' => $meta])->save();
+
+        return [
+            'shield_zone_id' => $shieldZoneId,
+            'changed' => true,
+            'message' => 'Bunny Shield advanced plan enabled.',
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function setTroubleshootingMode(Site $site, bool $enabled, ?bool $restoreWafEnabled = null): array
+    {
+        $shieldZoneId = $this->accessLists->ensureShieldZone($site);
+        $currentResponse = $this->api->client()->get("/shield/shield-zone/{$shieldZoneId}");
+
+        if (! $currentResponse->successful()) {
+            throw new \RuntimeException($this->responseError($currentResponse, 'Unable to load Bunny Shield settings.'));
+        }
+
+        $current = $this->normalizeEnvelope($currentResponse->json());
+        $targetWafEnabled = $enabled ? false : ($restoreWafEnabled ?? true);
+        $currentWafEnabled = (bool) (
+            Arr::get($current, 'wafEnabled')
+            ?? Arr::get($current, 'WafEnabled')
+            ?? true
+        );
+
+        if ($currentWafEnabled === $targetWafEnabled) {
+            return [
+                'shield_zone_id' => $shieldZoneId,
+                'changed' => false,
+                'waf_enabled' => $targetWafEnabled,
+                'message' => $enabled
+                    ? 'Shield WAF is already disabled for troubleshooting.'
+                    : 'Shield WAF is already restored.',
+            ];
+        }
+
+        $payload = $this->buildShieldZonePatchPayload($shieldZoneId, $current, [
+            'wafEnabled' => $targetWafEnabled,
+        ]);
+
+        $response = $this->api->client()->patch('/shield/shield-zone', $payload);
+
+        if (! $response->successful()) {
+            throw new \RuntimeException($this->responseError($response, 'Unable to update Bunny Shield troubleshooting state.'));
+        }
+
+        $meta = is_array($site->provider_meta) ? $site->provider_meta : [];
+        $meta['shield_settings'] = array_merge((array) ($meta['shield_settings'] ?? []), [
+            'waf_enabled' => $targetWafEnabled,
+            'troubleshooting_mode' => $enabled,
+            'updated_at' => now()->toIso8601String(),
+        ]);
+        $site->forceFill(['provider_meta' => $meta])->save();
+
+        return [
+            'shield_zone_id' => $shieldZoneId,
+            'changed' => true,
+            'waf_enabled' => $targetWafEnabled,
+            'message' => $enabled
+                ? 'Shield WAF disabled for troubleshooting.'
+                : 'Shield WAF restored.',
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function downgradePlan(Site $site, ?int $shieldZoneId = null): array
+    {
+        $shieldZoneId ??= (int) data_get($site->provider_meta, 'shield_zone_id', 0);
+        if ($shieldZoneId <= 0) {
+            return [
+                'shield_zone_id' => 0,
+                'changed' => false,
+                'message' => 'No Bunny Shield zone is linked to this site.',
+            ];
+        }
+
+        $currentResponse = $this->api->client()->get("/shield/shield-zone/{$shieldZoneId}");
+        if (! $currentResponse->successful()) {
+            throw new \RuntimeException($this->responseError($currentResponse, 'Unable to load Bunny Shield plan details.'));
+        }
+
+        $current = $this->normalizeEnvelope($currentResponse->json());
+        $premiumPlan = (bool) (
+            Arr::get($current, 'premiumPlan')
+            ?? Arr::get($current, 'PremiumPlan')
+            ?? false
+        );
+
+        if (! $premiumPlan) {
+            return [
+                'shield_zone_id' => $shieldZoneId,
+                'changed' => false,
+                'message' => 'Bunny Shield premium plan is already disabled.',
+            ];
+        }
+
+        $payload = $this->buildShieldZonePatchPayload($shieldZoneId, $current, [
+            'premiumPlan' => false,
+            'planType' => 0,
+            'whitelabelResponsePages' => false,
+        ]);
+
+        $response = $this->api->client()->patch('/shield/shield-zone', $payload);
+
+        if (! $response->successful()) {
+            throw new \RuntimeException($this->responseError($response, 'Unable to downgrade Bunny Shield plan.'));
+        }
+
+        $meta = is_array($site->provider_meta) ? $site->provider_meta : [];
+        $meta['shield_plan'] = 'basic';
+        $meta['shield_premium_plan'] = false;
+        $meta['shield_plan_downgraded_at'] = now()->toIso8601String();
+        $site->forceFill(['provider_meta' => $meta])->save();
+
+        return [
+            'shield_zone_id' => $shieldZoneId,
+            'changed' => true,
+            'message' => 'Bunny Shield premium plan downgraded.',
         ];
     }
 
@@ -282,6 +468,47 @@ class BunnyShieldSecurityService
             'challenge' => 2,
             default => 1,
         };
+    }
+
+    /**
+     * @param  array<string, mixed>  $current
+     * @param  array<string, mixed>  $overrides
+     * @return array<string, mixed>
+     */
+    protected function buildShieldZonePatchPayload(
+        int $shieldZoneId,
+        array $current,
+        array $overrides = [],
+        int $challengeWindowMinutes = 30,
+    ): array {
+        return [
+            'shieldZoneId' => $shieldZoneId,
+            'shieldZone' => array_merge([
+                'shieldZoneId' => $shieldZoneId,
+                'learningMode' => (bool) (Arr::get($current, 'learningMode') ?? true),
+                'learningModeUntil' => Arr::get($current, 'learningModeUntil'),
+                'premiumPlan' => (bool) (Arr::get($current, 'premiumPlan') ?? Arr::get($current, 'PremiumPlan') ?? false),
+                'planType' => (int) (Arr::get($current, 'planType') ?? Arr::get($current, 'PlanType') ?? 0),
+                'wafEnabled' => (bool) (Arr::get($current, 'wafEnabled') ?? Arr::get($current, 'WafEnabled') ?? true),
+                'wafExecutionMode' => (int) (Arr::get($current, 'wafExecutionMode') ?? Arr::get($current, 'WafExecutionMode') ?? 1),
+                'wafDisabledRules' => array_values((array) Arr::get($current, 'wafDisabledRules', [])),
+                'wafLogOnlyRules' => array_values((array) Arr::get($current, 'wafLogOnlyRules', [])),
+                'wafRequestHeaderLoggingEnabled' => (bool) (Arr::get($current, 'wafRequestHeaderLoggingEnabled') ?? true),
+                'wafRequestIgnoredHeaders' => array_values((array) Arr::get($current, 'wafRequestIgnoredHeaders', [])),
+                'wafRealtimeThreatIntelligenceEnabled' => (bool) (Arr::get($current, 'wafRealtimeThreatIntelligenceEnabled') ?? false),
+                'wafProfileId' => (int) (Arr::get($current, 'wafProfileId') ?? Arr::get($current, 'WafProfileId') ?? 1),
+                'wafEngineConfig' => array_values((array) Arr::get($current, 'wafEngineConfig', [])),
+                'wafRequestBodyLimitAction' => (int) (Arr::get($current, 'wafRequestBodyLimitAction') ?? 1),
+                'wafResponseBodyLimitAction' => (int) (Arr::get($current, 'wafResponseBodyLimitAction') ?? 2),
+                'dDoSShieldSensitivity' => (int) (Arr::get($current, 'dDoSShieldSensitivity') ?? 0),
+                'dDoSExecutionMode' => (int) (Arr::get($current, 'dDoSExecutionMode') ?? 0),
+                'dDoSChallengeWindow' => (int) (Arr::get($current, 'dDoSChallengeWindow') ?? ($challengeWindowMinutes * 60)),
+                'blockVpn' => Arr::get($current, 'blockVpn'),
+                'blockTor' => Arr::get($current, 'blockTor'),
+                'blockDatacentre' => Arr::get($current, 'blockDatacentre'),
+                'whitelabelResponsePages' => (bool) (Arr::get($current, 'whitelabelResponsePages') ?? false),
+            ], $overrides),
+        ];
     }
 
     protected function responseError(Response $response, string $fallback): string

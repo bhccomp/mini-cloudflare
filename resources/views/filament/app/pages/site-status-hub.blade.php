@@ -4,7 +4,37 @@
     <div @if ($this->site && ! $this->isLiveProtected() && $this->shouldPollStatus()) wire:poll.15s="pollStatus" @endif>
         @if (! $this->site)
             @include('filament.app.pages.protection.empty-state')
-        @elseif ($this->isLiveProtected())
+        @else
+            <x-filament::section
+                heading="Troubleshooting Mode"
+                description="Keep DNS on FirePhage/Bunny while disabling Bunny WAF and relaxing edge cache/optimizer behavior for testing."
+                icon="heroicon-o-wrench-screwdriver"
+            >
+                <x-slot name="afterHeader">
+                    <x-filament::badge :color="$this->isTroubleshootingMode() ? 'warning' : 'success'">
+                        {{ $this->isTroubleshootingMode() ? 'Enabled' : 'Disabled' }}
+                    </x-filament::badge>
+                </x-slot>
+
+                <p class="text-sm">
+                    Use this when testing whether edge filtering or caching is affecting an integration. Traffic still flows through Bunny; this is not a full DNS bypass.
+                </p>
+
+                <x-slot name="footer">
+                    <x-filament::actions alignment="end">
+                        <x-filament::button
+                            :color="$this->isTroubleshootingMode() ? 'warning' : 'gray'"
+                            wire:click="toggleTroubleshootingMode"
+                            wire:loading.attr="disabled"
+                            wire:target="toggleTroubleshootingMode"
+                        >
+                            {{ $this->isTroubleshootingMode() ? 'Disable Troubleshooting Mode' : 'Enable Troubleshooting Mode' }}
+                        </x-filament::button>
+                    </x-filament::actions>
+                </x-slot>
+            </x-filament::section>
+
+            @if ($this->isLiveProtected())
             @if ($this->isSimpleMode())
                 <x-filament::section heading="Need Deep Detail?" icon="heroicon-o-adjustments-horizontal">
                     <p>Simple mode keeps this page compact. Switch to Pro mode to include activity feed and deeper technical detail.</p>
@@ -15,7 +45,7 @@
                     </x-slot>
                 </x-filament::section>
             @endif
-        @else
+            @else
             <x-filament::section
                 heading="Site Setup Progress"
                 description="Complete these onboarding steps to activate protection."
@@ -156,6 +186,7 @@
                         </x-filament::section>
                     @endforeach
                 </x-filament::section>
+            @endif
             @endif
         @endif
     </div>
