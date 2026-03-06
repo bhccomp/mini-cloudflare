@@ -27,7 +27,7 @@
                 <ul class="mt-5 space-y-2 text-sm text-slate-300">
                     <li>Up to 5 million requests/month</li>
                     <li>Advanced attack patterns + origin shielding</li>
-                    <li>Slack + SMS + Email alerts</li>
+                    <li>Slack + SMS + Email + Webhook alerts</li>
                     <li>Priority support</li>
                     <li>Overage: $0.02 per 1,000 extra requests</li>
                 </ul>
@@ -40,7 +40,7 @@
                 <ul class="mt-5 space-y-2 text-sm text-slate-300">
                     <li>10+ million requests/month</li>
                     <li>Dedicated edge configuration</li>
-                    <li>Custom security rules</li>
+                    <li>Custom WordPress security rules</li>
                     <li>SLA + personal onboarding</li>
                     <li>Path to your own infrastructure when ready</li>
                 </ul>

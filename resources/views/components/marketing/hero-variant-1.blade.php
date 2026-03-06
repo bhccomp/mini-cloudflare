@@ -18,10 +18,10 @@
         <div class="grid grid-cols-1 items-center gap-10 lg:grid-cols-2 lg:gap-12">
             <div class="max-w-3xl pt-8">
                     <p class="mb-4 inline-flex rounded-full border border-cyan-400/30 bg-cyan-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">Security Platform</p>
-                    <h1 class="mb-5 text-balance text-4xl font-semibold leading-[1.06] text-white sm:text-5xl lg:text-6xl">Stop Attacks Before They Reach Your Server</h1>
+                    <h1 class="mb-5 text-balance text-4xl font-semibold leading-[1.06] text-white sm:text-5xl lg:text-6xl">Stop Attacks Before They Reach Your WordPress Server</h1>
                     <p class="text-lg leading-8 text-slate-200/85">
-                        FirePage shields your origin at the global edge.
-                        No infrastructure to manage. Pay only for what you use.
+                        FirePage shields your origin at the global edge with custom WAF rules built specifically for WordPress.
+                        Smart uptime monitoring, instant Slack, webhook, email and phone alerts. Pay only for what you use.
                     </p>
                     <p class="mt-3 text-sm text-slate-300/90">Works with WordPress, WooCommerce, Laravel, APIs and modern SaaS platforms.</p>
 
@@ -66,14 +66,14 @@
         <div class="mt-10 mb-5 pb-8 text-center lg:pb-10">
             <p class="text-sm font-semibold uppercase tracking-[0.14em] text-cyan-200/90">Perfect for</p>
             <div class="mt-4 flex flex-wrap items-center justify-center gap-3">
-                @foreach (['WordPress websites', 'Agencies managing multiple sites', 'High-traffic e-commerce stores', 'SaaS platforms and APIs'] as $item)
+                @foreach (['WordPress websites', 'WooCommerce stores', 'Agency-managed sites', 'High-traffic blogs'] as $item)
                     <span class="rounded-full border border-white/10 bg-slate-900/65 px-4 py-2 text-sm text-slate-200">{{ $item }}</span>
                 @endforeach
             </div>
 
             <div class="mt-5 flex justify-center">
                 <span class="rounded-full border border-white/10 bg-slate-900/65 px-5 py-2 text-sm text-slate-200">
-                    Already protecting 40+ websites • 3.2 million requests filtered last month • 99.9% attack mitigation
+                    Already protecting 40+ WordPress websites • 3.2 million requests filtered last month • 99.9% attack mitigation
                 </span>
             </div>
         </div>

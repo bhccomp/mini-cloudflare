@@ -5,7 +5,7 @@
             <div>
                 <h2 class="text-3xl font-semibold text-white">Global Edge Protection</h2>
                 <p class="mt-4 text-sm leading-7 text-slate-300">
-                    FirePhage routes incoming traffic through a distributed edge layer where automated filtering and Web Application Firewall rules inspect requests before they ever reach your infrastructure. Malicious traffic is stopped early, while legitimate users connect normally.
+                    FirePage routes incoming traffic through a distributed edge layer where our custom WordPress WAF rules automatically inspect and block malicious requests before they ever reach your origin server. Malicious traffic is stopped early, while legitimate users connect normally.
                 </p>
                 <ul class="mt-6 space-y-3 text-sm text-slate-200">
                     <li class="flex items-start gap-2"><span class="text-cyan-300">•</span><span>Inspect traffic at the edge before it reaches your origin</span></li>

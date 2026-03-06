@@ -1101,6 +1101,22 @@
   - pricing -> `pricing-variant-1`
   - footer -> `footer-variant-1`
 
+## WordPress-Focused Homepage Copy Update (Latest)
+- Applied text-only updates on current homepage (`/`, serves `home-variant-1`).
+- Hero copy now WordPress-specific (headline + subheadline) with trust line updated to “40+ WordPress websites”.
+- “Perfect For” badges updated to: WordPress websites, WooCommerce stores, Agency-managed sites, High-traffic blogs.
+- Global Edge Protection first sentence updated to mention custom WordPress WAF rules.
+- Platform architecture first sentence updated to custom WordPress WAF rules.
+- Pricing copy adjusted:
+  - Growth plan alerts include Webhook.
+  - Enterprise plan includes “Custom WordPress security rules”.
+- Footer already correct: `© 2025 FirePage. All rights reserved.`
+- Files touched:
+  - `resources/views/components/marketing/hero-variant-1.blade.php`
+  - `resources/views/components/marketing/global-edge-protection.blade.php`
+  - `resources/views/components/marketing/platform-architecture-variant-1.blade.php`
+  - `resources/views/components/marketing/pricing-variant-1.blade.php`
+
 ## Homepage Route Promotion + Variant Cleanup (Latest)
 - Promoted `home-variant-1` to the primary homepage route:
   - `/` now serves `marketing.home-variant-1`.
