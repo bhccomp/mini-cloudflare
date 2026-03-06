@@ -1,0 +1,20 @@
+@include('edge-errors.layout', [
+    'title' => 'Too many requests',
+    'eyebrow' => 'Traffic Paused',
+    'headline' => 'This request stream is moving too fast for the site right now.',
+    'lede' => 'The website is limiting repeat requests to keep service stable and prevent automated abuse from degrading performance for real visitors.',
+    'domainLabel' => $domainLabel,
+    'statusCode' => $statusCode,
+    'steps' => [
+        'Pause for a moment before refreshing or retrying the same action.',
+        'Avoid multiple tabs, aggressive reloads, or automated polling against the same page.',
+        'If this is a checkout or account action, wait briefly and then retry once from the same browser.',
+    ],
+    'primaryActionLabel' => 'Retry from homepage',
+    'secondaryActionLabel' => 'Contact support',
+    'footerNote' => 'This branded rate-limit screen keeps visitors informed while protection rules slow down abusive or accidental request bursts.',
+    'sideTitle' => 'Likely cause',
+    'sideBody' => 'A request-rate threshold was reached at the edge. That can be caused by bots, scripts, crawlers, or even repeated manual refreshes during a busy session.',
+    'recoveryCopy' => 'Wait 30 to 60 seconds, then retry once. If normal browsing keeps triggering this page, the site owner may need to relax the current limit for this path or action.',
+    'badges' => ['Burst control', 'Checkout-safe', 'Bot pressure reduced'],
+])

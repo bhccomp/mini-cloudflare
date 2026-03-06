@@ -4,6 +4,7 @@ namespace App\Services\Edge\Providers;
 
 use App\Models\Site;
 use App\Models\SystemSetting;
+use App\Services\Bunny\BunnyEdgeErrorPageService;
 use App\Services\Bunny\BunnyShieldAccessListService;
 use App\Services\Edge\EdgeProviderInterface;
 use Illuminate\Http\Client\PendingRequest;
@@ -14,7 +15,10 @@ use Symfony\Component\Process\Process;
 
 class BunnyCdnProvider implements EdgeProviderInterface
 {
-    public function __construct(protected ?BunnyShieldAccessListService $shieldAccess = null) {}
+    public function __construct(
+        protected ?BunnyShieldAccessListService $shieldAccess = null,
+        protected ?BunnyEdgeErrorPageService $edgeErrorPages = null,
+    ) {}
 
     public function key(): string
     {
@@ -91,6 +95,19 @@ class BunnyCdnProvider implements EdgeProviderInterface
             $shieldMessage = $e->getMessage();
         }
 
+        $edgeScriptStatus = 'inactive';
+        $edgeScriptId = (int) data_get($site->provider_meta, 'edge_error_script_id', 0);
+        $edgeScriptMessage = null;
+
+        try {
+            $edgeScriptResult = $this->syncEdgeErrorPages($site);
+            $edgeScriptStatus = (string) ($edgeScriptResult['status'] ?? 'active');
+            $edgeScriptId = (int) ($edgeScriptResult['script_id'] ?? $edgeScriptId);
+        } catch (\Throwable $e) {
+            $edgeScriptStatus = 'failed';
+            $edgeScriptMessage = $e->getMessage();
+        }
+
         $edgeDomain = $this->zoneEdgeDomain($zoneName);
         $hostnames = [$site->apex_domain];
 
@@ -131,6 +148,9 @@ class BunnyCdnProvider implements EdgeProviderInterface
                 'shield_zone_id' => $resolvedShieldZoneId,
                 'shield_status' => $resolvedShieldZoneId ? 'active' : 'pending',
                 'shield_last_error' => $shieldMessage,
+                'edge_error_script_id' => $edgeScriptId > 0 ? $edgeScriptId : null,
+                'edge_error_script_status' => $edgeScriptStatus,
+                'edge_error_script_last_error' => $edgeScriptMessage,
                 'edge_domain' => $edgeDomain,
                 'origin_url' => $originUrl,
                 'origin_host_header' => $originHostHeader,
@@ -147,6 +167,8 @@ class BunnyCdnProvider implements EdgeProviderInterface
                 'Edge zone provisioned. Point DNS traffic records to the edge domain.',
                 $resolvedShieldZoneId ? 'Security zone has been enabled for this site.' : null,
                 $resolvedShieldZoneId ? null : 'Security zone setup is pending and will retry automatically.',
+                $edgeScriptStatus === 'active' ? 'Branded edge error pages are active for this site.' : null,
+                $edgeScriptStatus === 'failed' ? 'Branded edge error pages could not be attached automatically yet.' : null,
             ])),
         ];
     }
@@ -276,11 +298,15 @@ class BunnyCdnProvider implements EdgeProviderInterface
             $zoneId,
             $zoneName,
             $this->resolvePreferredOriginUrl($site),
-            strtolower((string) $site->apex_domain)
+            strtolower((string) $site->apex_domain),
+            $this->edgeScriptOverrideForSite($site),
         );
     }
 
-    private function syncZoneOriginSettings(int $zoneId, string $zoneName, string $originUrl, string $originHostHeader): void
+    /**
+     * @param  array<string, mixed>  $overrides
+     */
+    private function syncZoneOriginSettings(int $zoneId, string $zoneName, string $originUrl, string $originHostHeader, array $overrides = []): void
     {
         if ($zoneId <= 0 || $zoneName === '' || $originUrl === '' || $originHostHeader === '') {
             return;
@@ -292,6 +318,7 @@ class BunnyCdnProvider implements EdgeProviderInterface
                 zoneName: $zoneName,
                 originUrl: $originUrl,
                 originHostHeader: $originHostHeader,
+                overrides: $overrides,
             ))->throw();
         } catch (\Throwable) {
             // Non-fatal: keep runtime checks resilient and retry on later actions.
@@ -318,6 +345,54 @@ class BunnyCdnProvider implements EdgeProviderInterface
             'EnableAutoSSL' => true,
             'Type' => 0,
         ] + $this->loggingSettingsPayload() + $overrides;
+    }
+
+    public function syncEdgeErrorPages(Site $site): array
+    {
+        $zoneId = (int) ($site->provider_resource_id ?: data_get($site->provider_meta, 'zone_id', 0));
+        if ($zoneId <= 0) {
+            return [
+                'changed' => false,
+                'status' => 'inactive',
+                'message' => 'Bunny pull zone is missing.',
+            ];
+        }
+
+        $scriptId = (int) ($this->edgeErrorPages()->syncSharedScript()['script_id'] ?? 0);
+        if ($scriptId <= 0) {
+            throw new \RuntimeException('Shared Bunny edge error script is not available.');
+        }
+
+        $zoneName = (string) data_get($site->provider_meta, 'zone_name', $this->zoneNameFor($site));
+        $originUrl = (string) data_get($site->provider_meta, 'origin_url', $this->resolvePreferredOriginUrl($site));
+        $originHostHeader = (string) data_get($site->provider_meta, 'origin_host_header', strtolower((string) $site->apex_domain));
+
+        $this->client()->post("/pullzone/{$zoneId}", $this->buildZoneUpdatePayload(
+            zoneId: $zoneId,
+            zoneName: $zoneName,
+            originUrl: $originUrl,
+            originHostHeader: $originHostHeader,
+            overrides: ['EdgeScriptId' => $scriptId],
+        ))->throw();
+
+        $meta = is_array($site->provider_meta) ? $site->provider_meta : [];
+        $meta['zone_id'] = $zoneId;
+        $meta['zone_name'] = $zoneName;
+        $meta['origin_url'] = $originUrl;
+        $meta['origin_host_header'] = $originHostHeader;
+        $meta['edge_error_script_id'] = $scriptId;
+        $meta['edge_error_script_status'] = 'active';
+        $meta['edge_error_script_last_error'] = null;
+        $meta['edge_error_script_synced_at'] = now()->toIso8601String();
+
+        $site->forceFill(['provider_meta' => $meta])->save();
+
+        return [
+            'changed' => true,
+            'status' => 'active',
+            'script_id' => $scriptId,
+            'message' => 'Branded edge error pages are attached to this Bunny zone.',
+        ];
     }
 
     /**
@@ -638,6 +713,7 @@ class BunnyCdnProvider implements EdgeProviderInterface
             originUrl: $originUrl,
             originHostHeader: $originHostHeader,
             overrides: [
+                'EdgeScriptId' => (int) (Arr::get($zone, 'EdgeScriptId') ?: data_get($site->provider_meta, 'edge_error_script_id', 0)),
                 // Development mode bypasses cache and optimization.
                 'DisableCache' => $enabled,
                 'EnableOptimizers' => ! $enabled,
@@ -961,5 +1037,20 @@ class BunnyCdnProvider implements EdgeProviderInterface
     protected function shieldAccess(): BunnyShieldAccessListService
     {
         return $this->shieldAccess ??= app(BunnyShieldAccessListService::class);
+    }
+
+    protected function edgeErrorPages(): BunnyEdgeErrorPageService
+    {
+        return $this->edgeErrorPages ??= app(BunnyEdgeErrorPageService::class);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function edgeScriptOverrideForSite(Site $site): array
+    {
+        $scriptId = (int) data_get($site->provider_meta, 'edge_error_script_id', 0);
+
+        return $scriptId > 0 ? ['EdgeScriptId' => $scriptId] : [];
     }
 }

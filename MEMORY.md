@@ -1,5 +1,28 @@
 # MEMORY
 
+## Bunny Edge Error Pages + Shared Middleware (Latest)
+- Added a shared Bunny Edge Scripting workflow for branded edge-served error pages on new Bunny sites.
+- New service: `app/Services/Bunny/BunnyEdgeErrorPageService.php`
+  - Renders repo-backed templates into HTML strings.
+  - Builds shared middleware source that branches on response status and injects the current hostname at runtime.
+  - Syncs the shared Bunny script and persists `edge_error_script_id` under the existing `bunny` system setting.
+- Added repo-backed default error templates under `resources/views/edge-errors/`:
+  - `not-found` (`404`)
+  - `forbidden` (`403`)
+  - `rate-limited` (`429`)
+  - `unavailable` (`500/502/503/504`)
+- Bunny provisioning now auto-attaches the shared `EdgeScriptId` to each new Pull Zone:
+  - Implemented in `app/Services/Edge/Providers/BunnyCdnProvider.php`
+  - Provider meta now records script id/status/error/sync timestamp.
+- Added console command:
+  - `php artisan bunny:sync-edge-error-pages`
+  - Optional `--attach` to backfill existing Bunny zones.
+- Preserved attached `EdgeScriptId` during later Bunny zone updates so development-mode / origin sync changes do not clear the middleware accidentally.
+- Registered console command discovery in `bootstrap/app.php` so app console commands under `app/Console/Commands` are available without extra manual wiring.
+- Validation completed:
+  - `./vendor/bin/pint --dirty`
+  - `php artisan test tests/Unit/BunnyEdgeErrorPageServiceTest.php tests/Unit/BunnyCdnProviderTest.php`
+
 ## Home Variant 1 Conversion + Rhythm Fixes (Latest)
 - Scope constrained to `home-variant-1` only (no changes to other variants/shared marketing layout templates).
 - Added variant-specific hero and onboarding components:

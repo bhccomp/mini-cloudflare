@@ -41,6 +41,8 @@ class BunnyCdnProviderTest extends TestCase
             'http://198.51.100.9/*' => Http::response('', 301, ['Location' => 'https://example.com/']),
             'https://198.51.100.9/*' => Http::response('', 200),
             'https://api.bunny.net/pullzone' => Http::response(['Id' => 321, 'Name' => 'fp-1-example-com'], 201),
+            'https://api.bunny.net/compute/script' => Http::response(['Id' => 444], 201),
+            'https://api.bunny.net/compute/script/444/code' => Http::response([], 200),
             'https://api.bunny.net/pullzone/321' => Http::response([], 200),
             'https://api.bunny.net/pullzone/321/addHostname' => Http::response([], 200),
             'https://api.bunny.net/pullzone/loadFreeCertificate*' => Http::response([], 200),
@@ -63,8 +65,10 @@ class BunnyCdnProviderTest extends TestCase
         $this->assertSame('https://198.51.100.9', data_get($result, 'provider_meta.origin_url'));
         $this->assertSame('example.com', data_get($result, 'provider_meta.origin_host_header'));
         $this->assertSame(999, data_get($result, 'provider_meta.shield_zone_id'));
+        $this->assertSame(444, data_get($result, 'provider_meta.edge_error_script_id'));
+        $this->assertSame('active', data_get($result, 'provider_meta.edge_error_script_status'));
 
-        Http::assertSentCount(9);
+        Http::assertSentCount(14);
         Http::assertSent(function ($request) {
             return $request->url() === 'https://api.bunny.net/pullzone'
                 && data_get($request->data(), 'OriginUrl') === 'https://198.51.100.9'
@@ -75,10 +79,16 @@ class BunnyCdnProviderTest extends TestCase
                 && (int) data_get($request->data(), 'LoggingStorageZoneId') === 777;
         });
         Http::assertSent(fn ($request) => str_starts_with($request->url(), 'https://api.bunny.net/pullzone/loadFreeCertificate'));
+        Http::assertSent(fn ($request) => $request->url() === 'https://api.bunny.net/compute/script');
+        Http::assertSent(function ($request) {
+            return $request->url() === 'https://api.bunny.net/compute/script/444/code'
+                && str_contains((string) data_get($request->data(), 'Code', data_get($request->data(), 'code', '')), 'onOriginResponse');
+        });
         Http::assertSent(function ($request) {
             return $request->url() === 'https://api.bunny.net/pullzone/321'
                 && data_get($request->data(), 'OriginUrl') === 'https://198.51.100.9'
                 && data_get($request->data(), 'OriginHostHeader') === 'example.com'
+                && (int) data_get($request->data(), 'EdgeScriptId') === 444
                 && data_get($request->data(), 'EnableLogging') === true
                 && data_get($request->data(), 'LoggingSaveToStorage') === true
                 && (int) data_get($request->data(), 'LoggingStorageZoneId') === 777;

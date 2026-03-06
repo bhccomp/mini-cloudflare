@@ -1,0 +1,20 @@
+@include('edge-errors.layout', [
+    'title' => 'Access restricted',
+    'eyebrow' => 'Access Restricted',
+    'headline' => 'This request was blocked before it reached the site.',
+    'lede' => 'Access may be restricted by site rules, login requirements, IP policies, geolocation settings, or a protective firewall decision.',
+    'domainLabel' => $domainLabel,
+    'statusCode' => $statusCode,
+    'steps' => [
+        'Sign in first if this page requires an authenticated session.',
+        'Turn off VPN or proxy routing if the website expects a normal residential or office connection.',
+        'If you believe this is a mistake, contact the site owner and include the time of the request.',
+    ],
+    'primaryActionLabel' => 'Try homepage',
+    'secondaryActionLabel' => 'Request access',
+    'footerNote' => 'FirePhage can show a branded blocked-page experience while still letting customers enforce stricter access controls at the edge.',
+    'sideTitle' => 'Likely cause',
+    'sideBody' => 'The request matched a protection policy before the origin accepted it. This often happens with admin paths, sensitive URLs, unusual IPs, or bot-like traffic patterns.',
+    'recoveryCopy' => 'Try again from a normal browser session, confirm that you have permission to access this area, or ask the site owner to review the relevant firewall policy.',
+    'badges' => ['Protected route', 'Firewall policy', 'Origin hidden'],
+])

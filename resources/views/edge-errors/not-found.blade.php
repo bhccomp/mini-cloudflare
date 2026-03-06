@@ -1,0 +1,20 @@
+@include('edge-errors.layout', [
+    'title' => 'Page not found',
+    'eyebrow' => 'Content Missing',
+    'headline' => 'This page does not exist on the edge right now.',
+    'lede' => 'The address may be incorrect, the page may have moved, or the content may no longer be available.',
+    'domainLabel' => $domainLabel,
+    'statusCode' => $statusCode,
+    'steps' => [
+        'Double-check the URL for typos, extra characters, or old bookmarks.',
+        'Start from the homepage and navigate again to confirm the content still exists.',
+        'If you expected this page to be live, contact the site owner or support team.',
+    ],
+    'primaryActionLabel' => 'Go to homepage',
+    'secondaryActionLabel' => 'Contact support',
+    'footerNote' => 'This response was served from the FirePhage edge layer so visitors still get a clean branded experience instead of a generic CDN error page.',
+    'sideTitle' => 'Likely cause',
+    'sideBody' => 'The origin did not provide a matching route or file for this request, so the edge returned a branded fallback instead.',
+    'recoveryCopy' => 'Refresh if the page was just published. Otherwise, head back to the main site or reach out to the team that manages content for this domain.',
+    'badges' => ['Branded fallback', 'Origin protected', 'Visitor-safe copy'],
+])
