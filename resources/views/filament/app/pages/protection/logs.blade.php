@@ -4,11 +4,13 @@
     @php($rows = $this->filteredLogEntries())
 
     <div class="fp-protection-shell">
-        @include('filament.app.pages.protection.technical-details')
-
         @if (! $this->site)
             @include('filament.app.pages.protection.empty-state')
-        @elseif ($this->isSimpleMode())
+        @else
+            @include('filament.app.pages.protection.edge-routing-warning')
+            @include('filament.app.pages.protection.technical-details')
+
+            @if ($this->isSimpleMode())
             @php($activity = app(\App\Services\ActivityFeedService::class)->forSite($this->site, 5))
             <x-filament::section heading="Recent Activity" description="Human-friendly summary of recent protection events." icon="heroicon-o-bolt">
                 <div class="space-y-3">
@@ -28,7 +30,7 @@
                     </x-filament::actions>
                 </x-slot>
             </x-filament::section>
-        @else
+            @else
             <x-filament::section heading="Live Event Logs" description="Request and protection events from the edge network." icon="heroicon-o-document-text">
                 <div class="grid gap-3 md:grid-cols-4">
                     <x-filament::input.wrapper>
@@ -118,6 +120,7 @@
                     </div>
                 </x-slot>
             </x-filament::section>
+            @endif
         @endif
     </div>
 </x-filament-panels::page>

@@ -5,6 +5,8 @@
         @if (! $this->site)
             @include('filament.app.pages.protection.empty-state')
         @else
+            @include('filament.app.pages.protection.edge-routing-warning')
+
             <x-filament::section
                 heading="DDoS & Challenge Profile"
                 description="Tune sensitivity and challenge behavior for edge protection."

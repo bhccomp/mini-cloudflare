@@ -9,11 +9,12 @@
     @php($bandwidthUsage = $this->bandwidthUsageSummary())
 
     <div class="fp-protection-shell">
-        @include('filament.app.pages.protection.technical-details')
-
         @if (! $this->site)
             @include('filament.app.pages.protection.empty-state')
         @else
+            @include('filament.app.pages.protection.edge-routing-warning')
+            @include('filament.app.pages.protection.technical-details')
+
             <x-filament::section heading="Edge Delivery" description="Live edge traffic and caching posture." icon="heroicon-o-globe-alt">
                 <x-slot name="footer">
                     <x-filament::actions alignment="end">

@@ -4,6 +4,8 @@
         @if (! $this->site)
             @include('filament.app.pages.protection.empty-state')
         @else
+            @include('filament.app.pages.protection.edge-routing-warning')
+
             <div class="fp-protection-grid">
                 <div>
                     <x-filament.app.settings.card

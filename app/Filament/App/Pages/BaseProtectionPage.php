@@ -15,6 +15,7 @@ use App\Models\AuditLog;
 use App\Models\Site;
 use App\Services\Edge\EdgeProviderManager;
 use App\Services\SiteContext;
+use App\Services\Sites\SiteRoutingStatusService;
 use App\Services\UiModeManager;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
@@ -290,6 +291,65 @@ abstract class BaseProtectionPage extends Page
         return (bool) ($this->site?->troubleshooting_mode ?? false);
     }
 
+    /**
+     * @return array<string, mixed>
+     */
+    public function edgeRoutingStatus(bool $fresh = false): array
+    {
+        if (! $this->site) {
+            return [
+                'status' => 'unavailable',
+                'label' => 'Unavailable',
+                'color' => 'gray',
+                'message' => 'Select a site to check edge routing status.',
+                'expected_target' => null,
+                'checked_at' => null,
+                'domains' => [],
+            ];
+        }
+
+        return app(SiteRoutingStatusService::class)->statusForSite($this->site, $fresh);
+    }
+
+    public function refreshEdgeRoutingStatus(): void
+    {
+        if (! $this->site) {
+            return;
+        }
+
+        app(SiteRoutingStatusService::class)->forget($this->site);
+        $this->notify('Edge routing status refreshed');
+    }
+
+    public function shouldShowEdgeRoutingWarning(): bool
+    {
+        if (! $this->site) {
+            return false;
+        }
+
+        return in_array($this->edgeRoutingStatus()['status'] ?? 'unavailable', ['drift', 'partial'], true);
+    }
+
+    public function edgeRoutingWarningMessage(): string
+    {
+        $status = $this->edgeRoutingStatus()['status'] ?? 'unavailable';
+
+        return match ($status) {
+            'partial' => 'Protection is partially inactive because some of your domain records are no longer pointed to our edge network. Update the DNS records below to restore protection, caching, and related services.',
+            default => 'Protection is currently inactive because your domain is no longer pointed to our edge network. Update the DNS records below to restore protection, caching, and related services.',
+        };
+    }
+
+    public function edgeRoutingWarningColor(): string
+    {
+        return ($this->edgeRoutingStatus()['status'] ?? null) === 'partial' ? 'warning' : 'danger';
+    }
+
+    public function edgeRoutingRecords(): array
+    {
+        return (array) data_get($this->site?->required_dns_records, 'traffic', []);
+    }
+
     public function toggleHttpsEnforcement(): void
     {
         if (! $this->site) {
@@ -389,9 +449,18 @@ abstract class BaseProtectionPage extends Page
         return Str::of($log->action)->replace('.', ' ')->title().' · '.$log->status;
     }
 
-    public function badgeColor(?string $status = null): string
+    public function badgeColor(?string $status = null, ?Site $site = null): string
     {
-        $status ??= $this->site?->status;
+        $site ??= $this->site;
+        $status ??= $site?->status;
+
+        if ($site && $this->routingDisplayState($site) === 'drift') {
+            return 'danger';
+        }
+
+        if ($site && $this->routingDisplayState($site) === 'partial') {
+            return 'warning';
+        }
 
         return match ($status) {
             Site::STATUS_ACTIVE => 'success',
@@ -401,11 +470,34 @@ abstract class BaseProtectionPage extends Page
         };
     }
 
-    public function statusLabel(?string $status = null): string
+    public function statusLabel(?string $status = null, ?Site $site = null): string
     {
-        $status ??= $this->site?->status;
+        $site ??= $this->site;
+        $status ??= $site?->status;
 
-        return Site::statuses()[$status] ?? str($status)->replace('_', ' ')->title()->toString();
+        return match ($this->routingDisplayState($site)) {
+            'drift' => 'Protection Inactive',
+            'partial' => 'Partially Protected',
+            default => Site::statuses()[$status] ?? str($status)->replace('_', ' ')->title()->toString(),
+        };
+    }
+
+    protected function routingDisplayState(?Site $site): ?string
+    {
+        if (! $site) {
+            return null;
+        }
+
+        $isLive = $site->status === Site::STATUS_ACTIVE
+            || $site->onboarding_status === Site::ONBOARDING_LIVE;
+
+        if (! $isLive) {
+            return null;
+        }
+
+        $status = app(SiteRoutingStatusService::class)->statusForSite($site)['status'] ?? null;
+
+        return in_array($status, ['drift', 'partial'], true) ? $status : null;
     }
 
     public function currentPageBaseUrl(): string

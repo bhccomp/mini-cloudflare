@@ -4,11 +4,12 @@
     @php($status = $this->originExposureStatus())
 
     <div class="fp-protection-shell">
-        @include('filament.app.pages.protection.technical-details')
-
         @if (! $this->site)
             @include('filament.app.pages.protection.empty-state')
         @else
+            @include('filament.app.pages.protection.edge-routing-warning')
+            @include('filament.app.pages.protection.technical-details')
+
             <x-filament::section heading="Origin Security" description="Origin exposure and policy posture." icon="heroicon-o-server-stack">
                 <x-slot name="footer">
                     <x-filament::actions alignment="end">

@@ -5,6 +5,8 @@
         @if (! $this->site)
             @include('filament.app.pages.protection.empty-state')
         @else
+            @include('filament.app.pages.protection.edge-routing-warning')
+
             <x-filament::section
                 heading="Troubleshooting Mode"
                 description="Keep DNS on FirePhage/Bunny while disabling Bunny WAF and relaxing edge cache/optimizer behavior for testing."

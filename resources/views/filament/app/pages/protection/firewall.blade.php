@@ -1,7 +1,7 @@
 <x-filament-panels::page>
     <x-filament.app.settings.layout-styles />
 
-    <div class="fp-protection-shell">
+    <div class="fp-protection-shell space-y-6">
         @if (! $this->site)
             @include('filament.app.pages.protection.empty-state')
         @else

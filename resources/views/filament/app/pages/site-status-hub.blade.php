@@ -1,7 +1,7 @@
 <x-filament-panels::page>
     <x-filament.app.settings.layout-styles />
 
-    <div @if ($this->site && ! $this->isLiveProtected() && $this->shouldPollStatus()) wire:poll.15s="pollStatus" @endif>
+    <div class="fp-protection-shell space-y-6" @if ($this->site && ! $this->isSiteLive() && $this->shouldPollStatus()) wire:poll.15s="pollStatus" @endif>
         @if (! $this->site)
             @include('filament.app.pages.protection.empty-state')
         @else
@@ -34,7 +34,7 @@
                 </x-slot>
             </x-filament::section>
 
-            @if ($this->isLiveProtected())
+            @if ($this->isSiteLive())
             @if ($this->isSimpleMode())
                 <x-filament::section heading="Need Deep Detail?" icon="heroicon-o-adjustments-horizontal">
                     <p>Simple mode keeps this page compact. Switch to Pro mode to include activity feed and deeper technical detail.</p>
@@ -53,7 +53,7 @@
             >
                 <x-slot name="afterHeader">
                     <x-filament::badge :color="$this->badgeColor()">
-                        {{ $this->isBunnyFlow() ? $this->onboardingLabel() : $this->statusLabel() }}
+                        {{ $this->shouldShowEdgeRoutingWarning() ? $this->statusLabel() : ($this->isBunnyFlow() ? $this->onboardingLabel() : $this->statusLabel()) }}
                     </x-filament::badge>
                 </x-slot>
 

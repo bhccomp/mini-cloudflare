@@ -9,11 +9,12 @@
     @php($maxHeat = max(1, (int) collect($heatmap)->max('count')))
 
     <div class="fp-protection-shell">
-        @include('filament.app.pages.protection.technical-details')
-
         @if (! $this->site)
             @include('filament.app.pages.protection.empty-state')
         @else
+            @include('filament.app.pages.protection.edge-routing-warning')
+            @include('filament.app.pages.protection.technical-details')
+
             <x-filament::section heading="Live Telemetry" description="Traffic trends, threat ratio, and hourly load." icon="heroicon-o-chart-bar-square">
                 <x-slot name="footer">
                     <x-filament::actions alignment="end">

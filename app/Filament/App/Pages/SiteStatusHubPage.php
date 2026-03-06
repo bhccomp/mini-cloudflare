@@ -12,6 +12,7 @@ use App\Filament\App\Resources\SiteResource;
 use App\Jobs\CheckAcmDnsValidationJob;
 use App\Models\Site;
 use Filament\Actions\Action;
+use Illuminate\View\View;
 
 class SiteStatusHubPage extends BaseProtectionPage
 {
@@ -29,6 +30,11 @@ class SiteStatusHubPage extends BaseProtectionPage
 
     protected string $view = 'filament.app.pages.site-status-hub';
 
+    public function getHeader(): ?View
+    {
+        return view('filament.app.pages.protection.page-header-with-routing-warning');
+    }
+
     protected function getHeaderActions(): array
     {
         return [
@@ -42,7 +48,7 @@ class SiteStatusHubPage extends BaseProtectionPage
 
     protected function getHeaderWidgets(): array
     {
-        if (! $this->site || ! $this->isLiveProtected()) {
+        if (! $this->site || ! $this->isSiteLive()) {
             return [];
         }
 
@@ -85,12 +91,19 @@ class SiteStatusHubPage extends BaseProtectionPage
             return false;
         }
 
-        if ($this->isBunnyFlow()) {
-            return $this->site->onboarding_status === Site::ONBOARDING_LIVE
-                || $this->site->status === Site::STATUS_ACTIVE;
+        return $this->isSiteLive() && ($this->edgeRoutingStatus()['status'] ?? null) === 'protected';
+    }
+
+    public function isSiteLive(): bool
+    {
+        if (! $this->site) {
+            return false;
         }
 
-        return $this->site->status === Site::STATUS_ACTIVE;
+        return $this->isBunnyFlow()
+            ? ($this->site->onboarding_status === Site::ONBOARDING_LIVE
+                || $this->site->status === Site::STATUS_ACTIVE)
+            : $this->site->status === Site::STATUS_ACTIVE;
     }
 
     public function steps(): array

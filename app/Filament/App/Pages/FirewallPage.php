@@ -14,6 +14,7 @@ use App\Services\Analytics\AnalyticsSyncManager;
 use App\Services\Bunny\BunnyLogsService;
 use App\Services\Firewall\FirewallInsightsPresenter;
 use Filament\Actions\Action;
+use Illuminate\View\View;
 
 class FirewallPage extends BaseProtectionPage
 {
@@ -30,6 +31,11 @@ class FirewallPage extends BaseProtectionPage
     protected static ?string $title = 'Protection Overview';
 
     protected string $view = 'filament.app.pages.protection.firewall';
+
+    public function getHeader(): ?View
+    {
+        return view('filament.app.pages.protection.page-header-with-routing-warning');
+    }
 
     protected function getHeaderActions(): array
     {

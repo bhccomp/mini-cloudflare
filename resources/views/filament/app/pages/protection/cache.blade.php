@@ -6,11 +6,12 @@
     @php($history = $this->purgeHistory())
 
     <div class="fp-protection-shell">
-        @include('filament.app.pages.protection.technical-details')
-
         @if (! $this->site)
             @include('filament.app.pages.protection.empty-state')
         @else
+            @include('filament.app.pages.protection.edge-routing-warning')
+            @include('filament.app.pages.protection.technical-details')
+
             <x-filament::section heading="Cache Control" description="Edge caching state and cache efficiency." icon="heroicon-o-circle-stack">
                 <x-slot name="footer">
                     <x-filament::actions alignment="end">

@@ -15,6 +15,7 @@ use App\Rules\ApexDomainRule;
 use App\Rules\OriginIpRule;
 use App\Services\Edge\EdgeProviderManager;
 use App\Services\Sites\SiteDeletionService;
+use App\Services\Sites\SiteRoutingStatusService;
 use Filament\Actions;
 use Filament\Forms;
 use Filament\Notifications\Notification;
@@ -426,7 +427,10 @@ class SiteResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('display_name')->searchable(),
                 Tables\Columns\TextColumn::make('apex_domain')->searchable(),
-                Tables\Columns\TextColumn::make('status')->badge(),
+                Tables\Columns\TextColumn::make('status')
+                    ->badge()
+                    ->formatStateUsing(fn (string $state, Site $record): string => static::displayStatusLabel($record, $state))
+                    ->color(fn (string $state, Site $record): string => static::displayStatusColor($record, $state)),
                 Tables\Columns\TextColumn::make('cloudfront_domain_name')->label('Zone Name')->toggleable(),
                 Tables\Columns\TextColumn::make('step')
                     ->label('Step')
@@ -611,6 +615,43 @@ class SiteResource extends Resource
             Site::STATUS_FAILED => 'Retry',
             default => 'Review',
         };
+    }
+
+    protected static function displayStatusLabel(Site $site, ?string $status = null): string
+    {
+        return match (static::routingDisplayState($site)) {
+            'drift' => 'Protection Inactive',
+            'partial' => 'Partially Protected',
+            default => Site::statuses()[$status ?? $site->status] ?? str($status ?? $site->status)->replace('_', ' ')->title()->toString(),
+        };
+    }
+
+    protected static function displayStatusColor(Site $site, ?string $status = null): string
+    {
+        return match (static::routingDisplayState($site)) {
+            'drift' => 'danger',
+            'partial' => 'warning',
+            default => match ($status ?? $site->status) {
+                Site::STATUS_ACTIVE => 'success',
+                Site::STATUS_PENDING_DNS_VALIDATION, Site::STATUS_DEPLOYING, Site::STATUS_READY_FOR_CUTOVER => 'warning',
+                Site::STATUS_FAILED => 'danger',
+                default => 'gray',
+            },
+        };
+    }
+
+    protected static function routingDisplayState(Site $site): ?string
+    {
+        $isLive = $site->status === Site::STATUS_ACTIVE
+            || $site->onboarding_status === Site::ONBOARDING_LIVE;
+
+        if (! $isLive) {
+            return null;
+        }
+
+        $status = app(SiteRoutingStatusService::class)->statusForSite($site)['status'] ?? null;
+
+        return in_array($status, ['drift', 'partial'], true) ? $status : null;
     }
 
     protected static function normalizeDomainInput(?string $value): string

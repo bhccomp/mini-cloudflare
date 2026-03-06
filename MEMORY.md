@@ -1,5 +1,43 @@
 # MEMORY
 
+## Edge Routing Drift Warning + Status Mapping (Latest)
+- Added live routing drift detection so the app can identify when a protected site is no longer pointed to the expected edge target:
+  - New service: `app/Services/Sites/SiteRoutingStatusService.php`
+  - Checks apex and optional `www` hostnames against the expected traffic target.
+  - Resolves CNAME/A/AAAA records and compares them to the current edge target.
+  - Results are cached for 60 seconds and can be manually refreshed from the UI.
+- Added a reusable DNS drift warning UI:
+  - New banner partial: `resources/views/filament/app/pages/protection/edge-routing-warning.blade.php`
+  - Uses warning/danger alert styling instead of a standard settings widget.
+  - DNS recovery records are hidden behind an expandable details block (`Show DNS records to restore protection`).
+- Added a Filament page-header wrapper so the warning renders above page widgets on the two pages that use header widgets:
+  - New header partial: `resources/views/filament/app/pages/protection/page-header-with-routing-warning.blade.php`
+  - Wired into:
+    - `app/Filament/App/Pages/FirewallPage.php`
+    - `app/Filament/App/Pages/SiteStatusHubPage.php`
+  - This avoids Filament render-order issues where body content appears below header widgets.
+- Warning banner rollout:
+  - Added to Status Hub, Protection Overview, Dashboard, CDN, Cache, Origin, Analytics, Availability Monitor, WAF Access Control, Rate Limiting, DDoS/Shield settings, Logs, and SSL pages.
+  - Removed the earlier `Edge Routing Status` widget/section approach in favor of the banner.
+- Shared page status is now routing-aware for live sites:
+  - `app/Filament/App/Pages/BaseProtectionPage.php` now maps live routing drift to:
+    - `Protection Inactive` (`danger`)
+    - `Partially Protected` (`warning`)
+  - This status mapping is used by page badges and the site picker empty-state list.
+- Sites table now surfaces routing drift as a first-class status:
+  - `app/Filament/App/Resources/SiteResource.php`
+  - Live sites that are no longer pointed correctly no longer show as plain `Active`.
+- Status Hub lifecycle logic was corrected after an early regression:
+  - `SiteStatusHubPage` now separates:
+    - `isSiteLive()` -> lifecycle/onboarding state
+    - `isLiveProtected()` -> lifecycle state plus correct routing
+  - This prevents routing drift warnings from collapsing the whole page into onboarding-only content.
+- Added tests:
+  - `tests/Unit/SiteRoutingStatusServiceTest.php`
+- Operational validation:
+  - Confirmed drift detection live against `nikolajocic.dev` after DNS was repointed away from the expected edge target.
+  - Repeated `php artisan optimize:clear` runs were needed while iterating on Filament view placement/caching.
+
 ## Bunny Shield Advanced + Troubleshooting Mode + Strict Site Deletion (Latest)
 - Reframed Bunny custom-page behavior:
   - Origin custom error pages are no longer part of active Bunny onboarding/provisioning flow.

@@ -46,8 +46,8 @@
                             {{ $site->apex_domain }}
                         </x-filament::link>
 
-                        <x-filament::badge :color="$this->badgeColor($site->status)" size="sm">
-                            {{ $this->statusLabel($site->status) }}
+                        <x-filament::badge :color="$this->badgeColor($site->status, $site)" size="sm">
+                            {{ $this->statusLabel($site->status, $site) }}
                         </x-filament::badge>
                     </div>
                 @endforeach

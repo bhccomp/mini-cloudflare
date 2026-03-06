@@ -5,6 +5,8 @@
         @if (! $this->site)
             @include('filament.app.pages.protection.empty-state')
         @else
+            @include('filament.app.pages.protection.edge-routing-warning')
+
             <x-filament::section
                 heading="Monitoring Cadence"
                 description="Checks run every 5 minutes on basic plans and every 1 minute on paid plans."
@@ -19,4 +21,3 @@
         @endif
     </div>
 </x-filament-panels::page>
-
