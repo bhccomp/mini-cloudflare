@@ -1100,3 +1100,13 @@
   - platform architecture -> `platform-architecture-variant-1`
   - pricing -> `pricing-variant-1`
   - footer -> `footer-variant-1`
+
+## Homepage Route Promotion + Variant Cleanup (Latest)
+- Promoted `home-variant-1` to the primary homepage route:
+  - `/` now serves `marketing.home-variant-1`.
+- Preserved previous blue homepage as alternate route:
+  - `/blue-alternative` now serves `marketing.home`.
+- Removed extra variant pages from routing and views:
+  - deleted `resources/views/marketing/home-variant-2.blade.php`
+  - deleted `resources/views/marketing/home-variant-3.blade.php`
+- Cleared route cache and rebuilt optimize cache to apply URL changes immediately.
