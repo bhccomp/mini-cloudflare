@@ -784,19 +784,33 @@ class BunnyCdnProvider implements EdgeProviderInterface
             throw new \RuntimeException('Unable to verify Bunny pull zone cleanup. Remaining zone ids: '.implode(', ', $remainingZoneIds));
         }
 
-        $remainingShieldZoneIds = $this->collectRelatedShieldZoneIds($site, $deleted);
-        if ($shieldZoneIds !== [] && $remainingShieldZoneIds === []) {
+        $verifiedShieldZoneIds = [];
+        $remainingPremiumShieldZoneIds = [];
+
+        foreach ($shieldZoneIds as $shieldZoneId) {
+            $planState = $this->shieldSecurity()->currentPlanState($shieldZoneId);
+
+            if (! (bool) ($planState['exists'] ?? false) || ! (bool) ($planState['premium_plan'] ?? false)) {
+                $verifiedShieldZoneIds[] = $shieldZoneId;
+
+                continue;
+            }
+
+            $remainingPremiumShieldZoneIds[] = $shieldZoneId;
+        }
+
+        if ($shieldZoneIds !== [] && $remainingPremiumShieldZoneIds === []) {
             return [
                 'changed' => $deleted !== [],
-                'message' => sprintf('Edge deployment deleted (%d) and Bunny Shield cleanup verified.', count($deleted)),
+                'message' => sprintf('Edge deployment deleted (%d) and Bunny Shield downgrade verified.', count($deleted)),
                 'deleted_zone_ids' => $deleted,
                 'downgraded_shield_zone_ids' => $downgradedShieldZones,
-                'verified_deleted_shield_zone_ids' => $shieldZoneIds,
+                'verified_downgraded_shield_zone_ids' => $verifiedShieldZoneIds,
             ];
         }
 
-        if ($remainingShieldZoneIds !== []) {
-            throw new \RuntimeException('Unable to verify Bunny Shield cleanup. Remaining shield zone ids: '.implode(', ', $remainingShieldZoneIds));
+        if ($remainingPremiumShieldZoneIds !== []) {
+            throw new \RuntimeException('Unable to verify Bunny Shield plan downgrade. Remaining premium shield zone ids: '.implode(', ', $remainingPremiumShieldZoneIds));
         }
 
         return [

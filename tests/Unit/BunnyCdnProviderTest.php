@@ -255,34 +255,41 @@ class BunnyCdnProviderTest extends TestCase
                     'Items' => [
                         ['Id' => 85227, 'PullZoneId' => 321],
                     ],
+                ], 200),
+            'https://api.bunny.net/shield/shield-zone/85227' => Http::sequence()
+                ->push([
+                    'data' => [
+                        'shieldZoneId' => 85227,
+                        'premiumPlan' => true,
+                        'planType' => 1,
+                        'learningMode' => true,
+                        'wafEnabled' => true,
+                        'wafExecutionMode' => 1,
+                        'wafProfileId' => 1,
+                        'wafDisabledRules' => [],
+                        'wafLogOnlyRules' => [],
+                        'wafRequestHeaderLoggingEnabled' => true,
+                        'wafRequestIgnoredHeaders' => [],
+                        'wafRealtimeThreatIntelligenceEnabled' => false,
+                        'wafEngineConfig' => [],
+                        'wafRequestBodyLimitAction' => 1,
+                        'wafResponseBodyLimitAction' => 2,
+                        'dDoSShieldSensitivity' => 0,
+                        'dDoSExecutionMode' => 0,
+                        'dDoSChallengeWindow' => 1800,
+                        'blockVpn' => null,
+                        'blockTor' => null,
+                        'blockDatacentre' => null,
+                        'whitelabelResponsePages' => true,
+                    ],
                 ], 200)
-                ->push(['Items' => []], 200),
-            'https://api.bunny.net/shield/shield-zone/85227' => Http::response([
-                'data' => [
-                    'shieldZoneId' => 85227,
-                    'premiumPlan' => true,
-                    'planType' => 1,
-                    'learningMode' => true,
-                    'wafEnabled' => true,
-                    'wafExecutionMode' => 1,
-                    'wafProfileId' => 1,
-                    'wafDisabledRules' => [],
-                    'wafLogOnlyRules' => [],
-                    'wafRequestHeaderLoggingEnabled' => true,
-                    'wafRequestIgnoredHeaders' => [],
-                    'wafRealtimeThreatIntelligenceEnabled' => false,
-                    'wafEngineConfig' => [],
-                    'wafRequestBodyLimitAction' => 1,
-                    'wafResponseBodyLimitAction' => 2,
-                    'dDoSShieldSensitivity' => 0,
-                    'dDoSExecutionMode' => 0,
-                    'dDoSChallengeWindow' => 1800,
-                    'blockVpn' => null,
-                    'blockTor' => null,
-                    'blockDatacentre' => null,
-                    'whitelabelResponsePages' => true,
-                ],
-            ], 200),
+                ->push([
+                    'data' => [
+                        'shieldZoneId' => 85227,
+                        'premiumPlan' => false,
+                        'planType' => 0,
+                    ],
+                ], 200),
             'https://api.bunny.net/shield/shield-zone' => Http::response([], 200),
             'https://api.bunny.net/pullzone/321' => Http::response([], 200),
             'https://api.bunny.net/pullzone/654' => Http::response([], 200),
@@ -293,7 +300,7 @@ class BunnyCdnProviderTest extends TestCase
 
         $this->assertTrue($result['changed']);
         $this->assertSame([85227], $result['downgraded_shield_zone_ids']);
-        $this->assertSame([85227], $result['verified_deleted_shield_zone_ids']);
+        $this->assertSame([85227], $result['verified_downgraded_shield_zone_ids']);
         Http::assertSentCount(8);
         Http::assertSent(fn ($request) => $request->method() === 'GET' && $request->url() === 'https://api.bunny.net/pullzone');
         Http::assertSent(fn ($request) => $request->method() === 'GET' && str_starts_with($request->url(), 'https://api.bunny.net/shield/shield-zones'));

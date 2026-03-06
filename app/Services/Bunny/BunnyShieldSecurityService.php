@@ -281,6 +281,53 @@ class BunnyShieldSecurityService
     }
 
     /**
+     * @return array<string, mixed>
+     */
+    public function currentPlanState(int $shieldZoneId): array
+    {
+        if ($shieldZoneId <= 0) {
+            return [
+                'exists' => false,
+                'premium_plan' => false,
+                'plan_type' => 0,
+                'raw' => [],
+            ];
+        }
+
+        $response = $this->api->client()->get("/shield/shield-zone/{$shieldZoneId}");
+
+        if (in_array($response->status(), [404, 410], true)) {
+            return [
+                'exists' => false,
+                'premium_plan' => false,
+                'plan_type' => 0,
+                'raw' => [],
+            ];
+        }
+
+        if (! $response->successful()) {
+            throw new \RuntimeException($this->responseError($response, 'Unable to verify Bunny Shield plan state.'));
+        }
+
+        $current = $this->normalizeEnvelope($response->json());
+
+        return [
+            'exists' => true,
+            'premium_plan' => (bool) (
+                Arr::get($current, 'premiumPlan')
+                ?? Arr::get($current, 'PremiumPlan')
+                ?? false
+            ),
+            'plan_type' => (int) (
+                Arr::get($current, 'planType')
+                ?? Arr::get($current, 'PlanType')
+                ?? 0
+            ),
+            'raw' => $current,
+        ];
+    }
+
+    /**
      * @return array<int, array<string, mixed>>
      */
     public function listRateLimits(Site $site): array

@@ -56,7 +56,8 @@
     - downgrades/cancels Bunny Shield premium plan before teardown
     - deletes related Bunny pull zones
     - verifies matching pull zones are actually gone
-    - verifies related Shield zones are no longer listed/linked before allowing local deletion
+    - verifies Shield premium plan is downgraded (or the shield zone is gone) before allowing local deletion
+    - does not require the Shield zone object itself to disappear, because Bunny public API docs expose create/read/update flows for shield zones but do not clearly document a shield-zone delete endpoint
   - Local site deletion now uses explicit cleanup service:
     - `app/Services/Sites/SiteDeletionService.php`
     - Deletes site-scoped audit logs, alert channels, analytics, firewall rules, events, availability checks, edge request logs, and clears `users.selected_site_id` before removing the site row.
