@@ -1,5 +1,56 @@
 # MEMORY
 
+## Local Credentials Convention
+- Sensitive cross-project credentials should be stored in `.local/CREDS.md`.
+- `.local/` is git-ignored and must remain local-only.
+- Intended use:
+  - SSH connection details for external WordPress/plugin servers
+  - repo URLs or deployment paths that should not be committed
+- Do not commit, stage, or upload `.local/CREDS.md`.
+- Current external WordPress server context is tracked there, including:
+  - host `5.78.113.107`
+  - user `codex`
+  - WordPress path `/var/www/nodesfoundry.com`
+
+## WordPress Plugin Repo Workflow
+- The WordPress plugin lives in a separate repo:
+  - GitHub repo: `https://github.com/bhccomp/firephage-security`
+- Local development workspace on this server:
+  - `/var/www/firephage-security`
+- Remote WordPress plugin path:
+  - `/var/www/nodesfoundry.com/wp-content/plugins/firephage-security`
+- Remote Git auth is already configured under the `codex` user on `5.78.113.107`.
+- Working process for plugin changes:
+  - make plugin changes in the separate local repo at `/var/www/firephage-security`
+  - commit and push that repo to GitHub
+  - SSH to `5.78.113.107`
+  - pull the latest plugin changes in `/var/www/nodesfoundry.com/wp-content/plugins/firephage-security`
+- Operational expectation:
+  - when plugin work is requested from this FirePhage workspace, sync the remote WordPress plugin repo after local plugin changes so the updated plugin code is present on `nodesfoundry.com`
+  - plugin activation/setup inside WordPress may still be a separate step when needed
+- Process note:
+  - each time plugin work is requested from this workspace, read `/var/www/firephage-security/MEMORY.md` first before implementing changes
+
+## FirePhage Public Checksum Cache (Latest)
+- Added a public checksum cache API so the WordPress plugin can verify WordPress.org plugin/theme packages without each site hitting WordPress.org directly on every lookup.
+- New API route:
+  - `GET /api/plugin/checksums?type=plugin|theme&slug=...&version=...`
+- New persistence:
+  - migration `database/migrations/2026_03_08_120000_create_package_checksum_caches_table.php`
+  - model `app/Models/PackageChecksumCache.php`
+- New service/controller:
+  - `app/Services/WordPress/WordPressChecksumCacheService.php`
+  - `app/Http/Controllers/Api/PackageChecksumController.php`
+- Behavior:
+  - cache by package `type + slug + version`
+  - fetch from WordPress.org on miss/stale entry
+  - return cached checksums on future requests
+  - return stale cached checksums if WordPress.org fetch fails after a successful prior fetch
+- Product/compliance intent:
+  - checksum cache remains available to free plugin users
+  - no paid FirePhage connection is required for checksum lookups
+  - endpoint is for public checksum metadata only, not site registration or paid dashboard sync
+
 ## Edge Routing Drift Warning + Status Mapping (Latest)
 - Added live routing drift detection so the app can identify when a protected site is no longer pointed to the expected edge target:
   - New service: `app/Services/Sites/SiteRoutingStatusService.php`
