@@ -12,6 +12,13 @@
   - user `codex`
   - WordPress path `/var/www/nodesfoundry.com`
 
+## GitHub Push Environment Note
+- In this environment, GitHub operations for the Laravel app repo may fail with `Could not resolve host: github.com` when run through the restricted command path.
+- If a Laravel repo `git push` or `git ls-remote` fails that way, retry it with unrestricted/escalated execution rather than assuming the repo remote or credentials are broken.
+- Confirmed behavior:
+  - restricted Laravel `git push` failed with DNS resolution error
+  - unrestricted/escalated Laravel `git ls-remote` and `git push` succeeded
+
 ## WordPress Plugin Repo Workflow
 - The WordPress plugin lives in a separate repo:
   - GitHub repo: `https://github.com/bhccomp/firephage-security`
