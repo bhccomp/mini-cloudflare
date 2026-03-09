@@ -1295,6 +1295,24 @@
   - `resources/views/components/marketing/platform-architecture-variant-1.blade.php`
   - `resources/views/components/marketing/pricing-variant-1.blade.php`
 
+## WordPress Plugin Signature Feed (Latest)
+- Added public plugin signature endpoint:
+  - `GET /api/plugin/signatures`
+- Endpoint returns data-only malware signature metadata for the WordPress plugin:
+  - high-confidence regex patterns
+  - weighted heuristic patterns
+  - feed version + fetched timestamp
+- Signatures are defined in:
+  - `config/firephage-wordpress-signatures.php`
+- Controller/service added:
+  - `app/Http/Controllers/Api/PluginSignatureController.php`
+  - `app/Services/WordPress/WordPressMalwareSignatureService.php`
+- Intended plugin behavior:
+  - fetch signature feed from FirePhage
+  - cache locally
+  - merge with bundled fallback signatures
+  - continue scanning if FirePhage feed is unavailable
+
 ## Homepage Route Promotion + Variant Cleanup (Latest)
 - Promoted `home-variant-1` to the primary homepage route:
   - `/` now serves `marketing.home-variant-1`.
