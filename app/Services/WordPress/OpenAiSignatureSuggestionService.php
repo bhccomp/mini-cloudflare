@@ -317,6 +317,10 @@ Rules:
 - Match the FirePhage scanner engine described below. Do not invent signature types outside that engine.
 - Prefer complementing the existing engine instead of duplicating a pattern that already exists.
 - Keep WordPress false positives low. Avoid broad signatures that could match normal plugins or themes.
+- Many malware samples are multiline. Do not assume `.*` crosses newlines.
+- If you need to span lines, prefer `[\s\S]` with a bounded range like `{0,800}` or use the `s` modifier deliberately.
+- Before returning, sanity-check that your proposed regex would match the supplied sample content, not just a hypothetical variant.
+- Prefer specific bounded multiline patterns over loose greedy matches.
 - No markdown.
 
 FirePhage scanner engine context:
@@ -420,6 +424,10 @@ Rules:
 - Stay within the FirePhage scanner engine described below.
 - Prefer improving coverage without creating WordPress false positives.
 - Avoid duplicating existing signatures.
+- Many malware samples are multiline. Do not assume `.*` crosses newlines.
+- If you need to span lines, prefer `[\s\S]` with a bounded range like `{0,800}` or use the `s` modifier deliberately.
+- If the previous signature failed to match malware hits, explicitly fix the likely reason instead of making only cosmetic changes.
+- Before returning, sanity-check that your revised regex would match the relevant sample style represented in the stored sample library and test feedback.
 - No markdown.
 
 Current signature:
