@@ -192,6 +192,104 @@ PROMPT,
         ];
     }
 
+    /**
+     * @return array{signature: WordPressMalwareSignature, risk: string}
+     */
+    public function reviseSignature(WordPressMalwareSignature $signature): array
+    {
+        $apiKey = (string) config('services.openai.api_key', '');
+        $model = (string) config('services.openai.signature_model', 'gpt-4o-mini');
+
+        if ($apiKey === '') {
+            throw new RuntimeException('OPENAI_API_KEY is not configured.');
+        }
+
+        $testResult = is_array($signature->last_test_result) ? $signature->last_test_result : null;
+
+        if (! $testResult) {
+            throw new RuntimeException('Run Test Set before asking for an AI revision.');
+        }
+
+        $response = Http::withToken($apiKey)
+            ->timeout(45)
+            ->post('https://api.openai.com/v1/chat/completions', [
+                'model' => $model,
+                'response_format' => ['type' => 'json_object'],
+                'messages' => [
+                    [
+                        'role' => 'system',
+                        'content' => 'You revise malware-signature drafts for a WordPress security product. Return exactly one JSON object only. Never approve signatures. Revise conservatively and reduce false positives.',
+                    ],
+                    [
+                        'role' => 'user',
+                        'content' => $this->buildRevisionPrompt($signature, $testResult),
+                    ],
+                ],
+            ]);
+
+        if (! $response->successful()) {
+            throw new RuntimeException('OpenAI did not return a successful response.');
+        }
+
+        $payload = $response->json();
+        $contentText = (string) data_get($payload, 'choices.0.message.content', '');
+        $decoded = json_decode($contentText, true);
+
+        if (! is_array($decoded)) {
+            throw new RuntimeException('OpenAI returned an invalid revision suggestion.');
+        }
+
+        $pattern = isset($decoded['pattern']) && is_string($decoded['pattern']) ? trim($decoded['pattern']) : '';
+        $label = isset($decoded['label']) && is_string($decoded['label']) ? trim($decoded['label']) : '';
+        $type = isset($decoded['signature_type']) && in_array($decoded['signature_type'], ['high_confidence', 'heuristic'], true)
+            ? $decoded['signature_type']
+            : $signature->signature_type;
+        $score = max(1, min(10, (int) ($decoded['score'] ?? ($signature->score ?? 1))));
+        $name = isset($decoded['name']) && is_string($decoded['name']) && trim($decoded['name']) !== ''
+            ? trim($decoded['name'])
+            : $signature->name;
+        $reasoning = isset($decoded['reasoning']) && is_string($decoded['reasoning']) ? trim($decoded['reasoning']) : '';
+        $risk = isset($decoded['false_positive_risk']) && is_string($decoded['false_positive_risk']) ? trim($decoded['false_positive_risk']) : 'unknown';
+
+        if ($pattern === '' || $label === '' || @preg_match($pattern, '') === false) {
+            throw new RuntimeException('OpenAI returned a malformed revised regex.');
+        }
+
+        $existingSignature = WordPressMalwareSignature::query()
+            ->whereKeyNot($signature->getKey())
+            ->where('pattern', $pattern)
+            ->orWhere(function ($query) use ($signature, $label, $type): void {
+                $query->whereKeyNot($signature->getKey())
+                    ->where('label', $label)
+                    ->where('signature_type', $type);
+            })
+            ->first();
+
+        if ($existingSignature) {
+            throw new RuntimeException(sprintf(
+                'A similar signature already exists: %s (%s).',
+                $existingSignature->name,
+                $existingSignature->status
+            ));
+        }
+
+        $signature->forceFill([
+            'name' => $name,
+            'signature_type' => $type,
+            'pattern' => $pattern,
+            'label' => $label,
+            'score' => $type === 'heuristic' ? $score : null,
+            'status' => 'draft',
+            'source' => 'ai',
+            'notes' => trim(($signature->notes ? $signature->notes . "\n\n" : '') . "AI revision\nFalse-positive risk: {$risk}\n\n{$reasoning}"),
+        ])->save();
+
+        return [
+            'signature' => $signature->fresh(),
+            'risk' => $risk,
+        ];
+    }
+
     private function buildPrompt(WordPressSignatureSample $sample, string $signals, string $content): string
     {
         $trimmedContent = mb_substr($content, 0, 12000);
@@ -292,5 +390,94 @@ PROMPT;
                 $signature->status
             ))
             ->implode("\n");
+    }
+
+    /**
+     * @param  array<string, mixed>  $testResult
+     */
+    private function buildRevisionPrompt(WordPressMalwareSignature $signature, array $testResult): string
+    {
+        $engineContext = $this->engineContext();
+        $existingSignatures = $this->existingSignatureContext();
+        $sampleContext = $this->sampleContext();
+        $summary = $testResult['summary'] ?? [];
+        $matchedSamples = $testResult['matched_samples'] ?? [];
+
+        return <<<PROMPT
+Revise this WordPress malware-signature draft based on its latest test-set result.
+
+Return strict JSON with these keys:
+- name
+- signature_type ("high_confidence" or "heuristic")
+- label
+- pattern
+- score
+- false_positive_risk
+- reasoning
+
+Rules:
+- Use a PHP-compatible regex pattern including delimiters and modifiers.
+- Stay within the FirePhage scanner engine described below.
+- Prefer improving coverage without creating WordPress false positives.
+- Avoid duplicating existing signatures.
+- No markdown.
+
+Current signature:
+- name: {$signature->name}
+- type: {$signature->signature_type}
+- label: {$signature->label}
+- score: {$signature->score}
+- pattern: {$signature->pattern}
+- notes: {$signature->notes}
+
+Latest test result:
+- malware_hits: {$summary['malware_hits']}
+- clean_hits: {$summary['clean_hits']}
+- false_positive_hits: {$summary['false_positive_hits']}
+- risk: {$testResult['risk']}
+- matched_samples: {$this->json($matchedSamples)}
+
+FirePhage scanner engine context:
+{$engineContext}
+
+Existing database signatures to avoid duplicating:
+{$existingSignatures}
+
+Recent sample library context:
+{$sampleContext}
+PROMPT;
+    }
+
+    private function sampleContext(): string
+    {
+        $samples = WordPressSignatureSample::query()
+            ->orderBy('id', 'desc')
+            ->limit(20)
+            ->get(['name', 'sample_type', 'family', 'language', 'signals']);
+
+        if ($samples->isEmpty()) {
+            return '- No stored samples yet.';
+        }
+
+        return $samples
+            ->map(static fn (WordPressSignatureSample $sample): string => sprintf(
+                '- %s | %s | %s | %s | signals: %s',
+                $sample->name,
+                $sample->sample_type,
+                $sample->family ?: 'n/a',
+                $sample->language ?: 'n/a',
+                is_array($sample->signals) ? implode(', ', $sample->signals) : 'none'
+            ))
+            ->implode("\n");
+    }
+
+    /**
+     * @param  mixed  $value
+     */
+    private function json($value): string
+    {
+        $encoded = json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        return is_string($encoded) ? $encoded : '[]';
     }
 }
