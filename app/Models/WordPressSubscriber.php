@@ -1,0 +1,31 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class WordPressSubscriber extends Model
+{
+    protected $fillable = [
+        'email',
+        'site_host',
+        'home_url',
+        'site_url',
+        'admin_email',
+        'plugin_version',
+        'marketing_opt_in',
+        'token_hash',
+        'status',
+        'last_token_issued_at',
+        'last_seen_at',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'marketing_opt_in' => 'boolean',
+            'last_token_issued_at' => 'datetime',
+            'last_seen_at' => 'datetime',
+        ];
+    }
+}

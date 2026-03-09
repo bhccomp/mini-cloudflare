@@ -58,6 +58,56 @@
 - Operational note:
   - this layout is intended to be the base for future transactional emails such as WordPress token registration, alerts, onboarding, and billing notices
 
+## WordPress Free Signature Token Flow (Latest)
+- Added a separate free-token path for WordPress plugin signature updates so the signature feed is no longer publicly open.
+- New persistence:
+  - `database/migrations/2026_03_10_090000_create_wordpress_subscribers_table.php`
+  - model `app/Models/WordPressSubscriber.php`
+- New service/controller:
+  - `app/Services/WordPress/WordPressSubscriberService.php`
+  - `app/Http/Controllers/Api/PluginFreeTokenRegistrationController.php`
+- New API route:
+  - `POST /api/plugin/free-token/register`
+  - throttled and used by the plugin to request a free signature token by email
+- Signature feed change:
+  - `GET /api/plugin/signatures` now requires a valid bearer token from a registered WordPress subscriber
+  - endpoint is still rate-limited and now returns `private` cache headers instead of a public feed
+- Mail flow:
+  - new notification `app/Notifications/WordPressFreeTokenNotification.php`
+  - new email view `resources/views/emails/wordpress-free-token.blade.php`
+  - token is emailed to the subscriber and can also be stored immediately by the plugin after successful registration
+- Admin visibility:
+  - new Filament admin resource `app/Filament/Admin/Resources/WordPressSubscriberResource.php`
+  - shows `WordPress Subscribers` in the admin panel with email, domain, promo opt-in, token-issued time, and last-seen time
+- Product split:
+  - free signature token is now separate from the paid WordPress dashboard connection flow
+  - paid connection still powers report sync, Firewall, and Performance summaries
+
+## WordPress Free Signature Token Flow (Latest)
+- Added a separate free-token path for WordPress plugin signature updates so the signature feed is no longer publicly open.
+- New persistence:
+  - `database/migrations/2026_03_10_090000_create_wordpress_subscribers_table.php`
+  - model `app/Models/WordPressSubscriber.php`
+- New service/controller:
+  - `app/Services/WordPress/WordPressSubscriberService.php`
+  - `app/Http/Controllers/Api/PluginFreeTokenRegistrationController.php`
+- New API route:
+  - `POST /api/plugin/free-token/register`
+  - throttled and used by the plugin to request a free signature token by email
+- Signature feed change:
+  - `GET /api/plugin/signatures` now requires a valid bearer token from a registered WordPress subscriber
+  - endpoint is still rate-limited and now returns `private` cache headers instead of a public feed
+- Mail flow:
+  - new notification `app/Notifications/WordPressFreeTokenNotification.php`
+  - new email view `resources/views/emails/wordpress-free-token.blade.php`
+  - token is emailed to the subscriber and can also be stored immediately by the plugin after successful registration
+- Admin visibility:
+  - new Filament admin resource `app/Filament/Admin/Resources/WordPressSubscriberResource.php`
+  - shows `WordPress Subscribers` in the admin panel with email, domain, promo opt-in, token-issued time, and last-seen time
+- Product split:
+  - free signature token is now separate from the paid WordPress dashboard connection flow
+  - paid connection still powers report sync, Firewall, and Performance summaries
+
 ## FirePhage Public Checksum Cache (Latest)
 - Added a public checksum cache API so the WordPress plugin can verify WordPress.org plugin/theme packages without each site hitting WordPress.org directly on every lookup.
 - New API route:
