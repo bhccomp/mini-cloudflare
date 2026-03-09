@@ -82,6 +82,22 @@
 - Product split:
   - free signature token is now separate from the paid WordPress dashboard connection flow
   - paid connection still powers report sync, Firewall, and Performance summaries
+- Verification follow-up:
+  - free-token registration no longer activates signature updates immediately
+  - registration now creates a pending subscriber, emails a verification link, and exposes a status-poll token back to the plugin
+  - new route:
+    - `GET /api/plugin/free-token/status`
+  - new public verification page:
+    - `/wordpress/free-token/verify/{token}`
+  - only after the email link is visited does the plugin receive the actual signature token through the status check flow
+- Verification follow-up:
+  - free-token registration no longer activates signature updates immediately
+  - registration now creates a pending subscriber, emails a verification link, and exposes a status-poll token back to the plugin
+  - new route:
+    - `GET /api/plugin/free-token/status`
+  - new public verification page:
+    - `/wordpress/free-token/verify/{token}`
+  - only after the email link is visited does the plugin receive the actual signature token through the status check flow
 
 ## WordPress Free Signature Token Flow (Latest)
 - Added a separate free-token path for WordPress plugin signature updates so the signature feed is no longer publicly open.

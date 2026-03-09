@@ -5,6 +5,7 @@ namespace App\Services\WordPress;
 use App\Models\WordPressSubscriber;
 use App\Notifications\WordPressFreeTokenNotification;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -30,6 +31,8 @@ class WordPressSubscriberService
         }
 
         $plainToken = 'fpf_' . Str::random(48);
+        $verificationToken = 'fpv_' . Str::random(48);
+        $statusToken = 'fps_' . Str::random(48);
 
         $subscriber = WordPressSubscriber::query()->updateOrCreate(
             ['site_host' => $siteHost],
@@ -41,20 +44,74 @@ class WordPressSubscriberService
                 'plugin_version' => $pluginVersion !== '' ? $pluginVersion : null,
                 'marketing_opt_in' => $marketingOptIn,
                 'token_hash' => hash('sha256', $plainToken),
-                'status' => 'active',
+                'token_encrypted' => Crypt::encryptString($plainToken),
+                'status_token_hash' => hash('sha256', $statusToken),
+                'verification_token_hash' => hash('sha256', $verificationToken),
+                'status' => 'pending',
                 'last_token_issued_at' => now(),
+                'verified_at' => null,
             ],
         );
 
+        $verifyUrl = route('wordpress.free-token.verify', ['token' => $verificationToken]);
+
         Notification::route('mail', $email)
-            ->notify(new WordPressFreeTokenNotification($siteHost, $plainToken));
+            ->notify(new WordPressFreeTokenNotification($siteHost, $verifyUrl));
 
         return [
-            'token' => $plainToken,
             'email' => $subscriber->email,
             'site_host' => $subscriber->site_host,
-            'status' => 'registered',
+            'status' => 'pending',
+            'status_token' => $statusToken,
         ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function status(string $statusToken): array
+    {
+        $subscriber = WordPressSubscriber::query()
+            ->where('status_token_hash', hash('sha256', $statusToken))
+            ->first();
+
+        if (! $subscriber) {
+            throw new RuntimeException('The FirePhage signature verification request is invalid.');
+        }
+
+        if ($subscriber->status === 'active' && $subscriber->verified_at !== null) {
+            return [
+                'status' => 'verified',
+                'email' => (string) $subscriber->email,
+                'site_host' => (string) $subscriber->site_host,
+                'token' => Crypt::decryptString((string) $subscriber->token_encrypted),
+            ];
+        }
+
+        return [
+            'status' => 'pending',
+            'email' => (string) $subscriber->email,
+            'site_host' => (string) $subscriber->site_host,
+        ];
+    }
+
+    public function verify(string $verificationToken): WordPressSubscriber
+    {
+        $subscriber = WordPressSubscriber::query()
+            ->where('verification_token_hash', hash('sha256', $verificationToken))
+            ->first();
+
+        if (! $subscriber) {
+            throw new RuntimeException('This FirePhage verification link is invalid or has already been used.');
+        }
+
+        $subscriber->forceFill([
+            'status' => 'active',
+            'verified_at' => now(),
+            'verification_token_hash' => null,
+        ])->save();
+
+        return $subscriber;
     }
 
     public function authenticate(Request $request): WordPressSubscriber

@@ -12,7 +12,7 @@ class WordPressFreeTokenNotification extends Notification
 
     public function __construct(
         protected string $siteHost,
-        protected string $token,
+        protected string $verifyUrl,
     ) {}
 
     public function via(object $notifiable): array
@@ -23,10 +23,10 @@ class WordPressFreeTokenNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('Your FirePhage WordPress Signature Token')
+            ->subject('Verify Your FirePhage WordPress Email')
             ->view('emails.wordpress-free-token', [
                 'siteHost' => $this->siteHost,
-                'token' => $this->token,
+                'verifyUrl' => $this->verifyUrl,
             ]);
     }
 }
