@@ -16,6 +16,28 @@ class EditWordPressSignatureSample extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            Actions\Action::make('suggestDetails')
+                ->label('Suggest Details')
+                ->icon('heroicon-o-cpu-chip')
+                ->action(function (): void {
+                    try {
+                        $details = app(OpenAiSignatureSuggestionService::class)->suggestSampleDetails($this->record);
+                        $this->record->update($details);
+                        $this->refreshFormData(['name', 'family', 'sample_type', 'notes']);
+
+                        Notification::make()
+                            ->title('Sample details updated')
+                            ->body('AI suggested the sample name, family, type, and notes.')
+                            ->success()
+                            ->send();
+                    } catch (\Throwable $exception) {
+                        Notification::make()
+                            ->title('Unable to suggest details')
+                            ->body($exception->getMessage())
+                            ->danger()
+                            ->send();
+                    }
+                }),
             Actions\Action::make('suggestSignature')
                 ->label('Suggest Signature')
                 ->icon('heroicon-o-sparkles')

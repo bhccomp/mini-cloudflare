@@ -82,6 +82,27 @@ class WordPressSignatureSampleResource extends Resource
                 ]),
             ])
             ->actions([
+                Actions\Action::make('suggestDetails')
+                    ->label('Suggest Details')
+                    ->icon('heroicon-o-cpu-chip')
+                    ->action(function (WordPressSignatureSample $record): void {
+                        try {
+                            $details = app(OpenAiSignatureSuggestionService::class)->suggestSampleDetails($record);
+                            $record->update($details);
+
+                            Notification::make()
+                                ->title('Sample details updated')
+                                ->body('AI suggested the sample name, family, type, and notes.')
+                                ->success()
+                                ->send();
+                        } catch (\Throwable $exception) {
+                            Notification::make()
+                                ->title('Unable to suggest details')
+                                ->body($exception->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+                    }),
                 Actions\Action::make('suggestSignature')
                     ->label('Suggest Signature')
                     ->icon('heroicon-o-sparkles')

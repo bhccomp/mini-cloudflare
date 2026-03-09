@@ -10,6 +10,91 @@ use RuntimeException;
 class OpenAiSignatureSuggestionService
 {
     /**
+     * @return array{name: string, family: string, sample_type: string, notes: string}
+     */
+    public function suggestSampleDetails(WordPressSignatureSample $sample): array
+    {
+        $apiKey = (string) config('services.openai.api_key', '');
+        $model = (string) config('services.openai.signature_model', 'gpt-4o-mini');
+
+        if ($apiKey === '') {
+            throw new RuntimeException('OPENAI_API_KEY is not configured.');
+        }
+
+        $content = trim((string) ($sample->content ?? ''));
+
+        if ($content === '') {
+            throw new RuntimeException('This sample does not contain any text content to analyze.');
+        }
+
+        $signals = is_array($sample->signals) ? implode(', ', $sample->signals) : '';
+        $trimmedContent = mb_substr($content, 0, 12000);
+
+        $response = Http::withToken($apiKey)
+            ->timeout(45)
+            ->post('https://api.openai.com/v1/chat/completions', [
+                'model' => $model,
+                'response_format' => ['type' => 'json_object'],
+                'messages' => [
+                    [
+                        'role' => 'system',
+                        'content' => 'You classify WordPress-related suspicious files for a security analyst. Return exactly one JSON object. Be concise and conservative.',
+                    ],
+                    [
+                        'role' => 'user',
+                        'content' => <<<PROMPT
+Analyze this WordPress-related file sample and suggest metadata.
+
+Return strict JSON with these keys:
+- name
+- family
+- sample_type ("malware", "clean", or "false_positive")
+- notes
+
+Rules:
+- Use short practical naming.
+- family should be a compact family/category like staged-loader, webshell, remote-admin, injected-js, suspicious-dropper.
+- notes should be 1 or 2 short sentences.
+- Keep false positives low.
+- No markdown.
+
+Sample metadata:
+- current name: {$sample->name}
+- original filename: {$sample->original_filename}
+- detected signals: {$signals}
+
+Sample content:
+{$trimmedContent}
+PROMPT,
+                    ],
+                ],
+            ]);
+
+        if (! $response->successful()) {
+            throw new RuntimeException('OpenAI did not return a successful response.');
+        }
+
+        $payload = $response->json();
+        $contentText = (string) data_get($payload, 'choices.0.message.content', '');
+        $decoded = json_decode($contentText, true);
+
+        if (! is_array($decoded)) {
+            throw new RuntimeException('OpenAI returned an invalid JSON suggestion.');
+        }
+
+        $sampleType = in_array(($decoded['sample_type'] ?? ''), ['malware', 'clean', 'false_positive'], true)
+            ? $decoded['sample_type']
+            : 'malware';
+
+        return [
+            'name' => trim((string) ($decoded['name'] ?? $sample->name)),
+            'family' => trim((string) ($decoded['family'] ?? '')),
+            'sample_type' => $sampleType,
+            'notes' => trim((string) ($decoded['notes'] ?? '')),
+        ];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function suggestForSample(WordPressSignatureSample $sample): array
