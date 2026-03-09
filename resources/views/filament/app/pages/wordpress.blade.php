@@ -27,6 +27,21 @@
                     <p>Generating a new token replaces any previous unused token for this site.</p>
                 </div>
 
+                <div class="grid gap-4 md:grid-cols-3 mt-4">
+                    <div class="rounded-xl border border-gray-200 p-4 text-sm dark:border-gray-800">
+                        <p class="font-medium">WordPress health status</p>
+                        <p class="mt-2 text-gray-600 dark:text-gray-300">HTTPS, file editor, XML-RPC, registration, default admin, and checksum posture.</p>
+                    </div>
+                    <div class="rounded-xl border border-gray-200 p-4 text-sm dark:border-gray-800">
+                        <p class="font-medium">Malware scan results</p>
+                        <p class="mt-2 text-gray-600 dark:text-gray-300">Latest scan status, suspicious file count, findings summary, and last report time.</p>
+                    </div>
+                    <div class="rounded-xl border border-gray-200 p-4 text-sm dark:border-gray-800">
+                        <p class="font-medium">Update exposure</p>
+                        <p class="mt-2 text-gray-600 dark:text-gray-300">Core, plugin, and theme update counts plus inactive plugin exposure from the site report.</p>
+                    </div>
+                </div>
+
                 @if ($this->pluginConnectionToken)
                     <x-filament::section compact secondary class="mt-4">
                         <p><strong>Connection token</strong></p>
@@ -58,23 +73,6 @@
                         </x-filament::button>
                     </x-filament::actions>
                 </x-slot>
-            </x-filament::section>
-
-            <x-filament::section heading="What appears here after connection" icon="heroicon-o-command-line">
-                <div class="grid gap-4 md:grid-cols-3">
-                    <div class="rounded-xl border border-gray-200 p-4 text-sm dark:border-gray-800">
-                        <p class="font-medium">WordPress health status</p>
-                        <p class="mt-2 text-gray-600 dark:text-gray-300">HTTPS, file editor, XML-RPC, registration, default admin, and checksum posture.</p>
-                    </div>
-                    <div class="rounded-xl border border-gray-200 p-4 text-sm dark:border-gray-800">
-                        <p class="font-medium">Malware scan results</p>
-                        <p class="mt-2 text-gray-600 dark:text-gray-300">Latest scan status, suspicious file count, findings summary, and last report time.</p>
-                    </div>
-                    <div class="rounded-xl border border-gray-200 p-4 text-sm dark:border-gray-800">
-                        <p class="font-medium">Update exposure</p>
-                        <p class="mt-2 text-gray-600 dark:text-gray-300">Core, plugin, and theme update counts plus inactive plugin exposure from the site report.</p>
-                    </div>
-                </div>
             </x-filament::section>
         @else
             <x-filament::section
