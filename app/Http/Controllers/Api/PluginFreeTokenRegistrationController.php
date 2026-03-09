@@ -30,8 +30,8 @@ class PluginFreeTokenRegistrationController extends Controller
         }
 
         return response()->json([
-            'message' => 'Your free FirePhage signature token was emailed and is now active in the plugin.',
-            'token' => $payload['token'],
+            'message' => 'Verification email sent. FirePhage will activate signature updates after the email link is confirmed.',
+            'status_token' => $payload['status_token'],
             'email' => $payload['email'],
             'site_host' => $payload['site_host'],
             'status' => $payload['status'],
