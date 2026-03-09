@@ -65,6 +65,9 @@
     - `GET /api/plugin/firewall-summary`
     - `GET /api/plugin/performance-summary`
   - these use a site-scoped bearer token and currently support connected WordPress plugin installs with read-only Firewall/Performance tab summaries
+  - added first dashboard-side token issuance flow on `Site Status Hub`:
+    - operators can generate a short-lived one-time plugin connection token for the currently selected site
+    - the page now shows plugin connection status, last seen, last report time, and a copyable token block after generation
 
 ## Edge Routing Drift Warning + Status Mapping (Latest)
 - Added live routing drift detection so the app can identify when a protected site is no longer pointed to the expected edge target:

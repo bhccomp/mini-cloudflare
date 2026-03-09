@@ -22,6 +22,32 @@ class PluginSiteService
     ) {}
 
     /**
+     * @return array{token: string, expires_at: string}
+     */
+    public function issueConnectionToken(Site $site, ?int $userId = null, int $ttlMinutes = 15): array
+    {
+        $plainToken = 'fps_' . Str::random(48);
+        $expiresAt = now()->addMinutes(max(5, $ttlMinutes));
+
+        PluginConnectionToken::query()
+            ->where('site_id', $site->id)
+            ->whereNull('consumed_at')
+            ->delete();
+
+        PluginConnectionToken::query()->create([
+            'site_id' => $site->id,
+            'created_by' => $userId,
+            'token_hash' => hash('sha256', $plainToken),
+            'expires_at' => $expiresAt,
+        ]);
+
+        return [
+            'token' => $plainToken,
+            'expires_at' => $expiresAt->toIso8601String(),
+        ];
+    }
+
+    /**
      * @param array<string, mixed> $payload
      * @return array<string, mixed>
      */
