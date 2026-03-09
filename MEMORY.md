@@ -38,6 +38,26 @@
 - Process note:
   - each time plugin work is requested from this workspace, read `/var/www/firephage-security/MEMORY.md` first before implementing changes
 
+## Resend Mail + Transactional Email Template (Latest)
+- Configured Laravel mail to use Resend with sender:
+  - `MAIL_MAILER=resend`
+  - `MAIL_FROM_ADDRESS=noreply@firephage.com`
+  - `MAIL_FROM_NAME=FirePhage Security`
+- Installed the required package:
+  - `resend/resend-php`
+- Verified outbound email delivery by sending live test emails to `bhccomp@gmail.com`.
+- Added a reusable FirePhage transactional email layout:
+  - `resources/views/emails/layouts/transactional.blade.php`
+  - dark security-style theme with cyan accents aligned to the current FirePhage frontend direction
+  - reusable blocks for hero copy, CTA, meta rows, content sections, and branded footer
+- Added a reusable preview/test view:
+  - `resources/views/emails/test-transactional.blade.php`
+- Converted organization invitation emails to the new template:
+  - `app/Notifications/OrganizationInvitationNotification.php`
+  - `resources/views/emails/organization-invitation.blade.php`
+- Operational note:
+  - this layout is intended to be the base for future transactional emails such as WordPress token registration, alerts, onboarding, and billing notices
+
 ## FirePhage Public Checksum Cache (Latest)
 - Added a public checksum cache API so the WordPress plugin can verify WordPress.org plugin/theme packages without each site hitting WordPress.org directly on every lookup.
 - New API route:

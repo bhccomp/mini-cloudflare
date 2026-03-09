@@ -30,11 +30,11 @@ class OrganizationInvitationNotification extends Notification
 
         return (new MailMessage)
             ->subject('You are invited to join '.$organization->name.' on FirePhage')
-            ->greeting('You are invited')
-            ->line('You have been invited to collaborate on '.$organization->name.'.')
-            ->line('Role: '.ucfirst($this->invitation->role))
-            ->action('Accept Invitation', $acceptUrl)
-            ->line('Sign in first if prompted, then the invitation will be applied to your account.')
-            ->line('This invitation expires on '.$this->invitation->expires_at?->toDayDateTimeString().'.');
+            ->view('emails.organization-invitation', [
+                'organizationName' => $organization->name,
+                'role' => ucfirst($this->invitation->role),
+                'acceptUrl' => $acceptUrl,
+                'expiresAt' => $this->invitation->expires_at?->toDayDateTimeString(),
+            ]);
     }
 }
