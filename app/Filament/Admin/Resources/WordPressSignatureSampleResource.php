@@ -3,9 +3,12 @@
 namespace App\Filament\Admin\Resources;
 
 use App\Filament\Admin\Resources\WordPressSignatureSampleResource\Pages;
+use App\Models\WordPressMalwareSignature;
 use App\Models\WordPressSignatureSample;
+use App\Services\WordPress\OpenAiSignatureSuggestionService;
 use Filament\Actions;
 use Filament\Forms;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables;
@@ -79,6 +82,33 @@ class WordPressSignatureSampleResource extends Resource
                 ]),
             ])
             ->actions([
+                Actions\Action::make('suggestSignature')
+                    ->label('Suggest Signature')
+                    ->icon('heroicon-o-sparkles')
+                    ->action(function (WordPressSignatureSample $record): void {
+                        try {
+                            $result = app(OpenAiSignatureSuggestionService::class)->suggestForSample($record);
+
+                            /** @var WordPressMalwareSignature $signature */
+                            $signature = $result['signature'];
+
+                            Notification::make()
+                                ->title('Draft signature created')
+                                ->body(sprintf(
+                                    'Created draft "%s" with %s false-positive risk.',
+                                    $signature->name,
+                                    ucfirst((string) ($result['risk'] ?? 'unknown'))
+                                ))
+                                ->success()
+                                ->send();
+                        } catch (\Throwable $exception) {
+                            Notification::make()
+                                ->title('Unable to generate suggestion')
+                                ->body($exception->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+                    }),
                 Actions\EditAction::make(),
             ])
             ->bulkActions([

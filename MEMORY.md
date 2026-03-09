@@ -1431,3 +1431,14 @@
 - Database additions:
   - `wordpress_signature_samples`
   - `wordpress_malware_signatures`
+- AI-assisted signature suggestion:
+  - `Signature Samples` now exposes `Suggest Signature`
+  - this calls OpenAI and creates a `draft` signature only
+  - the prompt is aware of the FirePhage scanner engine shape:
+    - `high_confidence` vs `heuristic`
+    - weighted heuristic scoring
+    - existing fallback pattern families from `config/firephage-wordpress-signatures.php`
+  - AI suggestions are still expected to be tested with `Run Test Set` before approval
+  - configuration lives in `config/services.php` via:
+    - `OPENAI_API_KEY`
+    - `OPENAI_SIGNATURE_MODEL`
