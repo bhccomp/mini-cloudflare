@@ -69,6 +69,8 @@
     - unconnected state shows plugin connection instructions and one-time token generation
     - connected state shows plugin connection status, last seen/report, WordPress health summary, malware scan summary, update exposure, and recent findings from the latest plugin report
   - removed the temporary plugin connection UI from `Site Status Hub` so WordPress/plugin lifecycle has its own surface
+  - the `WordPress` page now owns plugin token generation instead of `Site Status Hub`
+  - the `WordPress` navigation item now uses a custom WordPress logo from `public/images/wordpress-menu.png` via the local Blade Icons set in `config/blade-icons.php`
 
 ## Edge Routing Drift Warning + Status Mapping (Latest)
 - Added live routing drift detection so the app can identify when a protected site is no longer pointed to the expected edge target:
