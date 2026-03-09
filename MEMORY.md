@@ -1442,3 +1442,7 @@
   - configuration lives in `config/services.php` via:
     - `OPENAI_API_KEY`
     - `OPENAI_SIGNATURE_MODEL`
+- AI prompt hardening follow-up:
+  - first-pass suggestions and `AI Revision` now explicitly account for multiline malware samples and warn against using `.*` across newlines without `s`
+  - the service now validates suggested regexes against the source sample or stored malware samples before accepting them
+  - if the first AI regex fails that validation, the service makes one corrective retry with the failure reason and sample excerpts before giving up

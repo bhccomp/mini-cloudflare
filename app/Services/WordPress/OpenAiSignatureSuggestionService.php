@@ -9,6 +9,8 @@ use RuntimeException;
 
 class OpenAiSignatureSuggestionService
 {
+    private const SAMPLE_CONTENT_LIMIT = 12000;
+
     /**
      * @return array{name: string, family: string, sample_type: string, notes: string}
      */
@@ -28,7 +30,7 @@ class OpenAiSignatureSuggestionService
         }
 
         $signals = is_array($sample->signals) ? implode(', ', $sample->signals) : '';
-        $trimmedContent = mb_substr($content, 0, 12000);
+        $trimmedContent = mb_substr($content, 0, self::SAMPLE_CONTENT_LIMIT);
 
         $response = Http::withToken($apiKey)
             ->timeout(45)
@@ -115,55 +117,33 @@ PROMPT,
         $signals = is_array($sample->signals) ? implode(', ', $sample->signals) : '';
         $prompt = $this->buildPrompt($sample, $signals, $content);
 
-        $response = Http::withToken($apiKey)
-            ->timeout(45)
-            ->post('https://api.openai.com/v1/chat/completions', [
-                'model' => $model,
-                'response_format' => ['type' => 'json_object'],
-                'messages' => [
-                    [
-                        'role' => 'system',
-                        'content' => 'You are a malware-signature assistant for a WordPress security product. Return exactly one JSON object only. Do not wrap in markdown. Prefer maintainable signatures and conservative false-positive behavior. Never approve a signature, only suggest a draft.',
-                    ],
-                    [
-                        'role' => 'user',
-                        'content' => $prompt,
-                    ],
-                ],
-            ]);
+        $decoded = $this->requestJsonSuggestion($apiKey, $model, 'You are a malware-signature assistant for a WordPress security product. Return exactly one JSON object only. Do not wrap in markdown. Prefer maintainable signatures and conservative false-positive behavior. Never approve a signature, only suggest a draft.', $prompt);
 
-        if (! $response->successful()) {
-            throw new RuntimeException('OpenAI did not return a successful response.');
-        }
+        $candidate = $this->normalizeSignatureCandidate($decoded, 'AI suggestion for ' . $sample->name, 'OpenAI returned a malformed regex suggestion.');
 
-        $payload = $response->json();
-        $contentText = (string) data_get($payload, 'choices.0.message.content', '');
-        $decoded = json_decode($contentText, true);
+        $validation = $this->validatePatternAgainstContents($candidate['pattern'], [$content]);
 
-        if (! is_array($decoded)) {
-            throw new RuntimeException('OpenAI returned an invalid JSON suggestion.');
-        }
+        if (! $validation['matches_any']) {
+            $revisionPrompt = $this->buildFailedMatchCorrectionPrompt(
+                $sample,
+                $decoded,
+                $content,
+                sprintf('The suggested regex did not match the originating sample content. %s', $validation['reason'])
+            );
 
-        $pattern = isset($decoded['pattern']) && is_string($decoded['pattern']) ? trim($decoded['pattern']) : '';
-        $label = isset($decoded['label']) && is_string($decoded['label']) ? trim($decoded['label']) : '';
-        $type = isset($decoded['signature_type']) && in_array($decoded['signature_type'], ['high_confidence', 'heuristic'], true)
-            ? $decoded['signature_type']
-            : 'heuristic';
-        $score = max(1, min(10, (int) ($decoded['score'] ?? 1)));
-        $name = isset($decoded['name']) && is_string($decoded['name']) && trim($decoded['name']) !== ''
-            ? trim($decoded['name'])
-            : ('AI suggestion for ' . $sample->name);
-        $reasoning = isset($decoded['reasoning']) && is_string($decoded['reasoning']) ? trim($decoded['reasoning']) : '';
-        $risk = isset($decoded['false_positive_risk']) && is_string($decoded['false_positive_risk']) ? trim($decoded['false_positive_risk']) : 'unknown';
+            $decoded = $this->requestJsonSuggestion($apiKey, $model, 'You correct malware-signature drafts for a WordPress security product. Return exactly one JSON object only. Do not wrap in markdown. Prefer maintainable signatures and conservative false-positive behavior.', $revisionPrompt);
+            $candidate = $this->normalizeSignatureCandidate($decoded, 'AI suggestion for ' . $sample->name, 'OpenAI returned a malformed corrected regex suggestion.');
+            $validation = $this->validatePatternAgainstContents($candidate['pattern'], [$content]);
 
-        if ($pattern === '' || $label === '' || @preg_match($pattern, '') === false) {
-            throw new RuntimeException('OpenAI returned a malformed regex suggestion.');
+            if (! $validation['matches_any']) {
+                throw new RuntimeException('OpenAI suggested a regex that still does not match the source sample.');
+            }
         }
 
         $existingSignature = WordPressMalwareSignature::query()
-            ->where('pattern', $pattern)
-            ->orWhere(function ($query) use ($label, $type): void {
-                $query->where('label', $label)->where('signature_type', $type);
+            ->where('pattern', $candidate['pattern'])
+            ->orWhere(function ($query) use ($candidate): void {
+                $query->where('label', $candidate['label'])->where('signature_type', $candidate['signature_type']);
             })
             ->first();
 
@@ -176,19 +156,19 @@ PROMPT,
         }
 
         $signature = WordPressMalwareSignature::query()->create([
-            'name' => $name,
-            'signature_type' => $type,
-            'pattern' => $pattern,
-            'label' => $label,
-            'score' => $type === 'heuristic' ? $score : null,
+            'name' => $candidate['name'],
+            'signature_type' => $candidate['signature_type'],
+            'pattern' => $candidate['pattern'],
+            'label' => $candidate['label'],
+            'score' => $candidate['signature_type'] === 'heuristic' ? $candidate['score'] : null,
             'status' => 'draft',
             'source' => 'ai',
-            'notes' => trim("Suggested from sample: {$sample->name}\nFalse-positive risk: {$risk}\n\n{$reasoning}"),
+            'notes' => trim("Suggested from sample: {$sample->name}\nFalse-positive risk: {$candidate['false_positive_risk']}\n\n{$candidate['reasoning']}"),
         ]);
 
         return [
             'signature' => $signature,
-            'risk' => $risk,
+            'risk' => $candidate['false_positive_risk'],
         ];
     }
 
@@ -210,58 +190,43 @@ PROMPT,
             throw new RuntimeException('Run Test Set before asking for an AI revision.');
         }
 
-        $response = Http::withToken($apiKey)
-            ->timeout(45)
-            ->post('https://api.openai.com/v1/chat/completions', [
-                'model' => $model,
-                'response_format' => ['type' => 'json_object'],
-                'messages' => [
-                    [
-                        'role' => 'system',
-                        'content' => 'You revise malware-signature drafts for a WordPress security product. Return exactly one JSON object only. Never approve signatures. Revise conservatively and reduce false positives.',
-                    ],
-                    [
-                        'role' => 'user',
-                        'content' => $this->buildRevisionPrompt($signature, $testResult),
-                    ],
-                ],
-            ]);
+        $decoded = $this->requestJsonSuggestion($apiKey, $model, 'You revise malware-signature drafts for a WordPress security product. Return exactly one JSON object only. Never approve signatures. Revise conservatively and reduce false positives.', $this->buildRevisionPrompt($signature, $testResult));
+        $candidate = $this->normalizeSignatureCandidate($decoded, $signature->name, 'OpenAI returned a malformed revised regex.', $signature->signature_type, (int) ($signature->score ?? 1));
 
-        if (! $response->successful()) {
-            throw new RuntimeException('OpenAI did not return a successful response.');
-        }
+        $malwareContents = WordPressSignatureSample::query()
+            ->where('sample_type', 'malware')
+            ->orderByDesc('id')
+            ->limit(10)
+            ->pluck('content')
+            ->filter(fn ($value): bool => is_string($value) && trim($value) !== '')
+            ->all();
 
-        $payload = $response->json();
-        $contentText = (string) data_get($payload, 'choices.0.message.content', '');
-        $decoded = json_decode($contentText, true);
+        $validation = $this->validatePatternAgainstContents($candidate['pattern'], $malwareContents);
 
-        if (! is_array($decoded)) {
-            throw new RuntimeException('OpenAI returned an invalid revision suggestion.');
-        }
+        if (($testResult['summary']['malware_hits'] ?? 0) === 0 && ! $validation['matches_any']) {
+            $revisionPrompt = $this->buildFailedRevisionCorrectionPrompt(
+                $signature,
+                $decoded,
+                $testResult,
+                sprintf('The revised regex still does not match any stored malware sample. %s', $validation['reason'])
+            );
 
-        $pattern = isset($decoded['pattern']) && is_string($decoded['pattern']) ? trim($decoded['pattern']) : '';
-        $label = isset($decoded['label']) && is_string($decoded['label']) ? trim($decoded['label']) : '';
-        $type = isset($decoded['signature_type']) && in_array($decoded['signature_type'], ['high_confidence', 'heuristic'], true)
-            ? $decoded['signature_type']
-            : $signature->signature_type;
-        $score = max(1, min(10, (int) ($decoded['score'] ?? ($signature->score ?? 1))));
-        $name = isset($decoded['name']) && is_string($decoded['name']) && trim($decoded['name']) !== ''
-            ? trim($decoded['name'])
-            : $signature->name;
-        $reasoning = isset($decoded['reasoning']) && is_string($decoded['reasoning']) ? trim($decoded['reasoning']) : '';
-        $risk = isset($decoded['false_positive_risk']) && is_string($decoded['false_positive_risk']) ? trim($decoded['false_positive_risk']) : 'unknown';
+            $decoded = $this->requestJsonSuggestion($apiKey, $model, 'You correct malware-signature revisions for a WordPress security product. Return exactly one JSON object only. Never approve signatures.', $revisionPrompt);
+            $candidate = $this->normalizeSignatureCandidate($decoded, $signature->name, 'OpenAI returned a malformed corrected revised regex.', $signature->signature_type, (int) ($signature->score ?? 1));
+            $validation = $this->validatePatternAgainstContents($candidate['pattern'], $malwareContents);
 
-        if ($pattern === '' || $label === '' || @preg_match($pattern, '') === false) {
-            throw new RuntimeException('OpenAI returned a malformed revised regex.');
+            if (! $validation['matches_any']) {
+                throw new RuntimeException('OpenAI revised the regex but it still does not match stored malware samples.');
+            }
         }
 
         $existingSignature = WordPressMalwareSignature::query()
             ->whereKeyNot($signature->getKey())
-            ->where('pattern', $pattern)
-            ->orWhere(function ($query) use ($signature, $label, $type): void {
+            ->where('pattern', $candidate['pattern'])
+            ->orWhere(function ($query) use ($signature, $candidate): void {
                 $query->whereKeyNot($signature->getKey())
-                    ->where('label', $label)
-                    ->where('signature_type', $type);
+                    ->where('label', $candidate['label'])
+                    ->where('signature_type', $candidate['signature_type']);
             })
             ->first();
 
@@ -274,25 +239,25 @@ PROMPT,
         }
 
         $signature->forceFill([
-            'name' => $name,
-            'signature_type' => $type,
-            'pattern' => $pattern,
-            'label' => $label,
-            'score' => $type === 'heuristic' ? $score : null,
+            'name' => $candidate['name'],
+            'signature_type' => $candidate['signature_type'],
+            'pattern' => $candidate['pattern'],
+            'label' => $candidate['label'],
+            'score' => $candidate['signature_type'] === 'heuristic' ? $candidate['score'] : null,
             'status' => 'draft',
             'source' => 'ai',
-            'notes' => trim(($signature->notes ? $signature->notes . "\n\n" : '') . "AI revision\nFalse-positive risk: {$risk}\n\n{$reasoning}"),
+            'notes' => trim(($signature->notes ? $signature->notes . "\n\n" : '') . "AI revision\nFalse-positive risk: {$candidate['false_positive_risk']}\n\n{$candidate['reasoning']}"),
         ])->save();
 
         return [
             'signature' => $signature->fresh(),
-            'risk' => $risk,
+            'risk' => $candidate['false_positive_risk'],
         ];
     }
 
     private function buildPrompt(WordPressSignatureSample $sample, string $signals, string $content): string
     {
-        $trimmedContent = mb_substr($content, 0, 12000);
+        $trimmedContent = mb_substr($content, 0, self::SAMPLE_CONTENT_LIMIT);
         $engineContext = $this->engineContext();
         $existingSignatures = $this->existingSignatureContext();
 
@@ -453,6 +418,9 @@ Existing database signatures to avoid duplicating:
 
 Recent sample library context:
 {$sampleContext}
+
+Recent malware sample excerpts:
+{$this->sampleExcerptContext('malware')}
 PROMPT;
     }
 
@@ -477,6 +445,199 @@ PROMPT;
                 is_array($sample->signals) ? implode(', ', $sample->signals) : 'none'
             ))
             ->implode("\n");
+    }
+
+    private function sampleExcerptContext(string $sampleType, int $limit = 4): string
+    {
+        $samples = WordPressSignatureSample::query()
+            ->where('sample_type', $sampleType)
+            ->orderBy('id', 'desc')
+            ->limit($limit)
+            ->get(['name', 'content']);
+
+        if ($samples->isEmpty()) {
+            return '- No sample excerpts available.';
+        }
+
+        return $samples
+            ->map(function (WordPressSignatureSample $sample): string {
+                $excerpt = mb_substr((string) $sample->content, 0, 1800);
+
+                return sprintf("- %s\n%s", $sample->name, $excerpt);
+            })
+            ->implode("\n\n");
+    }
+
+    /**
+     * @return array{name: string, signature_type: string, label: string, pattern: string, score: int, false_positive_risk: string, reasoning: string}
+     */
+    private function normalizeSignatureCandidate(array $decoded, string $defaultName, string $errorMessage, string $defaultType = 'heuristic', int $defaultScore = 1): array
+    {
+        $pattern = isset($decoded['pattern']) && is_string($decoded['pattern']) ? trim($decoded['pattern']) : '';
+        $label = isset($decoded['label']) && is_string($decoded['label']) ? trim($decoded['label']) : '';
+        $type = isset($decoded['signature_type']) && in_array($decoded['signature_type'], ['high_confidence', 'heuristic'], true)
+            ? $decoded['signature_type']
+            : $defaultType;
+        $score = max(1, min(10, (int) ($decoded['score'] ?? $defaultScore)));
+        $name = isset($decoded['name']) && is_string($decoded['name']) && trim($decoded['name']) !== ''
+            ? trim($decoded['name'])
+            : $defaultName;
+        $reasoning = isset($decoded['reasoning']) && is_string($decoded['reasoning']) ? trim($decoded['reasoning']) : '';
+        $risk = isset($decoded['false_positive_risk']) && is_string($decoded['false_positive_risk']) ? trim($decoded['false_positive_risk']) : 'unknown';
+
+        if ($pattern === '' || $label === '' || @preg_match($pattern, '') === false) {
+            throw new RuntimeException($errorMessage);
+        }
+
+        return [
+            'name' => $name,
+            'signature_type' => $type,
+            'label' => $label,
+            'pattern' => $pattern,
+            'score' => $score,
+            'false_positive_risk' => $risk,
+            'reasoning' => $reasoning,
+        ];
+    }
+
+    /**
+     * @param  array<int, string>  $contents
+     * @return array{matches_any: bool, reason: string}
+     */
+    private function validatePatternAgainstContents(string $pattern, array $contents): array
+    {
+        if (@preg_match($pattern, '') === false) {
+            return ['matches_any' => false, 'reason' => 'The regex is invalid.'];
+        }
+
+        foreach ($contents as $content) {
+            if (! is_string($content) || trim($content) === '') {
+                continue;
+            }
+
+            if (@preg_match($pattern, $content) === 1) {
+                return ['matches_any' => true, 'reason' => 'The regex matched at least one sample.'];
+            }
+        }
+
+        return ['matches_any' => false, 'reason' => 'The regex did not match any provided sample contents.'];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function requestJsonSuggestion(string $apiKey, string $model, string $systemPrompt, string $userPrompt): array
+    {
+        $response = Http::withToken($apiKey)
+            ->timeout(45)
+            ->post('https://api.openai.com/v1/chat/completions', [
+                'model' => $model,
+                'response_format' => ['type' => 'json_object'],
+                'messages' => [
+                    ['role' => 'system', 'content' => $systemPrompt],
+                    ['role' => 'user', 'content' => $userPrompt],
+                ],
+            ]);
+
+        if (! $response->successful()) {
+            throw new RuntimeException('OpenAI did not return a successful response.');
+        }
+
+        $payload = $response->json();
+        $contentText = (string) data_get($payload, 'choices.0.message.content', '');
+        $decoded = json_decode($contentText, true);
+
+        if (! is_array($decoded)) {
+            throw new RuntimeException('OpenAI returned an invalid JSON suggestion.');
+        }
+
+        return $decoded;
+    }
+
+    private function buildFailedMatchCorrectionPrompt(WordPressSignatureSample $sample, array $previousSuggestion, string $content, string $failureReason): string
+    {
+        $trimmedContent = mb_substr($content, 0, self::SAMPLE_CONTENT_LIMIT);
+        $previousJson = $this->json($previousSuggestion);
+
+        return <<<PROMPT
+Your previous regex suggestion failed validation.
+
+Failure reason:
+- {$failureReason}
+
+Previous JSON suggestion:
+{$previousJson}
+
+Correct it and return strict JSON with these keys only:
+- name
+- signature_type
+- label
+- pattern
+- score
+- false_positive_risk
+- reasoning
+
+Rules:
+- The regex must match the sample content below.
+- Many malware samples are multiline. Do not assume `.*` crosses newlines.
+- Prefer `[\s\S]` with a bounded range or a deliberate `s` modifier when spanning lines.
+- Keep WordPress false positives low.
+- No markdown.
+
+Sample metadata:
+- name: {$sample->name}
+- family: {$sample->family}
+- type: {$sample->sample_type}
+
+Sample content:
+{$trimmedContent}
+PROMPT;
+    }
+
+    /**
+     * @param  array<string, mixed>  $testResult
+     */
+    private function buildFailedRevisionCorrectionPrompt(WordPressMalwareSignature $signature, array $previousSuggestion, array $testResult, string $failureReason): string
+    {
+        $previousJson = $this->json($previousSuggestion);
+
+        return <<<PROMPT
+Your previous revision failed validation.
+
+Failure reason:
+- {$failureReason}
+
+Previous JSON suggestion:
+{$previousJson}
+
+Current signature:
+- name: {$signature->name}
+- type: {$signature->signature_type}
+- label: {$signature->label}
+- pattern: {$signature->pattern}
+
+Latest test result:
+{$this->json($testResult)}
+
+Recent malware sample excerpts:
+{$this->sampleExcerptContext('malware')}
+
+Return strict JSON with these keys only:
+- name
+- signature_type
+- label
+- pattern
+- score
+- false_positive_risk
+- reasoning
+
+Rules:
+- The regex must match at least one relevant malware sample excerpt above.
+- Many malware samples are multiline. Do not assume `.*` crosses newlines.
+- Prefer `[\s\S]` with a bounded range or a deliberate `s` modifier when spanning lines.
+- Keep WordPress false positives low.
+- No markdown.
+PROMPT;
     }
 
     /**
