@@ -159,6 +159,11 @@ class Site extends Model
         return $this->hasMany(SiteAvailabilityCheck::class);
     }
 
+    public function pluginConnection(): HasOne
+    {
+        return $this->hasOne(PluginSiteConnection::class);
+    }
+
     public function isDemoSeeded(): bool
     {
         return (bool) data_get($this->provider_meta, 'demo_seeded', false);

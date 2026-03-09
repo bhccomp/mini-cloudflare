@@ -57,6 +57,14 @@
   - checksum cache remains available to free plugin users
   - no paid FirePhage connection is required for checksum lookups
   - endpoint is for public checksum metadata only, not site registration or paid dashboard sync
+- Plugin integration follow-up:
+  - added plugin connection tables for one-time connection tokens and installed site credentials
+  - added plugin routes:
+    - `POST /api/plugin/connect`
+    - `POST /api/plugin/report`
+    - `GET /api/plugin/firewall-summary`
+    - `GET /api/plugin/performance-summary`
+  - these use a site-scoped bearer token and currently support connected WordPress plugin installs with read-only Firewall/Performance tab summaries
 
 ## Edge Routing Drift Warning + Status Mapping (Latest)
 - Added live routing drift detection so the app can identify when a protected site is no longer pointed to the expected edge target:
