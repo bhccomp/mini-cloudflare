@@ -1408,3 +1408,26 @@
   - deleted `resources/views/marketing/home-variant-2.blade.php`
   - deleted `resources/views/marketing/home-variant-3.blade.php`
 - Cleared route cache and rebuilt optimize cache to apply URL changes immediately.
+
+## WordPress Signature Lab (Latest)
+- WordPress signature management is no longer config-only.
+- Added admin resources under the `WordPress` navigation group:
+  - `Signature Samples`
+  - `Signatures`
+- Sample workflow:
+  - upload a file or paste contents
+  - classify it as `malware`, `clean`, or `false_positive`
+  - store extracted signal hints such as eval/base64/webshell markers
+- Signature workflow:
+  - create signatures as `draft`, `approved`, or `archived`
+  - choose `high_confidence` or `heuristic`
+  - run `Run Test Set` against the stored sample library before approval
+- Production feed behavior:
+  - `approved` database signatures are merged into the live WordPress signature manifest
+  - `config/firephage-wordpress-signatures.php` remains the fallback/base ruleset
+- Current testing model:
+  - deterministic regex testing against stored samples
+  - no AI generation or auto-publishing yet
+- Database additions:
+  - `wordpress_signature_samples`
+  - `wordpress_malware_signatures`
