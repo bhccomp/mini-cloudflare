@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class WordPressSubscriber extends Model
 {
+    protected $table = 'wordpress_subscribers';
+
     protected $fillable = [
         'email',
         'site_host',
