@@ -124,20 +124,15 @@ PROMPT,
         $validation = $this->validatePatternAgainstContents($candidate['pattern'], [$content]);
 
         if (! $validation['matches_any']) {
-            $revisionPrompt = $this->buildFailedMatchCorrectionPrompt(
-                $sample,
-                $decoded,
-                $content,
-                sprintf('The suggested regex did not match the originating sample content. %s', $validation['reason'])
+            $candidate = $this->correctCandidateForSample(
+                apiKey: $apiKey,
+                model: $model,
+                sample: $sample,
+                previousSuggestion: $decoded,
+                content: $content,
+                defaultName: 'AI suggestion for ' . $sample->name,
+                failureReason: sprintf('The suggested regex did not match the originating sample content. %s', $validation['reason'])
             );
-
-            $decoded = $this->requestJsonSuggestion($apiKey, $model, 'You correct malware-signature drafts for a WordPress security product. Return exactly one JSON object only. Do not wrap in markdown. Prefer maintainable signatures and conservative false-positive behavior.', $revisionPrompt);
-            $candidate = $this->normalizeSignatureCandidate($decoded, 'AI suggestion for ' . $sample->name, 'OpenAI returned a malformed corrected regex suggestion.');
-            $validation = $this->validatePatternAgainstContents($candidate['pattern'], [$content]);
-
-            if (! $validation['matches_any']) {
-                throw new RuntimeException('OpenAI suggested a regex that still does not match the source sample.');
-            }
         }
 
         $existingSignature = WordPressMalwareSignature::query()
@@ -204,20 +199,15 @@ PROMPT,
         $validation = $this->validatePatternAgainstContents($candidate['pattern'], $malwareContents);
 
         if (($testResult['summary']['malware_hits'] ?? 0) === 0 && ! $validation['matches_any']) {
-            $revisionPrompt = $this->buildFailedRevisionCorrectionPrompt(
-                $signature,
-                $decoded,
-                $testResult,
-                sprintf('The revised regex still does not match any stored malware sample. %s', $validation['reason'])
+            $candidate = $this->correctCandidateForRevision(
+                apiKey: $apiKey,
+                model: $model,
+                signature: $signature,
+                previousSuggestion: $decoded,
+                testResult: $testResult,
+                malwareContents: $malwareContents,
+                failureReason: sprintf('The revised regex still does not match any stored malware sample. %s', $validation['reason'])
             );
-
-            $decoded = $this->requestJsonSuggestion($apiKey, $model, 'You correct malware-signature revisions for a WordPress security product. Return exactly one JSON object only. Never approve signatures.', $revisionPrompt);
-            $candidate = $this->normalizeSignatureCandidate($decoded, $signature->name, 'OpenAI returned a malformed corrected revised regex.', $signature->signature_type, (int) ($signature->score ?? 1));
-            $validation = $this->validatePatternAgainstContents($candidate['pattern'], $malwareContents);
-
-            if (! $validation['matches_any']) {
-                throw new RuntimeException('OpenAI revised the regex but it still does not match stored malware samples.');
-            }
         }
 
         $existingSignature = WordPressMalwareSignature::query()
@@ -582,6 +572,8 @@ Rules:
 - Many malware samples are multiline. Do not assume `.*` crosses newlines.
 - Prefer `[\s\S]` with a bounded range or a deliberate `s` modifier when spanning lines.
 - Keep WordPress false positives low.
+- Return a PHP `preg_match` compatible pattern with delimiters and modifiers, for example `/.../i`.
+- JSON must be valid. Escape backslashes properly, such as `\\s` inside the JSON string.
 - No markdown.
 
 Sample metadata:
@@ -636,8 +628,86 @@ Rules:
 - Many malware samples are multiline. Do not assume `.*` crosses newlines.
 - Prefer `[\s\S]` with a bounded range or a deliberate `s` modifier when spanning lines.
 - Keep WordPress false positives low.
+- Return a PHP `preg_match` compatible pattern with delimiters and modifiers, for example `/.../i`.
+- JSON must be valid. Escape backslashes properly, such as `\\s` inside the JSON string.
 - No markdown.
 PROMPT;
+    }
+
+    /**
+     * @param  array<string, mixed>  $previousSuggestion
+     * @return array{name: string, signature_type: string, label: string, pattern: string, score: int, false_positive_risk: string, reasoning: string}
+     */
+    private function correctCandidateForSample(string $apiKey, string $model, WordPressSignatureSample $sample, array $previousSuggestion, string $content, string $defaultName, string $failureReason): array
+    {
+        $lastError = 'OpenAI returned a malformed corrected regex suggestion.';
+
+        for ($attempt = 1; $attempt <= 2; $attempt++) {
+            $decoded = $this->requestJsonSuggestion(
+                $apiKey,
+                $model,
+                'You correct malware-signature drafts for a WordPress security product. Return exactly one JSON object only. Do not wrap in markdown. Prefer maintainable signatures and conservative false-positive behavior.',
+                $this->buildFailedMatchCorrectionPrompt($sample, $previousSuggestion, $content, $failureReason . " Attempt {$attempt} of 2.")
+            );
+
+            try {
+                $candidate = $this->normalizeSignatureCandidate($decoded, $defaultName, $lastError);
+            } catch (RuntimeException $exception) {
+                $lastError = $exception->getMessage();
+                $previousSuggestion = $decoded;
+                continue;
+            }
+
+            $validation = $this->validatePatternAgainstContents($candidate['pattern'], [$content]);
+
+            if ($validation['matches_any']) {
+                return $candidate;
+            }
+
+            $failureReason = sprintf('The corrected regex still did not match the originating sample content. %s', $validation['reason']);
+            $previousSuggestion = $decoded;
+        }
+
+        throw new RuntimeException($lastError);
+    }
+
+    /**
+     * @param  array<string, mixed>  $previousSuggestion
+     * @param  array<string, mixed>  $testResult
+     * @param  array<int, string>  $malwareContents
+     * @return array{name: string, signature_type: string, label: string, pattern: string, score: int, false_positive_risk: string, reasoning: string}
+     */
+    private function correctCandidateForRevision(string $apiKey, string $model, WordPressMalwareSignature $signature, array $previousSuggestion, array $testResult, array $malwareContents, string $failureReason): array
+    {
+        $lastError = 'OpenAI returned a malformed corrected revised regex.';
+
+        for ($attempt = 1; $attempt <= 2; $attempt++) {
+            $decoded = $this->requestJsonSuggestion(
+                $apiKey,
+                $model,
+                'You correct malware-signature revisions for a WordPress security product. Return exactly one JSON object only. Never approve signatures.',
+                $this->buildFailedRevisionCorrectionPrompt($signature, $previousSuggestion, $testResult, $failureReason . " Attempt {$attempt} of 2.")
+            );
+
+            try {
+                $candidate = $this->normalizeSignatureCandidate($decoded, $signature->name, $lastError, $signature->signature_type, (int) ($signature->score ?? 1));
+            } catch (RuntimeException $exception) {
+                $lastError = $exception->getMessage();
+                $previousSuggestion = $decoded;
+                continue;
+            }
+
+            $validation = $this->validatePatternAgainstContents($candidate['pattern'], $malwareContents);
+
+            if ($validation['matches_any']) {
+                return $candidate;
+            }
+
+            $failureReason = sprintf('The corrected revision still did not match stored malware samples. %s', $validation['reason']);
+            $previousSuggestion = $decoded;
+        }
+
+        throw new RuntimeException($lastError);
     }
 
     /**
