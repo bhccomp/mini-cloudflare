@@ -12,7 +12,6 @@ use App\Filament\App\Resources\SiteResource;
 use App\Jobs\CheckAcmDnsValidationJob;
 use App\Models\Site;
 use Filament\Actions\Action;
-use App\Services\WordPress\PluginSiteService;
 use Illuminate\View\View;
 
 class SiteStatusHubPage extends BaseProtectionPage
@@ -31,10 +30,6 @@ class SiteStatusHubPage extends BaseProtectionPage
 
     protected string $view = 'filament.app.pages.site-status-hub';
 
-    public ?string $pluginConnectionToken = null;
-
-    public ?string $pluginConnectionTokenExpiresAt = null;
-
     public function getHeader(): ?View
     {
         return view('filament.app.pages.protection.page-header-with-routing-warning');
@@ -42,25 +37,13 @@ class SiteStatusHubPage extends BaseProtectionPage
 
     protected function getHeaderActions(): array
     {
-        $actions = [
+        return [
             Action::make('addSite')
                 ->label('Add Site')
                 ->icon('heroicon-m-plus')
                 ->color('primary')
                 ->url(SiteResource::getUrl('create')),
         ];
-
-        if ($this->site) {
-            $actions[] = Action::make('generatePluginToken')
-                ->label('Generate Plugin Token')
-                ->icon('heroicon-m-key')
-                ->color('gray')
-                ->action(function (): void {
-                    $this->generatePluginToken();
-                });
-        }
-
-        return $actions;
     }
 
     protected function getHeaderWidgets(): array
@@ -245,42 +228,5 @@ class SiteStatusHubPage extends BaseProtectionPage
         if ($this->isBunnyFlow()) {
             $this->autoCheckBunnyCutover();
         }
-    }
-
-    public function generatePluginToken(): void
-    {
-        if (! $this->site) {
-            return;
-        }
-
-        $issued = app(PluginSiteService::class)->issueConnectionToken($this->site, auth()->id());
-
-        $this->pluginConnectionToken = (string) $issued['token'];
-        $this->pluginConnectionTokenExpiresAt = (string) $issued['expires_at'];
-        $this->notify('Plugin connection token generated');
-    }
-
-    public function pluginConnectionStatus(): string
-    {
-        if (! $this->site?->pluginConnection) {
-            return 'Not connected';
-        }
-
-        return ucfirst((string) ($this->site->pluginConnection->status ?: 'connected'));
-    }
-
-    public function pluginConnectionStatusColor(): string
-    {
-        return $this->site?->pluginConnection ? 'success' : 'gray';
-    }
-
-    public function pluginConnectionLastSeen(): string
-    {
-        return $this->site?->pluginConnection?->last_seen_at?->diffForHumans() ?? 'Never';
-    }
-
-    public function pluginConnectionLastReported(): string
-    {
-        return $this->site?->pluginConnection?->last_reported_at?->diffForHumans() ?? 'Never';
     }
 }

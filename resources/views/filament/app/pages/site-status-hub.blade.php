@@ -6,63 +6,6 @@
             @include('filament.app.pages.protection.empty-state')
         @else
             <x-filament::section
-                heading="WordPress Plugin Connection"
-                description="Generate a one-time token for the FirePhage Security plugin, then paste it into the plugin's Connect tab."
-                icon="heroicon-o-key"
-            >
-                <x-slot name="afterHeader">
-                    <x-filament::badge :color="$this->pluginConnectionStatusColor()">
-                        {{ $this->pluginConnectionStatus() }}
-                    </x-filament::badge>
-                </x-slot>
-
-                <div class="grid gap-4 md:grid-cols-2">
-                    <div class="space-y-2 text-sm">
-                        <p><strong>Last seen:</strong> {{ $this->pluginConnectionLastSeen() }}</p>
-                        <p><strong>Last report:</strong> {{ $this->pluginConnectionLastReported() }}</p>
-                        <p><strong>Dashboard URL:</strong> {{ url('/') }}</p>
-                    </div>
-                    <div class="space-y-2 text-sm">
-                        <p>Use this only for the site currently selected in FirePhage.</p>
-                        <p>The token expires after 15 minutes and can only be used once.</p>
-                        <p>Generating a new token replaces any previous unused token for this site.</p>
-                    </div>
-                </div>
-
-                @if ($this->pluginConnectionToken)
-                    <x-filament::section compact secondary class="mt-4">
-                        <p><strong>Connection token</strong></p>
-                        <p class="break-all font-mono text-sm">{{ $this->pluginConnectionToken }}</p>
-                        <p><strong>Expires:</strong> {{ \Illuminate\Support\Carbon::parse($this->pluginConnectionTokenExpiresAt)->diffForHumans() }}</p>
-                        <x-slot name="footer">
-                            <x-filament::actions>
-                                <x-filament::button
-                                    color="gray"
-                                    size="sm"
-                                    x-on:click="navigator.clipboard.writeText(@js($this->pluginConnectionToken))"
-                                >
-                                    Copy token
-                                </x-filament::button>
-                            </x-filament::actions>
-                        </x-slot>
-                    </x-filament::section>
-                @endif
-
-                <x-slot name="footer">
-                    <x-filament::actions alignment="end">
-                        <x-filament::button
-                            color="gray"
-                            wire:click="generatePluginToken"
-                            wire:loading.attr="disabled"
-                            wire:target="generatePluginToken"
-                        >
-                            Generate token
-                        </x-filament::button>
-                    </x-filament::actions>
-                </x-slot>
-            </x-filament::section>
-
-            <x-filament::section
                 heading="Troubleshooting Mode"
                 description="Keep DNS on FirePhage/Bunny while disabling Bunny WAF and relaxing edge cache/optimizer behavior for testing."
                 icon="heroicon-o-wrench-screwdriver"
