@@ -87,17 +87,17 @@
   - registration now creates a pending subscriber, emails a verification link, and exposes a status-poll token back to the plugin
   - new route:
     - `GET /api/plugin/free-token/status`
-  - new public verification page:
-    - `/wordpress/free-token/verify/{token}`
-  - only after the email link is visited does the plugin receive the actual signature token through the status check flow
+    - `POST /api/plugin/free-token/verify`
+  - the verification email link now points back to the WordPress plugin page (`/wp-admin/admin.php?page=firephage-security&firephage_verify=...`) instead of a FirePhage-hosted page
+  - the plugin completes verification by calling FirePhage in the background and then activates the signature token locally
 - Verification follow-up:
   - free-token registration no longer activates signature updates immediately
   - registration now creates a pending subscriber, emails a verification link, and exposes a status-poll token back to the plugin
   - new route:
     - `GET /api/plugin/free-token/status`
-  - new public verification page:
-    - `/wordpress/free-token/verify/{token}`
-  - only after the email link is visited does the plugin receive the actual signature token through the status check flow
+    - `POST /api/plugin/free-token/verify`
+  - the verification email link now points back to the WordPress plugin page (`/wp-admin/admin.php?page=firephage-security&firephage_verify=...`) instead of a FirePhage-hosted page
+  - the plugin completes verification by calling FirePhage in the background and then activates the signature token locally
 
 ## WordPress Free Signature Token Flow (Latest)
 - Added a separate free-token path for WordPress plugin signature updates so the signature feed is no longer publicly open.

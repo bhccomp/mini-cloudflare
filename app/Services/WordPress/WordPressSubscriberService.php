@@ -53,7 +53,7 @@ class WordPressSubscriberService
             ],
         );
 
-        $verifyUrl = route('wordpress.free-token.verify', ['token' => $verificationToken]);
+        $verifyUrl = $this->buildWordPressVerifyUrl($siteUrl !== '' ? $siteUrl : $homeUrl, $verificationToken);
 
         Notification::route('mail', $email)
             ->notify(new WordPressFreeTokenNotification($siteHost, $verifyUrl));
@@ -114,6 +114,21 @@ class WordPressSubscriberService
         return $subscriber;
     }
 
+    /**
+     * @return array<string, string>
+     */
+    public function verifyForPlugin(string $verificationToken): array
+    {
+        $subscriber = $this->verify($verificationToken);
+
+        return [
+            'status' => 'verified',
+            'email' => (string) $subscriber->email,
+            'site_host' => (string) $subscriber->site_host,
+            'token' => Crypt::decryptString((string) $subscriber->token_encrypted),
+        ];
+    }
+
     public function authenticate(Request $request): WordPressSubscriber
     {
         $token = (string) $request->bearerToken();
@@ -143,5 +158,16 @@ class WordPressSubscriberService
         $host = parse_url($url, PHP_URL_HOST);
 
         return is_string($host) ? strtolower($host) : '';
+    }
+
+    private function buildWordPressVerifyUrl(string $siteUrl, string $verificationToken): string
+    {
+        $baseUrl = rtrim($siteUrl, '/');
+
+        if ($baseUrl === '') {
+            return route('wordpress.free-token.verify', ['token' => $verificationToken]);
+        }
+
+        return $baseUrl . '/wp-admin/admin.php?page=firephage-security&firephage_verify=' . rawurlencode($verificationToken);
     }
 }
