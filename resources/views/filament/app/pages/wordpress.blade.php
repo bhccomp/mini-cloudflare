@@ -21,17 +21,10 @@
                     </x-filament::badge>
                 </x-slot>
 
-                <div class="grid gap-4 md:grid-cols-2">
-                    <div class="space-y-2 text-sm">
-                        <p><strong>Site:</strong> {{ $this->site->display_name ?: $this->site->apex_domain }}</p>
-                        <p><strong>Dashboard URL:</strong> {{ url('/') }}</p>
-                        <p><strong>Plugin page:</strong> WordPress Admin → FirePhage Security → FirePhage Connect</p>
-                    </div>
-                    <div class="space-y-2 text-sm">
-                        <p>Use this only for the site currently selected in FirePhage.</p>
-                        <p>The token expires after 15 minutes and can only be used once.</p>
-                        <p>Generating a new token replaces any previous unused token for this site.</p>
-                    </div>
+                <div class="space-y-2 text-sm">
+                    <p>Use this only for the site currently selected in FirePhage.</p>
+                    <p>The token expires after 15 minutes and can only be used once.</p>
+                    <p>Generating a new token replaces any previous unused token for this site.</p>
                 </div>
 
                 @if ($this->pluginConnectionToken)
