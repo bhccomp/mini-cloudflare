@@ -13,7 +13,7 @@ class WordPressPage extends BaseProtectionPage
 
     protected static ?int $navigationSort = -45;
 
-    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-command-line';
+    protected static string|\BackedEnum|null $navigationIcon = 'icon-wordpress';
 
     protected static ?string $navigationLabel = 'WordPress';
 
