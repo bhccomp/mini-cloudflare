@@ -160,6 +160,21 @@ PROMPT,
             throw new RuntimeException('OpenAI returned a malformed regex suggestion.');
         }
 
+        $existingSignature = WordPressMalwareSignature::query()
+            ->where('pattern', $pattern)
+            ->orWhere(function ($query) use ($label, $type): void {
+                $query->where('label', $label)->where('signature_type', $type);
+            })
+            ->first();
+
+        if ($existingSignature) {
+            throw new RuntimeException(sprintf(
+                'A similar signature already exists: %s (%s).',
+                $existingSignature->name,
+                $existingSignature->status
+            ));
+        }
+
         $signature = WordPressMalwareSignature::query()->create([
             'name' => $name,
             'signature_type' => $type,
@@ -181,6 +196,7 @@ PROMPT,
     {
         $trimmedContent = mb_substr($content, 0, 12000);
         $engineContext = $this->engineContext();
+        $existingSignatures = $this->existingSignatureContext();
 
         return <<<PROMPT
 Analyze this WordPress-related file sample and suggest one regex signature draft.
@@ -207,6 +223,9 @@ Rules:
 
 FirePhage scanner engine context:
 {$engineContext}
+
+Existing database signatures to avoid duplicating:
+{$existingSignatures}
 
 Sample metadata:
 - name: {$sample->name}
@@ -251,5 +270,27 @@ PROMPT;
             '- Existing heuristic patterns:',
             ...$heuristicLines,
         ]);
+    }
+
+    private function existingSignatureContext(): string
+    {
+        $signatures = WordPressMalwareSignature::query()
+            ->orderBy('id', 'desc')
+            ->limit(20)
+            ->get(['name', 'signature_type', 'label', 'status']);
+
+        if ($signatures->isEmpty()) {
+            return '- No database signatures exist yet.';
+        }
+
+        return $signatures
+            ->map(static fn (WordPressMalwareSignature $signature): string => sprintf(
+                '- %s | %s | %s | %s',
+                $signature->name,
+                $signature->signature_type,
+                $signature->label,
+                $signature->status
+            ))
+            ->implode("\n");
     }
 }

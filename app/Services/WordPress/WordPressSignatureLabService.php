@@ -23,6 +23,11 @@ class WordPressSignatureLabService
         if ($filePath !== null && $filePath !== '' && Storage::disk('local')->exists($filePath)) {
             $content = (string) Storage::disk('local')->get($filePath);
             $data['size_bytes'] = (int) Storage::disk('local')->size($filePath);
+
+            if ((! isset($data['original_filename']) || ! is_string($data['original_filename']) || trim($data['original_filename']) === '')
+                && basename($filePath) !== '') {
+                $data['original_filename'] = basename($filePath);
+            }
         } else {
             $data['size_bytes'] = strlen($content);
         }

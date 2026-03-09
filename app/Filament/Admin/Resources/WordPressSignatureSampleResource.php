@@ -31,23 +31,28 @@ class WordPressSignatureSampleResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->schema([
-            Forms\Components\TextInput::make('name')->required()->maxLength(255),
+            Forms\Components\TextInput::make('name')
+                ->maxLength(255)
+                ->helperText('Optional. FirePhage can suggest this after upload or fill it automatically from the file content.'),
             Forms\Components\Select::make('sample_type')
                 ->options([
                     'malware' => 'Confirmed malware',
                     'clean' => 'Clean file',
                     'false_positive' => 'False positive',
                 ])
-                ->required()
                 ->default('malware'),
             Forms\Components\TextInput::make('family')->maxLength(255),
             Forms\Components\TextInput::make('language')->disabled()->dehydrated(),
-            Forms\Components\TextInput::make('original_filename')->label('Original filename')->maxLength(255),
+            Forms\Components\TextInput::make('original_filename')
+                ->label('Original filename')
+                ->maxLength(255)
+                ->helperText('Optional. This is inferred automatically from uploaded files.'),
             Forms\Components\FileUpload::make('file_path')
                 ->label('Upload sample file')
                 ->disk('local')
                 ->directory('wordpress-signature-samples')
-                ->preserveFilenames(),
+                ->preserveFilenames()
+                ->helperText('Upload a suspicious file and FirePhage can classify it automatically after save.'),
             Forms\Components\Textarea::make('content')
                 ->rows(16)
                 ->columnSpanFull()
