@@ -188,25 +188,33 @@ PROMPT,
         $decoded = $this->requestJsonSuggestion($apiKey, $model, 'You revise malware-signature drafts for a WordPress security product. Return exactly one JSON object only. Never approve signatures. Revise conservatively and reduce false positives.', $this->buildRevisionPrompt($signature, $testResult));
         $candidate = $this->normalizeSignatureCandidate($decoded, $signature->name, 'OpenAI returned a malformed revised regex.', $signature->signature_type, (int) ($signature->score ?? 1));
 
-        $malwareContents = WordPressSignatureSample::query()
+        $malwareSamples = WordPressSignatureSample::query()
             ->where('sample_type', 'malware')
             ->orderByDesc('id')
             ->limit(10)
-            ->pluck('content')
-            ->filter(fn ($value): bool => is_string($value) && trim($value) !== '')
-            ->all();
+            ->get(['name', 'family', 'content']);
 
-        $validation = $this->validatePatternAgainstContents($candidate['pattern'], $malwareContents);
+        $validation = $this->validatePatternAgainstSamples($candidate['pattern'], $malwareSamples->all());
+        $currentSummary = $this->testSummaryFromResult($testResult);
+        $sourceSampleName = $this->extractSourceSampleName($signature);
+        $mustNarrow = $this->revisionMustNarrow($signature, $currentSummary);
 
-        if (($testResult['summary']['malware_hits'] ?? 0) === 0 && ! $validation['matches_any']) {
+        if (
+            (($testResult['summary']['malware_hits'] ?? 0) === 0 && ! $validation['matches_any'])
+            || ($mustNarrow && ! $this->isNarrowerRevision($validation, $currentSummary, $sourceSampleName))
+        ) {
             $candidate = $this->correctCandidateForRevision(
                 apiKey: $apiKey,
                 model: $model,
                 signature: $signature,
                 previousSuggestion: $decoded,
                 testResult: $testResult,
-                malwareContents: $malwareContents,
-                failureReason: sprintf('The revised regex still does not match any stored malware sample. %s', $validation['reason'])
+                malwareSamples: $malwareSamples->all(),
+                currentSummary: $currentSummary,
+                sourceSampleName: $sourceSampleName,
+                failureReason: (($testResult['summary']['malware_hits'] ?? 0) === 0 && ! $validation['matches_any'])
+                    ? sprintf('The revised regex still does not match any stored malware sample. %s', $validation['reason'])
+                    : sprintf('The revised regex still overlaps too broadly across malware families. It matched %d sample(s) across %d family/families.', $validation['matched_count'], count($validation['families']))
             );
         }
 
@@ -417,6 +425,8 @@ Rules:
 - Many malware samples are multiline. Do not assume `.*` crosses newlines.
 - If you need to span lines, prefer `[\s\S]` with a bounded range like `{0,800}` or use the `s` modifier deliberately.
 - If the previous signature failed to match malware hits, explicitly fix the likely reason instead of making only cosmetic changes.
+- If the saved AI review says the signature is broad or should be narrowed, reduce overlap across unrelated malware families instead of returning another generic dangerous-function list.
+- When narrowing, prefer the originating sample behavior and specific strings or flows over generic file-manager patterns.
 - Before returning, sanity-check that your revised regex would match the relevant sample style represented in the stored sample library and test feedback.
 - No markdown.
 
@@ -446,6 +456,9 @@ Existing database signatures to avoid duplicating:
 
 Recent sample library context:
 {$sampleContext}
+
+Matched malware sample excerpts:
+{$this->matchedSampleExcerptContext(is_array($matchedSamples) ? $matchedSamples : [])}
 
 Recent malware sample excerpts:
 {$this->sampleExcerptContext('malware')}
@@ -576,6 +589,136 @@ PROMPT;
                 );
             })
             ->implode("\n\n");
+    }
+
+    /**
+     * @param  array<int, WordPressSignatureSample>  $samples
+     * @return array{matches_any: bool, reason: string, matched_count: int, families: array<int, string>, sample_names: array<int, string>}
+     */
+    private function validatePatternAgainstSamples(string $pattern, array $samples): array
+    {
+        if (@preg_match($pattern, '') === false) {
+            return ['matches_any' => false, 'reason' => 'The regex is invalid.', 'matched_count' => 0, 'families' => [], 'sample_names' => []];
+        }
+
+        $matchedNames = [];
+        $families = [];
+
+        foreach ($samples as $sample) {
+            if (! $sample instanceof WordPressSignatureSample) {
+                continue;
+            }
+
+            $content = (string) $sample->content;
+
+            if (trim($content) === '') {
+                continue;
+            }
+
+            if (@preg_match($pattern, $content) === 1) {
+                $matchedNames[] = (string) $sample->name;
+                $family = trim((string) $sample->family);
+
+                if ($family !== '') {
+                    $families[] = $family;
+                }
+            }
+        }
+
+        $matchedNames = array_values(array_unique($matchedNames));
+        $families = array_values(array_unique($families));
+
+        return [
+            'matches_any' => $matchedNames !== [],
+            'reason' => $matchedNames !== [] ? 'The regex matched at least one malware sample.' : 'The regex did not match any stored malware sample.',
+            'matched_count' => count($matchedNames),
+            'families' => $families,
+            'sample_names' => $matchedNames,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $testResult
+     * @return array{matched_count: int, families: array<int, string>, sample_names: array<int, string>}
+     */
+    private function testSummaryFromResult(array $testResult): array
+    {
+        $matchedSamples = is_array($testResult['matched_samples'] ?? null) ? $testResult['matched_samples'] : [];
+        $families = [];
+        $names = [];
+
+        foreach ($matchedSamples as $sample) {
+            if (! is_array($sample)) {
+                continue;
+            }
+
+            $name = trim((string) ($sample['sample'] ?? ''));
+            $family = trim((string) ($sample['family'] ?? ''));
+
+            if ($name !== '') {
+                $names[] = $name;
+            }
+
+            if ($family !== '') {
+                $families[] = $family;
+            }
+        }
+
+        return [
+            'matched_count' => count(array_unique($names)),
+            'families' => array_values(array_unique($families)),
+            'sample_names' => array_values(array_unique($names)),
+        ];
+    }
+
+    /**
+     * @param  array{matched_count: int, families: array<int, string>, sample_names: array<int, string>}  $currentSummary
+     */
+    private function revisionMustNarrow(WordPressMalwareSignature $signature, array $currentSummary): bool
+    {
+        $review = is_array($signature->last_ai_review) ? $signature->last_ai_review : [];
+        $recommendation = strtolower(trim((string) ($review['recommendation'] ?? '')));
+        $overlapRisk = strtolower(trim((string) ($review['overlap_risk'] ?? '')));
+
+        return ($recommendation === 'narrow' || in_array($overlapRisk, ['medium', 'high'], true))
+            && (($currentSummary['matched_count'] ?? 0) > 1 || count($currentSummary['families'] ?? []) > 1);
+    }
+
+    /**
+     * @param  array{matches_any: bool, reason: string, matched_count: int, families: array<int, string>, sample_names: array<int, string>}  $newSummary
+     * @param  array{matched_count: int, families: array<int, string>, sample_names: array<int, string>}  $currentSummary
+     */
+    private function isNarrowerRevision(array $newSummary, array $currentSummary, ?string $sourceSampleName): bool
+    {
+        if (! $newSummary['matches_any']) {
+            return false;
+        }
+
+        if ($sourceSampleName !== null && $sourceSampleName !== '' && ! in_array($sourceSampleName, $newSummary['sample_names'], true)) {
+            return false;
+        }
+
+        $currentFamilies = count($currentSummary['families']);
+        $newFamilies = count($newSummary['families']);
+
+        if ($newFamilies > 0 && $currentFamilies > 0 && $newFamilies < $currentFamilies) {
+            return true;
+        }
+
+        return $newSummary['matched_count'] < $currentSummary['matched_count'];
+    }
+
+    private function extractSourceSampleName(WordPressMalwareSignature $signature): ?string
+    {
+        $notes = (string) ($signature->notes ?? '');
+
+        if (preg_match('/Suggested from sample:\s*(.+)/i', $notes, $matches) !== 1) {
+            return null;
+        }
+
+        $name = trim((string) ($matches[1] ?? ''));
+
+        return $name !== '' ? $name : null;
     }
 
     /**
@@ -794,10 +937,11 @@ PROMPT;
     /**
      * @param  array<string, mixed>  $previousSuggestion
      * @param  array<string, mixed>  $testResult
-     * @param  array<int, string>  $malwareContents
+     * @param  array<int, WordPressSignatureSample>  $malwareSamples
+     * @param  array{matched_count: int, families: array<int, string>, sample_names: array<int, string>}  $currentSummary
      * @return array{name: string, signature_type: string, label: string, pattern: string, score: int, false_positive_risk: string, reasoning: string}
      */
-    private function correctCandidateForRevision(string $apiKey, string $model, WordPressMalwareSignature $signature, array $previousSuggestion, array $testResult, array $malwareContents, string $failureReason): array
+    private function correctCandidateForRevision(string $apiKey, string $model, WordPressMalwareSignature $signature, array $previousSuggestion, array $testResult, array $malwareSamples, array $currentSummary, ?string $sourceSampleName, string $failureReason): array
     {
         $lastError = 'OpenAI returned a malformed corrected revised regex.';
 
@@ -817,13 +961,15 @@ PROMPT;
                 continue;
             }
 
-            $validation = $this->validatePatternAgainstContents($candidate['pattern'], $malwareContents);
+            $validation = $this->validatePatternAgainstSamples($candidate['pattern'], $malwareSamples);
 
-            if ($validation['matches_any']) {
+            if ($validation['matches_any'] && (! $this->revisionMustNarrow($signature, $currentSummary) || $this->isNarrowerRevision($validation, $currentSummary, $sourceSampleName))) {
                 return $candidate;
             }
 
-            $failureReason = sprintf('The corrected revision still did not match stored malware samples. %s', $validation['reason']);
+            $failureReason = ! $validation['matches_any']
+                ? sprintf('The corrected revision still did not match stored malware samples. %s', $validation['reason'])
+                : sprintf('The corrected revision still overlaps too broadly. It matched %d sample(s) across %d family/families and must be narrower while still matching the source sample.', $validation['matched_count'], count($validation['families']));
             $previousSuggestion = $decoded;
         }
 

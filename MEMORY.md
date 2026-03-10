@@ -1449,3 +1449,4 @@
   - added `AI Review Test Results` for signatures so Laravel can explain whether multiple malware hits look like healthy family coverage or overly broad overlap before you approve a rule
   - AI test reviews are now stored on the signature record itself and shown in the signature form instead of only as a transient notification
   - `AI Revision` now receives the saved AI review context so it can revise the regex using the earlier verdict, overlap risk, and recommendation
+  - if a saved AI review says a signature should be narrowed, the revision flow now validates that the revised regex reduces cross-family malware overlap while still matching the originating sample instead of accepting cosmetic rewrites of the same broad rule
