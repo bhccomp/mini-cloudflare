@@ -1450,3 +1450,18 @@
   - AI test reviews are now stored on the signature record itself and shown in the signature form instead of only as a transient notification
   - `AI Revision` now receives the saved AI review context so it can revise the regex using the earlier verdict, overlap risk, and recommendation
   - if a saved AI review says a signature should be narrowed, the revision flow now validates that the revised regex reduces cross-family malware overlap while still matching the originating sample instead of accepting cosmetic rewrites of the same broad rule
+- Sample library expansion:
+  - imported the public `php-malware-finder` sample set into `Signature Samples`
+  - imported the public `stefanpejcic/wordpress-malware` repository into `Signature Samples`
+  - the lab now has a much larger malware-only corpus for signature testing
+- Deterministic draft generation:
+  - for the larger WordPress malware repo, draft signatures were added without OpenAI token usage
+  - those drafts focus on narrow, strong markers such as:
+    - `eval(base64_decode())`
+    - `gzinflate(base64_decode())`
+    - `preg_replace /e`
+    - `FilesMan`
+    - `auth_pass`
+    - attacker input invoked as code
+    - `String.fromCharCode` execution chains
+  - deterministic drafts were left as `draft` and run through the built-in test set before any approval
