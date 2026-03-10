@@ -245,6 +245,39 @@ PROMPT,
         ];
     }
 
+    /**
+     * @return array{verdict: string, overlap_risk: string, recommendation: string, reasoning: string}
+     */
+    public function reviewTestResults(WordPressMalwareSignature $signature): array
+    {
+        $apiKey = (string) config('services.openai.api_key', '');
+        $model = (string) config('services.openai.signature_model', 'gpt-4o-mini');
+
+        if ($apiKey === '') {
+            throw new RuntimeException('OPENAI_API_KEY is not configured.');
+        }
+
+        $testResult = is_array($signature->last_test_result) ? $signature->last_test_result : null;
+
+        if (! $testResult) {
+            throw new RuntimeException('Run Test Set before asking for an AI review.');
+        }
+
+        $decoded = $this->requestJsonSuggestion(
+            $apiKey,
+            $model,
+            'You review malware-signature test results for a WordPress security product. Return exactly one JSON object only. Be concise, practical, and conservative.',
+            $this->buildTestReviewPrompt($signature, $testResult)
+        );
+
+        return [
+            'verdict' => trim((string) ($decoded['verdict'] ?? 'Needs manual review')),
+            'overlap_risk' => trim((string) ($decoded['overlap_risk'] ?? 'unknown')),
+            'recommendation' => trim((string) ($decoded['recommendation'] ?? 'Review the matched samples before approving the signature.')),
+            'reasoning' => trim((string) ($decoded['reasoning'] ?? '')),
+        ];
+    }
+
     private function buildPrompt(WordPressSignatureSample $sample, string $signals, string $content): string
     {
         $trimmedContent = mb_substr($content, 0, self::SAMPLE_CONTENT_LIMIT);
@@ -414,6 +447,48 @@ Recent malware sample excerpts:
 PROMPT;
     }
 
+    /**
+     * @param  array<string, mixed>  $testResult
+     */
+    private function buildTestReviewPrompt(WordPressMalwareSignature $signature, array $testResult): string
+    {
+        $summary = $testResult['summary'] ?? [];
+        $matchedSamples = is_array($testResult['matched_samples'] ?? null) ? $testResult['matched_samples'] : [];
+
+        return <<<PROMPT
+Review this WordPress malware-signature test result and determine whether the current hit pattern looks healthy or too broad.
+
+Return strict JSON with these keys:
+- verdict
+- overlap_risk
+- recommendation
+- reasoning
+
+Rules:
+- Keep the answer concise.
+- Focus on whether multiple malware hits look like good family coverage or suspicious overlap/breadth.
+- Remember that one live WordPress file may match multiple signatures and should still only become one finding row in the plugin.
+- Mention if the signature should stay as-is, be narrowed, or simply be monitored.
+- No markdown.
+
+Current signature:
+- name: {$signature->name}
+- type: {$signature->signature_type}
+- label: {$signature->label}
+- score: {$signature->score}
+- pattern: {$signature->pattern}
+
+Latest test result:
+{$this->json($testResult)}
+
+Matched sample excerpts:
+{$this->matchedSampleExcerptContext($matchedSamples)}
+
+Existing database signatures:
+{$this->existingSignatureContext()}
+PROMPT;
+    }
+
     private function sampleContext(): string
     {
         $samples = WordPressSignatureSample::query()
@@ -454,6 +529,46 @@ PROMPT;
                 $excerpt = mb_substr((string) $sample->content, 0, 1800);
 
                 return sprintf("- %s\n%s", $sample->name, $excerpt);
+            })
+            ->implode("\n\n");
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $matchedSamples
+     */
+    private function matchedSampleExcerptContext(array $matchedSamples): string
+    {
+        $names = collect($matchedSamples)
+            ->pluck('sample')
+            ->filter(fn ($value): bool => is_string($value) && trim($value) !== '')
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($names === []) {
+            return '- No matched sample excerpts available.';
+        }
+
+        $samples = WordPressSignatureSample::query()
+            ->whereIn('name', $names)
+            ->orderBy('id', 'desc')
+            ->get(['name', 'family', 'sample_type', 'content']);
+
+        if ($samples->isEmpty()) {
+            return '- No matched sample excerpts available.';
+        }
+
+        return $samples
+            ->map(function (WordPressSignatureSample $sample): string {
+                $excerpt = mb_substr((string) $sample->content, 0, 1200);
+
+                return sprintf(
+                    "- %s | %s | %s\n%s",
+                    $sample->name,
+                    $sample->sample_type ?: 'unknown',
+                    $sample->family ?: 'n/a',
+                    $excerpt
+                );
             })
             ->implode("\n\n");
     }

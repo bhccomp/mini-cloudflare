@@ -1446,3 +1446,4 @@
   - first-pass suggestions and `AI Revision` now explicitly account for multiline malware samples and warn against using `.*` across newlines without `s`
   - the service now validates suggested regexes against the source sample or stored malware samples before accepting them
   - if the first AI regex fails that validation, the service makes one corrective retry with the failure reason and sample excerpts before giving up
+  - added `AI Review Test Results` for signatures so Laravel can explain whether multiple malware hits look like healthy family coverage or overly broad overlap before you approve a rule
