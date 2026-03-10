@@ -1465,3 +1465,9 @@
     - attacker input invoked as code
     - `String.fromCharCode` execution chains
   - deterministic drafts were left as `draft` and run through the built-in test set before any approval
+- Fallback signature tightening:
+  - the shared bundled fallback ruleset in `config/firephage-wordpress-signatures.php` was reduced to a minimal low-ambiguity set
+  - bundled fallback heuristics were cleared entirely
+  - the intended split is now:
+    - plugin without token: integrity + baseline + tiny bundled fallback set
+    - plugin with token: integrity + baseline + tiny bundled fallback set + FirePhage-delivered signatures
