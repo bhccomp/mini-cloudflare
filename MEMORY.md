@@ -1471,3 +1471,9 @@
   - the intended split is now:
     - plugin without token: integrity + baseline + tiny bundled fallback set
     - plugin with token: integrity + baseline + tiny bundled fallback set + FirePhage-delivered signatures
+- Remote-signature-first follow-up:
+  - the shared bundled fallback signature feed in `config/firephage-wordpress-signatures.php` is now empty
+  - the intended split is now:
+    - plugin without token: integrity + baseline only
+    - plugin with token: integrity + baseline + FirePhage-delivered signatures
+  - FirePhage is now the only source of malware-signature detections for connected/tokenized WordPress installs
