@@ -1447,3 +1447,5 @@
   - the service now validates suggested regexes against the source sample or stored malware samples before accepting them
   - if the first AI regex fails that validation, the service makes one corrective retry with the failure reason and sample excerpts before giving up
   - added `AI Review Test Results` for signatures so Laravel can explain whether multiple malware hits look like healthy family coverage or overly broad overlap before you approve a rule
+  - AI test reviews are now stored on the signature record itself and shown in the signature form instead of only as a transient notification
+  - `AI Revision` now receives the saved AI review context so it can revise the regex using the earlier verdict, overlap risk, and recommendation

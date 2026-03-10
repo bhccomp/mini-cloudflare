@@ -394,6 +394,8 @@ PROMPT;
         $sampleContext = $this->sampleContext();
         $summary = $testResult['summary'] ?? [];
         $matchedSamples = $testResult['matched_samples'] ?? [];
+        $lastAiReview = is_array($signature->last_ai_review) ? $signature->last_ai_review : null;
+        $aiReviewContext = $lastAiReview ? $this->json($lastAiReview) : 'null';
 
         return <<<PROMPT
 Revise this WordPress malware-signature draft based on its latest test-set result.
@@ -432,6 +434,9 @@ Latest test result:
 - false_positive_hits: {$summary['false_positive_hits']}
 - risk: {$testResult['risk']}
 - matched_samples: {$this->json($matchedSamples)}
+
+Saved AI review of this test result:
+{$aiReviewContext}
 
 FirePhage scanner engine context:
 {$engineContext}
