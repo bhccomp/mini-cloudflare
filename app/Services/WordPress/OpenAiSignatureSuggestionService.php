@@ -167,6 +167,10 @@ PROMPT,
                 continue;
             }
 
+            if ($evaluation['malware_hits'] !== 1) {
+                continue;
+            }
+
             if ($evaluation['clean_hits'] > 0 || $evaluation['false_positive_hits'] > 0) {
                 continue;
             }
@@ -183,15 +187,20 @@ PROMPT,
         }
 
         if ($candidates === []) {
-            throw new RuntimeException('No narrow sample-specific signature candidate could be derived from this file.');
+            throw new RuntimeException('No exact single-sample signature candidate could be derived from this file.');
         }
 
         usort($candidates, function (array $left, array $right): int {
             $leftEval = $left['evaluation'];
             $rightEval = $right['evaluation'];
 
-            return [$leftEval['malware_hits'], -strlen((string) $left['pattern'])]
-                <=> [$rightEval['malware_hits'], -strlen((string) $right['pattern'])];
+            return [
+                -((int) ($left['metadata']['priority'] ?? 0)),
+                -strlen((string) $left['pattern']),
+            ] <=> [
+                -((int) ($right['metadata']['priority'] ?? 0)),
+                -strlen((string) $right['pattern']),
+            ];
         });
 
         $selected = $candidates[0];
@@ -206,7 +215,7 @@ PROMPT,
             'score' => 10,
             'false_positive_risk' => ($evaluation['malware_hits'] ?? 0) <= 1 ? 'low' : 'medium',
             'reasoning' => sprintf(
-                'Built from a sample-specific anchor. Matches source sample "%s" and %d malware sample(s), with %d clean hits and %d false-positive hits in the current sample library.',
+                'Built from a sample-specific anchor. Matches source sample "%s" and exactly %d malware sample, with %d clean hits and %d false-positive hits in the current sample library.',
                 $sample->name,
                 (int) ($evaluation['malware_hits'] ?? 0),
                 (int) ($evaluation['clean_hits'] ?? 0),
@@ -525,6 +534,7 @@ PROMPT;
 
             $patterns['/' . preg_quote($literal, '/') . '/'] = [
                 'label' => 'sample-specific literal',
+                'priority' => 10,
             ];
         }
 
@@ -540,6 +550,7 @@ PROMPT;
 
             $patterns['/' . preg_quote($first, '/') . '[\\s\\S]{0,160}' . preg_quote($second, '/') . '/'] = [
                 'label' => 'sample-specific literal chain',
+                'priority' => 18,
             ];
         }
 
@@ -552,18 +563,21 @@ PROMPT;
 
             $patterns['/' . $normalizedLine . '/'] = [
                 'label' => 'sample-specific line fragment',
+                'priority' => 24,
             ];
         }
 
         foreach ($this->extractCandidateIdentifiers($content) as $identifier) {
             $patterns['/\$?' . preg_quote($identifier, '/') . '\b/'] = [
                 'label' => 'sample-specific identifier',
+                'priority' => 8,
             ];
         }
 
         foreach ($this->extractCandidateHexAndBase64Fragments($content) as $fragment) {
             $patterns['/' . preg_quote($fragment, '/') . '/'] = [
                 'label' => 'sample-specific encoded fragment',
+                'priority' => 26,
             ];
         }
 
@@ -575,12 +589,14 @@ PROMPT;
 
             $patterns['/' . implode('[\\s\\S]{0,120}', $parts) . '/'] = [
                 'label' => 'sample-specific token chain',
+                'priority' => 28,
             ];
         }
 
         foreach ($this->extractHeadTailPatterns($content) as $pattern => $label) {
             $patterns[$pattern] = [
                 'label' => $label,
+                'priority' => 32,
             ];
         }
 
@@ -589,19 +605,26 @@ PROMPT;
         if ($exactTinyPattern !== null) {
             $patterns[$exactTinyPattern] = [
                 'label' => 'exact source-file content',
+                'priority' => 80,
             ];
         }
 
         foreach ($this->extractCandidateUniqueWindows($content) as $window) {
             $patterns['/' . preg_quote($window, '/') . '/s'] = [
                 'label' => 'sample-specific content window',
+                'priority' => 34,
             ];
         }
 
         foreach ($this->extractCandidateWindowChains($content) as $chain) {
             $patterns['/' . preg_quote($chain['start'], '/') . '[\\s\\S]{0,' . $chain['gap'] . '}' . preg_quote($chain['end'], '/') . '/s'] = [
                 'label' => 'sample-specific content window chain',
+                'priority' => 48,
             ];
+        }
+
+        foreach ($this->extractAnchoredLinePatterns($content) as $pattern => $metadata) {
+            $patterns[$pattern] = $metadata;
         }
 
         return $patterns;
@@ -804,6 +827,48 @@ PROMPT;
         }
 
         return '/^\s*' . preg_quote($trimmed, '/') . '\s*$/s';
+    }
+
+    /**
+     * @return array<string, array{label:string,priority:int}>
+     */
+    private function extractAnchoredLinePatterns(string $content): array
+    {
+        $patterns = [];
+        $lines = array_values(array_filter(
+            array_map(static fn (string $line): string => trim($line), preg_split('/\R+/', $content) ?: []),
+            static fn (string $line): bool => $line !== ''
+        ));
+
+        if ($lines === []) {
+            return $patterns;
+        }
+
+        $first = $this->bestBoundarySnippet(array_slice($lines, 0, 3));
+        $last = $this->bestBoundarySnippet(array_reverse(array_slice($lines, -3)));
+
+        if ($first !== null && $this->isSafePatternText($first)) {
+            $patterns['/^\s*' . preg_quote($first, '/') . '/s'] = [
+                'label' => 'source-file first-line anchor',
+                'priority' => 52,
+            ];
+        }
+
+        if ($last !== null && $this->isSafePatternText($last)) {
+            $patterns['/' . preg_quote($last, '/') . '\s*$/s'] = [
+                'label' => 'source-file last-line anchor',
+                'priority' => 52,
+            ];
+        }
+
+        if ($first !== null && $last !== null && $first !== $last && $this->isSafePatternText($first) && $this->isSafePatternText($last)) {
+            $patterns['/^\s*' . preg_quote($first, '/') . '[\\s\\S]{0,18000}' . preg_quote($last, '/') . '\s*$/s'] = [
+                'label' => 'source-file first-last anchor',
+                'priority' => 70,
+            ];
+        }
+
+        return $patterns;
     }
 
     /**
