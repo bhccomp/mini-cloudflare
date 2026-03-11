@@ -52,7 +52,7 @@ class WordPressSignatureSampleResource extends Resource
                 ->disk('local')
                 ->directory('wordpress-signature-samples')
                 ->preserveFilenames()
-                ->helperText('Upload a suspicious file and FirePhage can classify it automatically after save.'),
+                ->helperText('Uploaded sample files are stored directly under `wordpress-signature-samples/` and renamed from the sample name when possible.'),
             Forms\Components\Textarea::make('content')
                 ->rows(16)
                 ->columnSpanFull()

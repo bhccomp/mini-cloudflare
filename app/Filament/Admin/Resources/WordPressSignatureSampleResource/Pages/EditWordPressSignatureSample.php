@@ -3,11 +3,15 @@
 namespace App\Filament\Admin\Resources\WordPressSignatureSampleResource\Pages;
 
 use App\Filament\Admin\Resources\WordPressSignatureSampleResource;
+use App\Models\WordPressSignatureSample;
 use App\Services\WordPress\OpenAiSignatureSuggestionService;
 use App\Services\WordPress\WordPressSignatureLabService;
+use App\Services\WordPress\WordPressSignatureSampleStorageService;
 use Filament\Actions;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class EditWordPressSignatureSample extends EditRecord
 {
@@ -69,6 +73,25 @@ class EditWordPressSignatureSample extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        return app(WordPressSignatureLabService::class)->prepareSampleData($data);
+        $storage = app(WordPressSignatureSampleStorageService::class);
+        $data = $storage->normalizeSamplePath($data);
+        $prepared = app(WordPressSignatureLabService::class)->prepareSampleData($data);
+
+        $duplicate = $storage->duplicateSampleForSha256($prepared['sha256'] ?? null, (int) $this->record->id);
+
+        if ($duplicate instanceof WordPressSignatureSample) {
+            $filePath = (string) ($prepared['file_path'] ?? '');
+            $currentPath = trim((string) ($this->record->file_path ?? ''));
+
+            if ($filePath !== '' && $filePath !== $currentPath && Storage::disk('local')->exists($filePath)) {
+                Storage::disk('local')->delete($filePath);
+            }
+
+            throw ValidationException::withMessages([
+                'file_path' => sprintf('This exact file content already exists as sample "%s" (ID %d).', $duplicate->name, $duplicate->id),
+            ]);
+        }
+
+        return $prepared;
     }
 }

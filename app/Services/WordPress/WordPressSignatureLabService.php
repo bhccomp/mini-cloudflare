@@ -4,13 +4,13 @@ namespace App\Services\WordPress;
 
 use App\Models\WordPressMalwareSignature;
 use App\Models\WordPressSignatureSample;
-use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class WordPressSignatureLabService
 {
+    private const SAMPLE_DIRECTORY = WordPressSignatureSampleStorageService::BASE_DIRECTORY;
+
     /**
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
@@ -86,16 +86,18 @@ class WordPressSignatureLabService
     public function testSignature(WordPressMalwareSignature $signature): array
     {
         $samples = WordPressSignatureSample::query()->orderBy('id')->get();
-        $matches = [];
+        $sampleMatches = [];
+        $wpMatches = [];
         $summary = [
             'sample_count' => $samples->count(),
             'malware_hits' => 0,
             'clean_hits' => 0,
             'false_positive_hits' => 0,
+            'wordpress_core_hits' => 0,
         ];
 
         foreach ($samples as $sample) {
-            $content = (string) ($sample->content ?? '');
+            $content = $this->sampleContent($sample);
 
             if ($content === '' || @preg_match($signature->pattern, '') === false) {
                 continue;
@@ -115,27 +117,44 @@ class WordPressSignatureLabService
                 $summary['false_positive_hits']++;
             }
 
-            $matches[] = [
+            $sampleMatches[] = [
                 'sample' => $sample->name,
                 'type' => $sample->sample_type,
                 'family' => $sample->family,
+                'original_filename' => $sample->original_filename,
+                'file_path' => $sample->file_path,
+                'source' => 'sample_library',
             ];
         }
 
-        $risk = $summary['clean_hits'] > 0 || $summary['false_positive_hits'] > 0
+        $hasBlockingCleanHit = $summary['clean_hits'] > 0
+            || $summary['false_positive_hits'] > 0
+            || $summary['wordpress_core_hits'] > 0;
+
+        $risk = $hasBlockingCleanHit
             ? 'high'
             : ($summary['malware_hits'] > 0 ? 'low' : 'unknown');
 
         $result = [
             'summary' => $summary,
             'risk' => $risk,
-            'matched_samples' => array_slice($matches, 0, 30),
+            'production_ready' => ! $hasBlockingCleanHit && $summary['malware_hits'] > 0,
+            'outcome' => $hasBlockingCleanHit ? 'failed' : ($summary['malware_hits'] > 0 ? 'pass' : 'ineffective'),
+            'matched_samples' => $sampleMatches,
+            'matched_wordpress_files' => $wpMatches,
+            'matched_files' => array_merge($sampleMatches, $wpMatches),
             'tested_at' => now()->toIso8601String(),
         ];
+
+        $history = is_array($signature->test_history) ? $signature->test_history : [];
+        array_unshift($history, $result);
+        $history = array_slice($history, 0, 25);
 
         $signature->forceFill([
             'last_tested_at' => now(),
             'last_test_result' => $result,
+            'test_history' => $history,
+            'status' => $this->statusAfterTest($signature, $result),
         ])->save();
 
         return $result;
@@ -182,6 +201,39 @@ class WordPressSignatureLabService
             'js' => 'javascript',
             'php', 'phtml', 'php5', 'php7', 'php8', 'inc' => 'php',
             default => str_contains($content, '<?php') ? 'php' : (str_contains($content, 'function(') || str_contains($content, 'const ') ? 'javascript' : 'text'),
+        };
+    }
+
+    private function sampleContent(WordPressSignatureSample $sample): string
+    {
+        $filePath = is_string($sample->file_path) ? trim($sample->file_path) : '';
+
+        if ($filePath !== '' && Storage::disk('local')->exists($filePath)) {
+            return (string) Storage::disk('local')->get($filePath);
+        }
+
+        return (string) ($sample->content ?? '');
+    }
+
+    /**
+     * @param  array<string, mixed>  $result
+     */
+    private function statusAfterTest(WordPressMalwareSignature $signature, array $result): string
+    {
+        $currentStatus = (string) ($signature->status ?? 'draft');
+        $outcome = (string) ($result['outcome'] ?? 'pass');
+
+        if ($outcome === 'failed') {
+            return 'failed';
+        }
+
+        if ($outcome === 'ineffective') {
+            return 'ineffective';
+        }
+
+        return match ($currentStatus) {
+            'approved', 'disabled', 'archived' => $currentStatus,
+            default => 'draft',
         };
     }
 }

@@ -6,8 +6,11 @@ use App\Filament\Admin\Resources\WordPressSignatureSampleResource;
 use App\Models\WordPressSignatureSample;
 use App\Services\WordPress\OpenAiSignatureSuggestionService;
 use App\Services\WordPress\WordPressSignatureLabService;
+use App\Services\WordPress\WordPressSignatureSampleStorageService;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Storage;
 
 class CreateWordPressSignatureSample extends CreateRecord
 {
@@ -15,7 +18,23 @@ class CreateWordPressSignatureSample extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+        $storage = app(WordPressSignatureSampleStorageService::class);
+        $data = $storage->normalizeSamplePath($data);
         $prepared = app(WordPressSignatureLabService::class)->prepareSampleData($data);
+
+        $duplicate = $storage->duplicateSampleForSha256($prepared['sha256'] ?? null);
+
+        if ($duplicate instanceof WordPressSignatureSample) {
+            $filePath = (string) ($prepared['file_path'] ?? '');
+
+            if ($filePath !== '' && Storage::disk('local')->exists($filePath)) {
+                Storage::disk('local')->delete($filePath);
+            }
+
+            throw ValidationException::withMessages([
+                'file_path' => sprintf('This exact file content already exists as sample "%s" (ID %d).', $duplicate->name, $duplicate->id),
+            ]);
+        }
 
         try {
             $temporarySample = new WordPressSignatureSample($prepared);

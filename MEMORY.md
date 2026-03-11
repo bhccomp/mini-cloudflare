@@ -38,6 +38,49 @@
 - Process note:
   - each time plugin work is requested from this workspace, read `/var/www/firephage-security/MEMORY.md` first before implementing changes
 
+## WordPress Signature Lab Reset (Latest)
+- The WordPress malware-signature workflow has been reset to a content-first model.
+- `wordpress_signature_samples` is now deduplicated by exact file content (`sha256`), not by filename.
+- Current library state after cleanup:
+  - `1386` unique sample rows
+  - `0` duplicate-content groups
+  - `0` duplicate-name groups
+- New upload/import behavior:
+  - manual sample upload blocks exact duplicate content
+  - sample edit blocks changing a row into content that already exists on another row
+  - ZIP import skips files whose exact content already exists
+- Storage model:
+  - sample files live directly under `storage/app/private/wordpress-signature-samples`
+  - nested `malicious/`, `clean/`, and `clean/wp` app logic is no longer part of the active workflow
+- Signature generation model:
+  - the old broad AI-first regex workflow is no longer the primary path
+  - deterministic generation now builds narrow sample-specific anchors from the source file content itself
+  - anchors prefer exact literals, exact content windows, bounded chains, head/tail fragments, and tiny-file exact matches
+  - generic behavior chasing is intentionally avoided
+- Current signature state:
+  - `1386` malware samples
+  - `1386` signatures
+  - `0` missing sample/signature name matches
+  - `0` extra signatures without a sample
+- Operational expectation:
+  - treat sample content as identity
+  - treat sample names as mutable labels only
+  - if a sample cannot produce a narrow source-specific signature, fix the extractor instead of adding broad behavior heuristics
+
+## WordPress Plugin Signature Delivery Reset (Latest)
+- The plugin scanner should now rely on:
+  - WordPress core/plugin/theme checksum verification
+  - local custom-file baseline verification
+  - the current generated FirePhage signature set
+- The plugin no longer uses the older hardcoded PHP heuristic regexes for malware detection.
+- A bundled fallback snapshot of the current generated signatures now ships in the plugin repo so no-token installs still have the latest local rules at plugin release time.
+- Current bundled snapshot exported to the plugin:
+  - `1386` high-confidence signatures
+  - `0` heuristic signatures
+- Remote signature updates remain optional:
+  - without free token: bundled snapshot only
+  - with free token: bundled snapshot plus refreshed FirePhage-delivered updates
+
 ## Resend Mail + Transactional Email Template (Latest)
 - Configured Laravel mail to use Resend with sender:
   - `MAIL_MAILER=resend`
