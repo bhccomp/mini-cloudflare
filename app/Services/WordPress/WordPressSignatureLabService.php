@@ -170,6 +170,7 @@ class WordPressSignatureLabService
             ->where('status', 'approved')
             ->orderBy('id')
             ->get();
+        $exactHashes = [];
 
         $highConfidence = [];
         $heuristics = [];
@@ -186,8 +187,18 @@ class WordPressSignatureLabService
             ];
         }
 
+        foreach (WordPressSignatureSample::query()
+            ->where('sample_type', 'malware')
+            ->whereNotNull('sha256')
+            ->where('sha256', '!=', '')
+            ->orderBy('id')
+            ->get(['name', 'sha256']) as $sample) {
+            $exactHashes[strtolower((string) $sample->sha256)] = (string) $sample->name;
+        }
+
         return [
             'version' => now()->format('Y.m.d.His'),
+            'high_confidence_hashes' => array_replace($fallback['high_confidence_hashes'] ?? [], $exactHashes),
             'high_confidence_patterns' => array_replace($fallback['high_confidence_patterns'] ?? [], $highConfidence),
             'heuristic_patterns' => array_replace($fallback['heuristic_patterns'] ?? [], $heuristics),
         ];
