@@ -2,6 +2,8 @@
 
 namespace App\Services\WordPress;
 
+use App\Models\WordPressMaliciousDomain;
+
 class WordPressMaliciousDomainFeedService
 {
     public const RESOURCE_PATH = 'resources/wordpress-malicious-domains/romainmarcoux-malicious-domains.txt';
@@ -11,6 +13,20 @@ class WordPressMaliciousDomainFeedService
      */
     public function domains(): array
     {
+        $databaseDomains = WordPressMaliciousDomain::query()
+            ->where('status', 'active')
+            ->orderBy('domain')
+            ->pluck('domain')
+            ->filter(fn ($domain): bool => is_string($domain) && $domain !== '')
+            ->map(fn (string $domain): string => strtolower(trim($domain)))
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($databaseDomains !== []) {
+            return $databaseDomains;
+        }
+
         $path = base_path(self::RESOURCE_PATH);
 
         if (! is_file($path) || ! is_readable($path)) {
