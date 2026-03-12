@@ -11,6 +11,11 @@ class WordPressSignatureLabService
 {
     private const SAMPLE_DIRECTORY = WordPressSignatureSampleStorageService::BASE_DIRECTORY;
 
+    public function __construct(
+        private readonly WordPressMaliciousDomainFeedService $maliciousDomainFeedService = new WordPressMaliciousDomainFeedService(),
+    ) {
+    }
+
     /**
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
@@ -201,6 +206,10 @@ class WordPressSignatureLabService
             'high_confidence_hashes' => array_replace($fallback['high_confidence_hashes'] ?? [], $exactHashes),
             'high_confidence_patterns' => array_replace($fallback['high_confidence_patterns'] ?? [], $highConfidence),
             'heuristic_patterns' => array_replace($fallback['heuristic_patterns'] ?? [], $heuristics),
+            'malicious_domains' => array_values(array_unique(array_merge(
+                $fallback['malicious_domains'] ?? [],
+                $this->maliciousDomainFeedService->domains(),
+            ))),
         ];
     }
 

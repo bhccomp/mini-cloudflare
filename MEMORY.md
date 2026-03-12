@@ -84,6 +84,9 @@
   - the plugin malware scanner maximum file-size threshold was increased from `1 MB` to `3 MB`
   - reason: larger malware samples in the validation corpus were being skipped before exact-hash detection could run
   - the plugin malware scanner discovery loop now resumes large directories across batches instead of dropping the rest of a large folder after `500` processed directory entries
+  - the plugin malware scanner now also supports a separate `malicious_domains` feed
+  - SaaS production manifests now ship `malicious_domains` alongside `high_confidence_hashes`, `high_confidence_patterns`, and `heuristic_patterns`
+  - the `romainmarcoux/malicious-domains` feed is tracked in-repo at `resources/wordpress-malicious-domains/romainmarcoux-malicious-domains.txt` and currently contributes `140964` normalized domains to the shipped manifest
 
 ## Resend Mail + Transactional Email Template (Latest)
 - Configured Laravel mail to use Resend with sender:
