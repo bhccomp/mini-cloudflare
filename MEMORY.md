@@ -83,6 +83,7 @@
 - Scanner runtime follow-up:
   - the plugin malware scanner maximum file-size threshold was increased from `1 MB` to `3 MB`
   - reason: larger malware samples in the validation corpus were being skipped before exact-hash detection could run
+  - the plugin malware scanner discovery loop now resumes large directories across batches instead of dropping the rest of a large folder after `500` processed directory entries
 
 ## Resend Mail + Transactional Email Template (Latest)
 - Configured Laravel mail to use Resend with sender:
