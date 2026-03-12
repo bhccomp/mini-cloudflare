@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\WordPressSignatureSampleResource\Pages;
 
 use App\Filament\Admin\Resources\WordPressMalwareSignatureResource;
+use App\Filament\Admin\Resources\WordPressRepoSyncHashResource;
 use App\Filament\Admin\Resources\WordPressSignatureSampleResource;
 use App\Services\WordPress\WordPressSignatureSampleStorageService;
 use Filament\Actions;
@@ -21,6 +22,7 @@ class ListWordPressSignatureSamples extends ListRecords
         return [
             'created_signatures' => Tab::make('Created Signatures'),
             'signature_samples' => Tab::make('Signature Samples'),
+            'repo_sync_hashes' => Tab::make('Romainmarcoux Repo Sync Hashes'),
         ];
     }
 
@@ -30,6 +32,10 @@ class ListWordPressSignatureSamples extends ListRecords
 
         if ($this->activeTab === 'created_signatures') {
             $this->redirect(WordPressMalwareSignatureResource::getUrl('index', ['tab' => 'created_signatures']));
+        }
+
+        if ($this->activeTab === 'repo_sync_hashes') {
+            $this->redirect(WordPressRepoSyncHashResource::getUrl('index', ['tab' => 'repo_sync_hashes']));
         }
     }
 

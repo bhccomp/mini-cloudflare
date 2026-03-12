@@ -87,6 +87,14 @@
   - the plugin malware scanner now also supports a separate `malicious_domains` feed
   - SaaS production manifests now ship `malicious_domains` alongside `high_confidence_hashes`, `high_confidence_patterns`, and `heuristic_patterns`
   - the `romainmarcoux/malicious-domains` feed is tracked in-repo at `resources/wordpress-malicious-domains/romainmarcoux-malicious-domains.txt` and currently contributes `140964` normalized domains to the shipped manifest
+  - SaaS now also supports a separate `repo_sync_hashes` feed sourced from `romainmarcoux/malicious-hash`
+  - these hashes live in the `wordpress_repo_sync_hashes` table and are kept separate from the sample-derived `high_confidence_hashes`
+  - the `Hash Signatures` admin area now has a third native tab: `Romainmarcoux Repo Sync Hashes`
+  - current synced repo hash counts: `28690` total (`md5`, `sha1`, and `sha256` combined)
+  - SaaS now also supports a separate `repo_sync_hashes` feed sourced from `romainmarcoux/malicious-hash`
+  - these hashes live in the `wordpress_repo_sync_hashes` table and are kept separate from the sample-derived `high_confidence_hashes`
+  - the `Hash Signatures` admin area now has a third native tab: `Romainmarcoux Repo Sync Hashes`
+  - current synced repo hash counts: `28690` total (`md5`, `sha1`, and `sha256` combined)
 
 ## Resend Mail + Transactional Email Template (Latest)
 - Configured Laravel mail to use Resend with sender:

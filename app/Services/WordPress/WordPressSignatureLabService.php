@@ -13,6 +13,7 @@ class WordPressSignatureLabService
 
     public function __construct(
         private readonly WordPressMaliciousDomainFeedService $maliciousDomainFeedService = new WordPressMaliciousDomainFeedService(),
+        private readonly WordPressRepoSyncHashService $repoSyncHashService = new WordPressRepoSyncHashService(),
     ) {
     }
 
@@ -204,6 +205,10 @@ class WordPressSignatureLabService
         return [
             'version' => now()->format('Y.m.d.His'),
             'high_confidence_hashes' => array_replace($fallback['high_confidence_hashes'] ?? [], $exactHashes),
+            'repo_sync_hashes' => array_values(array_merge(
+                $fallback['repo_sync_hashes'] ?? [],
+                $this->repoSyncHashService->activeHashesForManifest(),
+            )),
             'high_confidence_patterns' => array_replace($fallback['high_confidence_patterns'] ?? [], $highConfidence),
             'heuristic_patterns' => array_replace($fallback['heuristic_patterns'] ?? [], $heuristics),
             'malicious_domains' => array_values(array_unique(array_merge(
