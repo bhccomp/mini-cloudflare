@@ -14,7 +14,7 @@ class WordPressSubscriberResource extends Resource
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-envelope';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'WordPress';
+    protected static string|\UnitEnum|null $navigationGroup = 'Integrations';
 
     protected static ?string $navigationLabel = 'WordPress Subscribers';
 

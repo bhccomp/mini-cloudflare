@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\WordPressSignatureSampleResource\Pages;
 
+use App\Filament\Admin\Resources\WordPressMalwareSignatureResource;
 use App\Filament\Admin\Resources\WordPressSignatureSampleResource;
 use App\Services\WordPress\WordPressSignatureSampleStorageService;
 use Filament\Actions;
@@ -17,6 +18,15 @@ class ListWordPressSignatureSamples extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            Actions\Action::make('viewSignaturesTab')
+                ->label('Created Signatures')
+                ->icon('heroicon-o-shield-exclamation')
+                ->url(WordPressMalwareSignatureResource::getUrl('index')),
+            Actions\Action::make('viewSamplesTab')
+                ->label('Signature Samples')
+                ->color('primary')
+                ->disabled()
+                ->icon('heroicon-o-document-magnifying-glass'),
             Actions\CreateAction::make(),
             Actions\Action::make('scanSyncDrift')
                 ->label('Scan Sync Drift')

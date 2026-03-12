@@ -20,9 +20,11 @@ class WordPressSignatureSampleResource extends Resource
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-document-magnifying-glass';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'WordPress';
+    protected static string|\UnitEnum|null $navigationGroup = 'Signatures';
 
     protected static ?string $navigationLabel = 'Signature Samples';
+
+    protected static bool $shouldRegisterNavigation = false;
 
     protected static ?string $modelLabel = 'signature sample';
 
