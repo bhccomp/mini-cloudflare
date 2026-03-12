@@ -80,6 +80,9 @@
 - Remote signature updates remain optional:
   - without free token: bundled snapshot only
   - with free token: bundled snapshot plus refreshed FirePhage-delivered updates
+- Scanner runtime follow-up:
+  - the plugin malware scanner maximum file-size threshold was increased from `1 MB` to `3 MB`
+  - reason: larger malware samples in the validation corpus were being skipped before exact-hash detection could run
 
 ## Resend Mail + Transactional Email Template (Latest)
 - Configured Laravel mail to use Resend with sender:
