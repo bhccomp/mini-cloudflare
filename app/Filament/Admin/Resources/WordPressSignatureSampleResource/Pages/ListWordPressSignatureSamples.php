@@ -9,24 +9,33 @@ use Filament\Actions;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Schemas\Components\Tabs\Tab;
 use Illuminate\Support\Facades\Storage;
 
 class ListWordPressSignatureSamples extends ListRecords
 {
     protected static string $resource = WordPressSignatureSampleResource::class;
 
+    public function getTabs(): array
+    {
+        return [
+            'created_signatures' => Tab::make('Created Signatures'),
+            'signature_samples' => Tab::make('Signature Samples'),
+        ];
+    }
+
+    public function updatedActiveTab(): void
+    {
+        parent::updatedActiveTab();
+
+        if ($this->activeTab === 'created_signatures') {
+            $this->redirect(WordPressMalwareSignatureResource::getUrl('index', ['tab' => 'created_signatures']));
+        }
+    }
+
     protected function getHeaderActions(): array
     {
         return [
-            Actions\Action::make('viewSignaturesTab')
-                ->label('Created Signatures')
-                ->icon('heroicon-o-shield-exclamation')
-                ->url(WordPressMalwareSignatureResource::getUrl('index')),
-            Actions\Action::make('viewSamplesTab')
-                ->label('Signature Samples')
-                ->color('primary')
-                ->disabled()
-                ->icon('heroicon-o-document-magnifying-glass'),
             Actions\CreateAction::make(),
             Actions\Action::make('scanSyncDrift')
                 ->label('Scan Sync Drift')
@@ -104,5 +113,10 @@ class ListWordPressSignatureSamples extends ListRecords
                     }
                 }),
         ];
+    }
+
+    public function getDefaultActiveTab(): string | int | null
+    {
+        return 'signature_samples';
     }
 }
