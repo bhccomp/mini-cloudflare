@@ -1539,3 +1539,8 @@
   - the WordPress plugin codebase was downgraded from PHP 8-only syntax to a PHP 7.2-safe subset
   - removed parser blockers such as `match`, arrow functions, typed properties, and native `str_starts_with` / `str_contains` / `str_ends_with` usage from the plugin runtime
   - scanner logic and current signature/hash/domain behavior were preserved while restoring compatibility for older hosting stacks
+- Malicious strings follow-up:
+  - SaaS now has a separate `Malicious Strings` admin resource under `Signatures`
+  - entries are stored as plain text `needle` values and tested with exact literal substring matching only
+  - no regex or code execution is involved in malicious-string matching
+  - the protected signature manifest now ships a separate `malicious_strings` section for plugin scanners

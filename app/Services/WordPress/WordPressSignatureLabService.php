@@ -14,6 +14,7 @@ class WordPressSignatureLabService
     public function __construct(
         private readonly WordPressMaliciousDomainFeedService $maliciousDomainFeedService = new WordPressMaliciousDomainFeedService(),
         private readonly WordPressRepoSyncHashService $repoSyncHashService = new WordPressRepoSyncHashService(),
+        private readonly WordPressMaliciousStringService $maliciousStringService = new WordPressMaliciousStringService(),
     ) {
     }
 
@@ -215,6 +216,10 @@ class WordPressSignatureLabService
                 $fallback['malicious_domains'] ?? [],
                 $this->maliciousDomainFeedService->domains(),
             ))),
+            'malicious_strings' => array_values(array_merge(
+                $fallback['malicious_strings'] ?? [],
+                $this->maliciousStringService->activeStringsForManifest(),
+            )),
         ];
     }
 

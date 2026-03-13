@@ -7,4 +7,5 @@ return [
     'high_confidence_patterns' => [],
     'heuristic_patterns' => [],
     'malicious_domains' => [],
+    'malicious_strings' => [],
 ];
