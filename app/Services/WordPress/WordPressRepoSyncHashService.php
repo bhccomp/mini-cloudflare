@@ -55,7 +55,7 @@ class WordPressRepoSyncHashService
             ->map(fn (WordPressRepoSyncHash $hash): array => [
                 'algorithm' => $hash->algorithm,
                 'hash_value' => $hash->hash_value,
-                'label' => 'romainmarcoux repo sync hash',
+                'label' => 'known malware hash',
             ])
             ->all();
     }

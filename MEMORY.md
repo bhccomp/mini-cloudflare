@@ -1535,3 +1535,7 @@
     - plugin without token: integrity + baseline + bundled approved-signature snapshot
     - plugin with token: integrity + baseline + bundled approved-signature snapshot + FirePhage-delivered signature updates
   - broader hardcoded local behavior heuristics are no longer part of the plugin detection path
+- PHP compatibility follow-up:
+  - the WordPress plugin codebase was downgraded from PHP 8-only syntax to a PHP 7.2-safe subset
+  - removed parser blockers such as `match`, arrow functions, typed properties, and native `str_starts_with` / `str_contains` / `str_ends_with` usage from the plugin runtime
+  - scanner logic and current signature/hash/domain behavior were preserved while restoring compatibility for older hosting stacks
