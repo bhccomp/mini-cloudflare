@@ -1544,3 +1544,7 @@
   - entries are stored as plain text `needle` values and tested with exact literal substring matching only
   - no regex or code execution is involved in malicious-string matching
   - the protected signature manifest now ships a separate `malicious_strings` section for plugin scanners
+- Scanner performance follow-up:
+  - plugin file analysis now streams `sha256` / `sha1` / `md5` hashing in chunks instead of calling separate whole-file hash helpers
+  - plugin scanners now return early on trusted checksum matches and exact hash matches before reading the full file contents
+  - expensive content inspection is now skipped for files that can already be decided by integrity trust or exact hash indicators
