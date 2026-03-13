@@ -1549,3 +1549,4 @@
   - plugin scanners now return early on trusted checksum matches and exact hash matches before reading the full file contents
   - expensive content inspection is now skipped for files that can already be decided by integrity trust or exact hash indicators
   - known integrity mismatches now also return immediately as integrity findings instead of doing full content inspection first
+  - scanner discovery now processes larger directory batches and buffers manifest writes to reduce repeated rescans of large folders and per-file I/O overhead
