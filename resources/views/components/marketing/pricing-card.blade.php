@@ -5,6 +5,8 @@
     'ctaHref',
     'ctaLabel',
     'featured' => false,
+    'badge' => null,
+    'description' => null,
 ])
 
 <article @class([
@@ -12,9 +14,9 @@
     'scale-105 border border-cyan-400 bg-slate-900/70 shadow-lg' => $featured,
     'border border-slate-800 bg-slate-900/60' => ! $featured,
 ])>
-    @if($featured)
+    @if($badge)
         <div class="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full border border-cyan-300/40 bg-cyan-400 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-950">
-            Most Popular
+            {{ $badge }}
         </div>
     @endif
 
@@ -27,7 +29,11 @@
         {{ $price }}@if($suffix)<span class="text-sm text-slate-400"> {{ $suffix }}</span>@endif
     </h3>
 
-    <p class="mt-3 text-xs font-semibold text-cyan-200">Free assisted onboarding included (we can handle DNS).</p>
+    @if($description)
+        <p class="mt-3 text-sm leading-6 text-slate-300">{{ $description }}</p>
+    @else
+        <p class="mt-3 text-xs font-semibold text-cyan-200">Free assisted onboarding included (we can handle DNS).</p>
+    @endif
 
     <ul class="mt-5 space-y-2 text-sm text-slate-300">
         {{ $slot }}

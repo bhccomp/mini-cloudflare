@@ -20,7 +20,10 @@ class RegistrationTest extends TestCase
 
     public function test_guest_can_register_and_get_workspace_owner_access(): void
     {
+        $this->get(route('register'));
+
         $response = $this->post(route('register.store'), [
+            '_token' => session()->token(),
             'name' => 'Jane Founder',
             'organization_name' => 'Acme Media',
             'email' => 'Jane@Example.com',

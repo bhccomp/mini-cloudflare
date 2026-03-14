@@ -15,6 +15,7 @@ class Organization extends Model
         'name',
         'slug',
         'billing_email',
+        'stripe_customer_id',
         'settings',
     ];
 

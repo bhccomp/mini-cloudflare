@@ -623,7 +623,7 @@
 ## Project
 - Name: FirePhage WAF SaaS
 - Stack: Laravel 12, Filament 5, PostgreSQL, Redis, Nginx, Supervisor
-- Domain: https://waf-saas.firephage.com
+- Domain: https://firephage.com
 
 ## Product Architecture (Pivoted)
 - Proxy-based security SaaS (not customer-AWS automation).
@@ -1579,3 +1579,14 @@
 - Verification:
   - `php artisan test tests/Feature/MarketingCtaTest.php tests/Feature/RegistrationTest.php`
   - passing at time of implementation
+
+## Domain Canonicalization To firephage.com (Latest)
+- The SaaS app canonical base URL has been switched from `https://waf-saas.firephage.com` to `https://firephage.com`.
+- Current app environment:
+  - `.env` `APP_URL=https://firephage.com`
+- Operational note:
+  - Stripe webhook endpoints are bound to exact URLs, so production webhook configuration must use:
+    - `https://firephage.com/stripe/webhook`
+  - if an old Stripe webhook existed for the `waf-saas.firephage.com` host, it must be replaced or retired separately.
+- Plugin follow-up:
+  - default plugin dashboard/checksum URLs were also updated to `https://firephage.com` in the separate plugin repo so new/plugin-default connections point at the canonical domain.
