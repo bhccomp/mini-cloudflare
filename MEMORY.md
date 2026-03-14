@@ -1550,3 +1550,32 @@
   - expensive content inspection is now skipped for files that can already be decided by integrity trust or exact hash indicators
   - known integrity mismatches now also return immediately as integrity findings instead of doing full content inspection first
   - scanner discovery now processes larger directory batches and buffers manifest writes to reduce repeated rescans of large folders and per-file I/O overhead
+
+## Public Registration + Marketing Auth CTA Flow (Latest)
+- Added a guest-facing SaaS registration flow instead of redirecting `/register` to the app login page.
+- New behavior:
+  - `GET /register` renders a public registration page
+  - `POST /register` creates:
+    - a new `users` row
+    - a new `organizations` row
+    - an owner membership on `organization_user`
+    - `users.current_organization_id`
+  - the new user is logged in immediately and redirected to `/app`
+- Added:
+  - `app/Http/Controllers/Auth/RegisteredUserController.php`
+  - `resources/views/auth/register.blade.php`
+  - `tests/Feature/RegistrationTest.php`
+- Marketing CTA follow-up:
+  - public `Start Free` / onboarding / pricing CTAs now become `Dashboard` for authenticated users
+  - authenticated super admins are sent to `/admin`
+  - authenticated regular users are sent to `/app`
+  - guest users still go to `/register`
+- Added reusable marketing components:
+  - `resources/views/components/marketing/auth-aware-link.blade.php`
+  - `resources/views/components/marketing/auth-aware-session-link.blade.php`
+- Auth nav follow-up:
+  - marketing `Login` links now become `Logout` for authenticated users
+  - added a web `POST /logout` route that logs the user out and redirects to `/`
+- Verification:
+  - `php artisan test tests/Feature/MarketingCtaTest.php tests/Feature/RegistrationTest.php`
+  - passing at time of implementation

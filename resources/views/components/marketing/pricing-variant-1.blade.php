@@ -15,7 +15,7 @@
                     <li>Email alerts</li>
                     <li>Standard support</li>
                 </ul>
-                <a href="{{ url('/register') }}" class="mt-auto w-full rounded-lg bg-cyan-500 py-3 text-center text-sm font-medium text-slate-950 hover:bg-cyan-400">Get Started</a>
+                <x-marketing.auth-aware-link guest-label="Get Started" class="mt-auto w-full rounded-lg bg-cyan-500 py-3 text-center text-sm font-medium text-slate-950 hover:bg-cyan-400" />
             </article>
 
             <article class="relative flex h-full scale-105 flex-col rounded-2xl border border-cyan-400 bg-slate-900/70 p-6 shadow-lg">
@@ -31,7 +31,7 @@
                     <li>Priority support</li>
                     <li>Overage: $0.02 per 1,000 extra requests</li>
                 </ul>
-                <a href="{{ url('/register') }}" class="mt-auto w-full rounded-lg bg-cyan-500 py-3 text-center text-sm font-medium text-slate-950 hover:bg-cyan-400">Start Growth</a>
+                <x-marketing.auth-aware-link guest-label="Start Growth" class="mt-auto w-full rounded-lg bg-cyan-500 py-3 text-center text-sm font-medium text-slate-950 hover:bg-cyan-400" />
             </article>
 
             <article class="relative flex h-full flex-col rounded-2xl border border-slate-700/80 bg-slate-900/65 p-6">

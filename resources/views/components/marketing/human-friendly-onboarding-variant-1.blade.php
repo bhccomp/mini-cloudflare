@@ -18,9 +18,7 @@
                     <li class="flex items-start gap-2"><span class="text-cyan-300">•</span><span>Ready in minutes</span></li>
                 </ul>
 
-                <a href="{{ url('/register') }}" class="mt-8 inline-flex rounded-lg bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950 hover:bg-cyan-300">
-                    Start protecting now
-                </a>
+                <x-marketing.auth-aware-link guest-label="Start protecting now" class="mt-8 inline-flex rounded-lg bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950 hover:bg-cyan-300" />
             </div>
 
             <div class="relative flex justify-center lg:justify-end">

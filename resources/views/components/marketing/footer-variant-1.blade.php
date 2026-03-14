@@ -5,7 +5,7 @@
             <a href="#" class="hover:text-slate-200">Terms</a>
             <a href="#" class="hover:text-slate-200">Privacy</a>
             <a href="{{ url('/contact') }}" class="hover:text-slate-200">Contact</a>
-            <a href="{{ url('/login') }}" class="hover:text-slate-200">Login</a>
+            <x-marketing.auth-aware-session-link class="hover:text-slate-200" />
         </nav>
     </div>
 </footer>

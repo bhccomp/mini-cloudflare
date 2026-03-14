@@ -287,16 +287,16 @@
                     <nav class="hidden items-center gap-5 text-sm text-slate-300 md:flex">
                         <a href="#features" class="hover:text-white">Features</a>
                         <a href="#pricing" class="hover:text-white">Pricing</a>
-                        <a href="{{ url('/login') }}" class="hover:text-white">Login</a>
-                        <a href="{{ url('/register') }}" class="rounded-lg bg-cyan-500 px-4 py-2 font-medium text-slate-950 hover:bg-cyan-400">Start Free</a>
+                        <x-marketing.auth-aware-session-link class="hover:text-white" />
+                        <x-marketing.auth-aware-link guest-label="Start Free" class="rounded-lg bg-cyan-500 px-4 py-2 font-medium text-slate-950 hover:bg-cyan-400" />
                     </nav>
                 </div>
 
                 <nav id="mobile-menu" class="mt-4 hidden rounded-xl border border-white/10 bg-slate-900/95 p-3 text-sm text-slate-200 md:hidden" data-mobile-menu>
                     <a href="#features" class="block rounded-lg px-3 py-2 hover:bg-slate-800/80">Features</a>
                     <a href="#pricing" class="mt-1 block rounded-lg px-3 py-2 hover:bg-slate-800/80">Pricing</a>
-                    <a href="{{ url('/login') }}" class="mt-1 block rounded-lg px-3 py-2 hover:bg-slate-800/80">Login</a>
-                    <a href="{{ url('/register') }}" class="mt-3 block rounded-lg bg-cyan-500 px-4 py-2 text-center font-medium text-slate-950 hover:bg-cyan-400">Start Free</a>
+                    <x-marketing.auth-aware-session-link class="mt-1 block w-full rounded-lg px-3 py-2 text-left hover:bg-slate-800/80" />
+                    <x-marketing.auth-aware-link guest-label="Start Free" class="mt-3 block rounded-lg bg-cyan-500 px-4 py-2 text-center font-medium text-slate-950 hover:bg-cyan-400" />
                 </nav>
             </header>
 

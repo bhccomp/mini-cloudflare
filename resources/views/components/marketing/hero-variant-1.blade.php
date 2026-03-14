@@ -32,7 +32,7 @@
                     </ul>
 
                     <div class="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-start">
-                        <a href="{{ url('/register') }}" class="w-full rounded-xl bg-cyan-400 px-6 py-3 text-center text-sm font-semibold text-slate-950 shadow-[0_0_0_1px_rgba(34,211,238,0.24),0_0_22px_rgba(34,211,238,0.22)] hover:bg-cyan-300 sm:w-auto">Start Protecting Your Site</a>
+                        <x-marketing.auth-aware-link guest-label="Start Protecting Your Site" class="w-full rounded-xl bg-cyan-400 px-6 py-3 text-center text-sm font-semibold text-slate-950 shadow-[0_0_0_1px_rgba(34,211,238,0.24),0_0_22px_rgba(34,211,238,0.22)] hover:bg-cyan-300 sm:w-auto" />
                         <a href="#dashboard-preview" class="w-full rounded-xl border border-slate-700 px-6 py-3 text-center text-sm font-semibold text-slate-100 hover:border-slate-500 sm:w-auto">View live demo dashboard</a>
                     </div>
 
