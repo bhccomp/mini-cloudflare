@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Filament\App\Pages\SiteStatusHubPage;
 use App\Filament\App\Resources\SiteResource\Pages\CreateSite;
 use App\Models\Organization;
+use App\Models\Plan;
 use App\Models\Site;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -74,13 +75,33 @@ class AppProtectionNavigationTest extends TestCase
             'is_super_admin' => false,
             'current_organization_id' => $org->id,
         ]);
-        $user->organizations()->attach($org->id, ['role' => 'owner']);
+        $user->organizations()->attach($org->id, [
+            'role' => 'owner',
+            'permissions' => json_encode(
+                app(\App\Services\OrganizationAccessService::class)->defaultPermissionsForRole('owner'),
+                JSON_THROW_ON_ERROR,
+            ),
+        ]);
+
+        $plan = Plan::create([
+            'code' => 'starter-'.$org->id,
+            'name' => 'Starter',
+            'headline' => 'Starter',
+            'description' => 'Starter plan',
+            'monthly_price_cents' => 1900,
+            'yearly_price_cents' => 19000,
+            'currency' => 'usd',
+            'stripe_monthly_price_id' => 'price_starter_monthly',
+            'features' => ['Managed WAF'],
+            'is_active' => true,
+        ]);
 
         $component = Livewire::actingAs($user)
             ->test(CreateSite::class)
             ->set('data.organization_id', $org->id)
             ->set('data.apex_domain', 'wizard-example.com')
             ->set('data.origin_ip', '203.0.113.10')
+            ->set('data.plan_id', $plan->id)
             ->call('create')
             ->assertHasNoErrors();
 

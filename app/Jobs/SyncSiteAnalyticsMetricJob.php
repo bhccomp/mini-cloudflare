@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\AuditLog;
 use App\Models\Site;
 use App\Services\Analytics\AnalyticsSyncManager;
+use App\Services\Billing\SiteUsageMeteringService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Queue\Queueable;
@@ -19,7 +20,7 @@ class SyncSiteAnalyticsMetricJob implements ShouldQueue
         $this->onQueue('default');
     }
 
-    public function handle(AnalyticsSyncManager $analytics): void
+    public function handle(AnalyticsSyncManager $analytics, SiteUsageMeteringService $usageMetering): void
     {
         $site = Site::query()->find($this->siteId);
 
@@ -29,6 +30,14 @@ class SyncSiteAnalyticsMetricJob implements ShouldQueue
 
         try {
             $snapshot = $analytics->syncSiteMetrics($site);
+
+            if ($snapshot) {
+                try {
+                    $usageMetering->syncCurrentMonthOverageToStripe($site);
+                } catch (\Throwable $usageException) {
+                    report($usageException);
+                }
+            }
 
             AuditLog::create([
                 'actor_id' => null,

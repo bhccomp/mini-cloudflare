@@ -10,8 +10,15 @@ use App\Filament\App\Widgets\RegionalTrafficShareChart;
 use App\Filament\App\Widgets\SiteSignalsStats;
 use App\Filament\App\Resources\SiteResource;
 use App\Jobs\CheckAcmDnsValidationJob;
+use App\Models\OrganizationSubscription;
+use App\Models\Plan;
 use App\Models\Site;
+use App\Services\Billing\SiteUsageMeteringService;
+use App\Services\Billing\SubscriptionSiteAssignmentService;
+use App\Services\OrganizationAccessService;
 use Filament\Actions\Action;
+use Filament\Notifications\Notification;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class SiteStatusHubPage extends BaseProtectionPage
@@ -29,6 +36,37 @@ class SiteStatusHubPage extends BaseProtectionPage
     protected static ?string $title = 'Site Status Hub';
 
     protected string $view = 'filament.app.pages.site-status-hub';
+
+    public function mount(Request $request, \App\Services\SiteContext $siteContext, \App\Services\UiModeManager $uiMode): void
+    {
+        parent::mount($request, $siteContext, $uiMode);
+
+        $billingState = (string) $request->query('billing', '');
+
+        if ($billingState === 'success') {
+            Notification::make()
+                ->title('Checkout completed.')
+                ->body('Stripe payment was completed. FirePhage is syncing the subscription for this site now.')
+                ->success()
+                ->send();
+        }
+
+        if ($billingState === 'cancelled') {
+            Notification::make()
+                ->title('Checkout was cancelled.')
+                ->body('The site draft is saved. You can restart checkout whenever you are ready.')
+                ->warning()
+                ->send();
+        }
+
+        if ($billingState === 'covered') {
+            Notification::make()
+                ->title('This site is already covered.')
+                ->body('FirePhage attached this domain to an existing subscription slot for the selected plan.')
+                ->success()
+                ->send();
+        }
+    }
 
     public function getHeader(): ?View
     {
@@ -228,5 +266,136 @@ class SiteStatusHubPage extends BaseProtectionPage
         if ($this->isBunnyFlow()) {
             $this->autoCheckBunnyCutover();
         }
+    }
+
+    public function siteSubscription(): ?OrganizationSubscription
+    {
+        if (! $this->site) {
+            return null;
+        }
+
+        return app(SubscriptionSiteAssignmentService::class)->subscriptionForSite($this->site);
+    }
+
+    public function sitePlan(): ?Plan
+    {
+        $subscriptionPlan = $this->siteSubscription()?->plan;
+
+        if ($subscriptionPlan) {
+            return $subscriptionPlan;
+        }
+
+        $planId = (int) data_get($this->site?->provider_meta, 'billing.selected_plan_id', 0);
+
+        if ($planId < 1) {
+            return null;
+        }
+
+        return Plan::query()->find($planId);
+    }
+
+    public function siteBillingStatusLabel(): string
+    {
+        $status = (string) ($this->siteSubscription()?->status ?? '');
+
+        return match ($status) {
+            'active' => 'Paid',
+            'trialing' => 'Trialing',
+            'past_due' => 'Past Due',
+            'checkout_completed' => 'Syncing',
+            default => data_get($this->site?->provider_meta, 'billing.selected_plan_id') ? 'Payment Required' : 'Not Set Up',
+        };
+    }
+
+    public function siteBillingStatusColor(): string
+    {
+        $status = (string) ($this->siteSubscription()?->status ?? '');
+
+        return match ($status) {
+            'active', 'trialing' => 'success',
+            'checkout_completed' => 'primary',
+            'past_due' => 'warning',
+            default => 'gray',
+        };
+    }
+
+    public function siteBillingDescription(): string
+    {
+        $plan = $this->sitePlan();
+        $status = (string) ($this->siteSubscription()?->status ?? '');
+        $assignment = app(SubscriptionSiteAssignmentService::class);
+        $subscription = $this->siteSubscription();
+        $siteUsage = $subscription ? $assignment->usedWebsiteSlots($subscription) : 0;
+        $siteCapacity = $subscription ? $assignment->includedWebsiteSlots($subscription) : ($plan?->includedWebsites() ?? 1);
+        $capacityLine = $plan ? " {$siteUsage} of {$siteCapacity} site slots are currently assigned." : '';
+
+        return match ($status) {
+            'active' => $plan ? "This domain is covered by the {$plan->name} plan.{$capacityLine}" : 'This domain has an active paid subscription.',
+            'trialing' => $plan ? "This domain is currently trialing on the {$plan->name} plan.{$capacityLine}" : 'This domain is currently in trial.',
+            'past_due' => 'Stripe reported a payment issue for this domain. Update billing in the customer portal or restart checkout.',
+            'checkout_completed' => 'Checkout finished and FirePhage is syncing the subscription. Refresh shortly if the badge has not updated yet.',
+            default => $plan ? "This domain is assigned to {$plan->name}, but checkout still needs to be completed." : 'Choose a plan and complete checkout before activating paid protection for this domain.',
+        };
+    }
+
+    public function canCheckoutSitePlan(): bool
+    {
+        $user = auth()->user();
+
+        if (! $user || ! $this->site?->organization) {
+            return false;
+        }
+
+        return app(OrganizationAccessService::class)->can(
+            $user,
+            $this->site->organization,
+            OrganizationAccessService::PERMISSION_BILLING_READ,
+        ) && $this->sitePlan() !== null;
+    }
+
+    public function siteCheckoutUrl(): ?string
+    {
+        $plan = $this->sitePlan();
+
+        if (! $this->site || ! $plan) {
+            return null;
+        }
+
+        return route('app.sites.checkout', [
+            'site' => $this->site,
+            'plan' => $plan,
+        ]);
+    }
+
+    public function siteUsageSummary(): array
+    {
+        if (! $this->site) {
+            return [];
+        }
+
+        return app(SiteUsageMeteringService::class)->currentMonthSummary(
+            $this->site,
+            $this->sitePlan(),
+            $this->siteSubscription(),
+        );
+    }
+
+    public function siteCapacitySummary(): array
+    {
+        $subscription = $this->siteSubscription();
+        $plan = $this->sitePlan();
+        $assignment = app(SubscriptionSiteAssignmentService::class);
+
+        if ($subscription) {
+            return [
+                'used' => $assignment->usedWebsiteSlots($subscription),
+                'included' => $assignment->includedWebsiteSlots($subscription),
+            ];
+        }
+
+        return [
+            'used' => 1,
+            'included' => $plan?->includedWebsites() ?? 1,
+        ];
     }
 }

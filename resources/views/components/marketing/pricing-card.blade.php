@@ -7,6 +7,8 @@
     'featured' => false,
     'badge' => null,
     'description' => null,
+    'features' => [],
+    'limits' => [],
 ])
 
 <article @class([
@@ -35,9 +37,51 @@
         <p class="mt-3 text-xs font-semibold text-cyan-200">Free assisted onboarding included (we can handle DNS).</p>
     @endif
 
-    <ul class="mt-5 space-y-2 text-sm text-slate-300">
-        {{ $slot }}
-    </ul>
+    <div class="mt-5 space-y-5">
+        @if ($features !== [])
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Features</p>
+                <ul class="mt-4 space-y-4 text-sm text-slate-300">
+                    @foreach ($features as $feature)
+                        <li class="flex items-start gap-3">
+                            <span class="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-cyan-400/40 bg-cyan-400/10 text-cyan-300">
+                                <svg viewBox="0 0 20 20" fill="currentColor" class="h-3.5 w-3.5" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M16.704 5.29a1 1 0 0 1 .006 1.414l-7 7.06a1 1 0 0 1-1.42 0l-3-3.025a1 1 0 0 1 1.42-1.409L9 11.613l6.296-6.317a1 1 0 0 1 1.408-.006Z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
+                            <span>{{ $feature }}</span>
+                        </li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
 
-    <a href="{{ $ctaHref }}" class="mt-auto w-full rounded-lg bg-cyan-500 py-3 text-center text-sm font-medium text-slate-950 hover:bg-cyan-400 hover:text-black">{{ $ctaLabel }}</a>
+        @if ($limits !== [])
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Limits</p>
+                <ul class="mt-4 space-y-4 text-sm text-slate-300">
+                    @foreach ($limits as $limit)
+                        <li class="flex items-start gap-3">
+                            <span class="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-slate-700 bg-slate-800 text-cyan-300">
+                                <svg viewBox="0 0 20 20" fill="currentColor" class="h-3.5 w-3.5" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M10 3a1 1 0 0 1 1 1v5h5a1 1 0 1 1 0 2h-5v5a1 1 0 1 1-2 0v-5H4a1 1 0 1 1 0-2h5V4a1 1 0 0 1 1-1Z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
+                            <span>{{ $limit }}</span>
+                        </li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
+        @if (trim((string) $slot) !== '')
+            <ul class="hidden">
+                {{ $slot }}
+            </ul>
+        @endif
+    </div>
+
+    <div class="mt-auto pt-8">
+        <a href="{{ $ctaHref }}" class="block w-full rounded-lg bg-cyan-500 py-3 text-center text-sm font-medium text-slate-950 hover:bg-cyan-400 hover:text-black">{{ $ctaLabel }}</a>
+    </div>
 </article>

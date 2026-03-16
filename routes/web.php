@@ -3,6 +3,8 @@
 use App\Http\Controllers\EarlyAccessController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\App\AcceptOrganizationInvitationController;
+use App\Http\Controllers\App\SiteCheckoutController;
+use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\WordPress\VerifyFreeTokenController;
 use App\Http\Middleware\RedirectPublicHomeToEarlyAccess;
 use Illuminate\Http\Request;
@@ -17,6 +19,7 @@ Route::post('/early-access', [EarlyAccessController::class, 'store'])->name('ear
 Route::view('/blue-alternative', 'marketing.home')->name('home.blue');
 Route::view('/contact', 'marketing.contact')->name('contact');
 Route::view('/logos', 'marketing.logos')->name('logos');
+Route::post('/stripe/webhook', StripeWebhookController::class)->name('stripe.webhook');
 Route::middleware('guest')->group(function (): void {
     Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
     Route::post('/register', [RegisteredUserController::class, 'store'])->name('register.store');
@@ -36,4 +39,6 @@ Route::middleware('auth')->group(function (): void {
 
     Route::get('/app/invitations/{token}/accept', AcceptOrganizationInvitationController::class)
         ->name('app.invitations.accept');
+    Route::get('/app/sites/{site}/checkout/{plan}', SiteCheckoutController::class)
+        ->name('app.sites.checkout');
 });

@@ -6,22 +6,20 @@
             <p class="mt-3 text-sm text-slate-300">Choose the plan that matches your traffic and support needs.</p>
         </div>
 
-        <div class="grid items-stretch gap-5 lg:grid-cols-3">
+        <div class="grid items-stretch gap-5 md:grid-cols-2 xl:grid-cols-4">
             @foreach ($marketingPlans as $plan)
                 <x-marketing.pricing-card
                     :plan="$plan->headline ?: $plan->name"
                     :price="$plan->displayPrice()"
                     :suffix="$plan->is_contact_only ? '' : $plan->price_suffix"
-                    :cta-href="$plan->is_contact_only ? url('/contact') : (auth()->check() ? (auth()->user()->is_super_admin ? url('/admin') : url('/app')) : url('/register'))"
-                    :cta-label="$plan->is_contact_only ? ($plan->cta_label ?: 'Contact Sales') : (auth()->check() ? 'Dashboard' : ($plan->cta_label ?: 'Get Started'))"
+                    :features="$plan->displayFeatures()"
+                    :limits="$plan->displayLimits()"
+                    :cta-href="$plan->is_contact_only ? url('/contact') : (auth()->check() ? (auth()->user()->is_super_admin ? url('/admin') : \App\Filament\App\Resources\SiteResource::getUrl('create')) : url('/register'))"
+                    :cta-label="$plan->is_contact_only ? ($plan->cta_label ?: 'Contact Sales') : ($plan->cta_label ?: 'Get Started')"
                     :featured="$plan->is_featured"
                     :badge="$plan->badge"
                     :description="$plan->description"
-                >
-                    @foreach ($plan->displayFeatures() as $feature)
-                        <li>{{ $feature }}</li>
-                    @endforeach
-                </x-marketing.pricing-card>
+                />
             @endforeach
         </div>
     </div>

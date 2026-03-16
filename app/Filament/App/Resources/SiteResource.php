@@ -10,6 +10,7 @@ use App\Jobs\InvalidateCloudFrontCacheJob;
 use App\Jobs\RequestAcmCertificateJob;
 use App\Jobs\ToggleUnderAttackModeJob;
 use App\Models\AuditLog;
+use App\Models\Plan;
 use App\Models\Site;
 use App\Rules\ApexDomainRule;
 use App\Rules\OriginIpRule;
@@ -153,6 +154,26 @@ class SiteResource extends Resource
                                     ->label('Onboarding mode')
                                     ->content('Standard mode skips pre-validation and activates SSL after DNS cutover. Legacy mode remains available for advanced users.'),
                             ]),
+                        \Filament\Schemas\Components\Wizard\Step::make('Plan')
+                            ->description('Choose the protection plan for this website before launching checkout.')
+                            ->schema([
+                                Forms\Components\Select::make('plan_id')
+                                    ->label('Protection plan')
+                                    ->required()
+                                    ->native(false)
+                                    ->options(fn (): array => Plan::query()
+                                        ->where('is_active', true)
+                                        ->where('is_contact_only', false)
+                                        ->whereNotNull('stripe_monthly_price_id')
+                                        ->orderBy('sort_order')
+                                        ->orderBy('id')
+                                        ->get()
+                                        ->mapWithKeys(fn (Plan $plan): array => [
+                                            $plan->id => $plan->name.' - '.$plan->displayPrice().'/mo',
+                                        ])
+                                        ->all())
+                                    ->helperText('Billing is handled in secure Stripe Checkout after the site draft is created.'),
+                            ]),
                         \Filament\Schemas\Components\Wizard\Step::make('Review & Create')
                             ->description('Confirm details and create your protection layer.')
                             ->schema([
@@ -170,9 +191,17 @@ class SiteResource extends Resource
                                 Forms\Components\Placeholder::make('review_origin')
                                     ->label('Origin / Server IP')
                                     ->content(fn (Get $get): string => (string) ($get('origin_ip') ?: 'Not set')),
+                                Forms\Components\Placeholder::make('review_plan')
+                                    ->label('Plan')
+                                    ->content(function (Get $get): string {
+                                        $planId = (int) ($get('plan_id') ?: 0);
+                                        $plan = $planId > 0 ? Plan::query()->find($planId) : null;
+
+                                        return $plan?->name ? $plan->name.' - '.$plan->displayPrice().'/mo' : 'Not selected';
+                                    }),
                                 Forms\Components\Placeholder::make('review_note')
                                     ->label('Next action after creation')
-                                    ->content('Open the Site Status Hub, provision edge, update DNS, and verify cutover until protection is live.'),
+                                    ->content('Create the site draft, complete secure checkout, then continue DNS and protection setup in the Site Status Hub.'),
                             ])->columns(1),
                     ])->columnSpanFull(),
                 ])

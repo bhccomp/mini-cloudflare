@@ -1632,3 +1632,54 @@
     - CTA button presence
     - hero right-panel size
     - `Why join now`, `Product Proof`, dashboard preview, and lower CTA/form section presence on large screens
+
+## Stripe Billing, Multi-Site Plans, and Pricing Frontend (Latest)
+- Stripe billing is now wired beyond the basic portal:
+  - webhook endpoint remains `POST /stripe/webhook`
+  - checkout route for site billing exists at `GET /app/sites/{site}/checkout/{plan}`
+  - handled webhook events:
+    - `checkout.session.completed`
+    - `customer.subscription.created`
+    - `customer.subscription.updated`
+    - `customer.subscription.deleted`
+    - `invoice.paid`
+    - `invoice.payment_failed`
+- Stripe credentials follow-up:
+  - the previous org-scoped Stripe secret caused `Stripe-Context` errors during plan sync
+  - `.env` now uses a standard live Stripe account key pair plus the current webhook signing secret
+  - if Stripe sync fails again, inspect the latest Laravel log entry because recent sync failures have been concrete API payload issues rather than config cache problems
+- Stripe plan sync hardening:
+  - `StripePlanSyncService` now persists `stripe_product_id` immediately after product create/update before recurring prices or meters are synced
+  - this prevents orphan duplicate Stripe products on retry if a later sync step fails
+  - current known operational behavior:
+    - normal plans sync product + prices + request overage objects
+    - contact-sales plans do not show `Sync to Stripe` in Filament and should not be treated as purchasable Stripe plans
+- Plan admin UX follow-up:
+  - plans list now exposes a `Create` action
+  - plan price inputs in Filament are now entered in dollars, then converted to cents on save
+  - contact-sales plans hide/stop requiring pricing, site-count, and request-overage fields
+  - the plan editor now includes explicit reminders:
+    - Stripe sync affects future purchases, not existing subscribers
+    - included websites are enforced by FirePhage, not Stripe
+    - prices are entered in dollars in the admin form
+- Multi-site plan model:
+  - plans now support `included_websites`
+  - new pivot table `organization_subscription_site` assigns multiple sites to one subscription
+  - current subscription coverage is no longer modeled only by `organization_subscriptions.site_id`
+  - if a plan has spare website capacity, a newly created site reuses the existing active subscription slot instead of forcing a new Stripe checkout
+  - site billing status UI now shows covered website count and shared request totals
+- Request overage follow-up:
+  - request overage calculations now sum requests across all sites assigned to the same subscription
+  - Stripe meter event identifiers now use subscription-based idempotence instead of per-site identifiers
+- Pricing frontend follow-up:
+  - pricing cards now render backend-defined `Features` and `Limits` as clearly visible bullet lists
+  - list spacing and CTA spacing were increased so long plan content does not feel glued to the button
+  - pricing grids now support four plans in one row on large screens (`xl:grid-cols-4`)
+  - pricing CTA behavior is now distinct from generic marketing auth CTAs:
+    - guests keep the original plan CTA text and go to `/register`
+    - logged-in regular users keep the original CTA text and go to site onboarding (`SiteResource::create`)
+    - logged-in super admins keep the original CTA text and go to `/admin`
+- Current known Stripe catalog state at last check:
+  - `starter`, `growth`, and `pro` each have one canonical Stripe product and three billing objects (monthly, yearly, request overage)
+  - `enterprise` / contact-sales remains unsynced with no Stripe product or prices
+  - if an extra duplicate Stripe product exists without prices, it was likely created before the product-ID persistence fix and can be removed manually from Stripe

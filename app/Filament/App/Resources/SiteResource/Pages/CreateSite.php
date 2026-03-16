@@ -6,7 +6,10 @@ use App\Filament\App\Pages\SiteStatusHubPage;
 use App\Filament\App\Resources\SiteResource;
 use App\Jobs\MarkSiteReadyForCutoverJob;
 use App\Jobs\ProvisionEdgeDeploymentJob;
+use App\Models\Plan;
 use App\Models\Site;
+use App\Services\OrganizationAccessService;
+use App\Services\Billing\SubscriptionSiteAssignmentService;
 use App\Services\Edge\EdgeProviderManager;
 use App\Services\SiteContext;
 use Filament\Actions\Action;
@@ -17,10 +20,15 @@ class CreateSite extends CreateRecord
 {
     protected static string $resource = SiteResource::class;
 
+    protected ?Plan $selectedPlan = null;
+
+    protected bool $subscriptionSlotAssigned = false;
+
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $domain = $this->normalizeDomainInput((string) ($data['apex_domain'] ?? ''));
         $originIp = $this->normalizeOriginIpInput((string) ($data['origin_ip'] ?? ''));
+        $this->selectedPlan = Plan::query()->find((int) ($data['plan_id'] ?? 0));
 
         $data['apex_domain'] = $domain;
         $data['display_name'] = $domain;
@@ -39,6 +47,19 @@ class CreateSite extends CreateRecord
         $data['origin_url'] = $originIp !== '' ? 'http://'.$originIp : null;
         $data['origin_host'] = $domain;
 
+        if ($this->selectedPlan) {
+            $data['provider_meta'] = array_merge((array) ($data['provider_meta'] ?? []), [
+                'billing' => [
+                    'selected_plan_id' => $this->selectedPlan->id,
+                    'selected_plan_code' => $this->selectedPlan->code,
+                    'selected_interval' => 'month',
+                    'checkout_required' => true,
+                ],
+            ]);
+        }
+
+        unset($data['plan_id']);
+
         return $data;
     }
 
@@ -50,14 +71,41 @@ class CreateSite extends CreateRecord
 
     protected function getRedirectUrl(): string
     {
+        $this->tryAssignExistingSubscriptionSlot();
+
+        if ($this->subscriptionSlotAssigned) {
+            return SiteStatusHubPage::getUrl(['site_id' => $this->record->id]).'&billing=covered';
+        }
+
+        if (
+            $this->record
+            && $this->selectedPlan
+            && $this->userCanOpenCheckout()
+            && ! app()->runningUnitTests()
+        ) {
+            return route('app.sites.checkout', [
+                'site' => $this->record,
+                'plan' => $this->selectedPlan,
+            ]);
+        }
+
         return SiteStatusHubPage::getUrl(['site_id' => $this->record->id]);
     }
 
     protected function afterCreate(): void
     {
         app(SiteContext::class)->setSelectedSiteId(auth()->user(), $this->record->id);
+        $this->tryAssignExistingSubscriptionSlot();
 
         $body = 'Your site is selected. Continue setup in the Site Status Hub.';
+
+        if ($this->subscriptionSlotAssigned && $this->selectedPlan) {
+            $body = "Site draft created. This domain now uses an available {$this->selectedPlan->name} plan slot.";
+        } elseif ($this->selectedPlan && $this->userCanOpenCheckout()) {
+            $body = 'Site draft created. Continue to secure checkout to activate billing for this domain.';
+        } elseif ($this->selectedPlan) {
+            $body = 'Site draft created. A team member with billing access must complete checkout for this domain.';
+        }
 
         if ($this->record->provider === Site::PROVIDER_BUNNY && ! app()->runningUnitTests()) {
             try {
@@ -101,5 +149,37 @@ class CreateSite extends CreateRecord
     protected function normalizeOriginIpInput(string $value): string
     {
         return trim($value);
+    }
+
+    protected function userCanOpenCheckout(): bool
+    {
+        $user = auth()->user();
+
+        if (! $user || ! $this->record?->organization) {
+            return false;
+        }
+
+        return app(OrganizationAccessService::class)->can(
+            $user,
+            $this->record->organization,
+            OrganizationAccessService::PERMISSION_BILLING_READ,
+        );
+    }
+
+    protected function tryAssignExistingSubscriptionSlot(): void
+    {
+        if ($this->subscriptionSlotAssigned || ! $this->record || ! $this->selectedPlan) {
+            return;
+        }
+
+        $assignmentService = app(SubscriptionSiteAssignmentService::class);
+        $reusableSubscription = $assignmentService->reusableSubscriptionForPlan($this->record, $this->selectedPlan);
+
+        if (! $reusableSubscription) {
+            return;
+        }
+
+        $assignmentService->assignSite($reusableSubscription, $this->record);
+        $this->subscriptionSlotAssigned = true;
     }
 }

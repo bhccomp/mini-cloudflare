@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
@@ -162,6 +163,21 @@ class Site extends Model
     public function pluginConnection(): HasOne
     {
         return $this->hasOne(PluginSiteConnection::class);
+    }
+
+    public function subscriptions(): HasMany
+    {
+        return $this->hasMany(OrganizationSubscription::class);
+    }
+
+    public function assignedSubscriptions(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            OrganizationSubscription::class,
+            'organization_subscription_site',
+            'site_id',
+            'organization_subscription_id',
+        )->withTimestamps();
     }
 
     public function isDemoSeeded(): bool

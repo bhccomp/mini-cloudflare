@@ -6,6 +6,48 @@
             @include('filament.app.pages.protection.empty-state')
         @else
             <x-filament::section
+                heading="Site Billing"
+                description="{{ $this->siteBillingDescription() }}"
+                icon="heroicon-o-credit-card"
+            >
+                <x-slot name="afterHeader">
+                    <x-filament::badge :color="$this->siteBillingStatusColor()">
+                        {{ $this->siteBillingStatusLabel() }}
+                    </x-filament::badge>
+                </x-slot>
+
+                <div class="space-y-2 text-sm">
+                    <p><strong>Selected plan:</strong> {{ $this->sitePlan()?->name ?? 'No plan selected yet' }}</p>
+                    <p><strong>Covered websites:</strong> {{ number_format((int) data_get($this->siteCapacitySummary(), 'used', 0)) }} / {{ number_format((int) data_get($this->siteCapacitySummary(), 'included', 0)) }}</p>
+                    @if ($this->siteSubscription())
+                        <p><strong>Subscription status:</strong> {{ ucfirst((string) $this->siteSubscription()->status) }}</p>
+                        <p><strong>Renews:</strong> {{ $this->siteSubscription()->renews_at?->toFormattedDateString() ?? 'Not scheduled yet' }}</p>
+                    @else
+                        <p><strong>Subscription status:</strong> Awaiting checkout</p>
+                    @endif
+                    @if ($this->sitePlan()?->included_requests_per_month)
+                        <p><strong>Current month requests:</strong> {{ number_format((int) data_get($this->siteUsageSummary(), 'requests', 0)) }} across {{ number_format((int) data_get($this->siteUsageSummary(), 'covered_sites_count', 1)) }} covered site(s)</p>
+                        <p><strong>Included in plan:</strong> {{ number_format((int) data_get($this->siteUsageSummary(), 'included_requests', 0)) }}</p>
+                        <p><strong>Current overage:</strong> {{ number_format((int) data_get($this->siteUsageSummary(), 'overage_requests', 0)) }} requests</p>
+                        <p><strong>Estimated overage:</strong> ${{ number_format(((int) data_get($this->siteUsageSummary(), 'estimated_overage_cents', 0)) / 100, 2) }}</p>
+                    @endif
+                </div>
+
+                @if ($this->canCheckoutSitePlan())
+                    <x-slot name="footer">
+                        <x-filament::actions alignment="end">
+                            <x-filament::button
+                                tag="a"
+                                :href="$this->siteCheckoutUrl()"
+                            >
+                                {{ $this->siteSubscription() ? 'Restart checkout' : 'Complete checkout' }}
+                            </x-filament::button>
+                        </x-filament::actions>
+                    </x-slot>
+                @endif
+            </x-filament::section>
+
+            <x-filament::section
                 heading="Troubleshooting Mode"
                 description="Keep DNS on FirePhage/Bunny while disabling Bunny WAF and relaxing edge cache/optimizer behavior for testing."
                 icon="heroicon-o-wrench-screwdriver"
