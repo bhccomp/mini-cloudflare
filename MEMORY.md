@@ -1615,6 +1615,7 @@
   - layout composition
   - spacing rhythm
   - stronger internal container padding
+  - larger desktop visual scale and more confident panel sizing
   - clearer premium SaaS presentation without changing the brand direction
 - Important implementation note:
   - some of the visual changes did not appear at first because the Vite/Tailwind production assets had not been rebuilt after the Blade utility-class updates
@@ -1625,3 +1626,9 @@
   - homepage gate remains active
   - early-access page keeps the dark FirePhage look and current section structure
   - latest adjustments were concentrated on making cards, panels, dashboard preview, and form container feel less glued to their borders
+  - latest desktop-focused pass increased:
+    - effective page width usage
+    - hero headline and supporting text scale
+    - CTA button presence
+    - hero right-panel size
+    - `Why join now`, `Product Proof`, dashboard preview, and lower CTA/form section presence on large screens

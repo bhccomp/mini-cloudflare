@@ -37,7 +37,7 @@
 
             .early-theme .page-shell {
                 width: 100%;
-                max-width: 82rem;
+                max-width: 88rem;
                 margin-left: auto;
                 margin-right: auto;
                 padding-left: 1.5rem;
@@ -121,15 +121,15 @@
             <main>
                 <section class="relative overflow-hidden pb-32 pt-20 lg:pb-40 lg:pt-28">
                     <div class="page-shell">
-                        <div class="grid grid-cols-1 gap-16 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.78fr)] lg:items-center lg:gap-20">
-                            <div class="max-w-4xl">
+                        <div class="grid grid-cols-1 gap-16 lg:grid-cols-[minmax(0,1.04fr)_minmax(420px,0.96fr)] lg:items-center lg:gap-20 xl:gap-24">
+                            <div class="max-w-[54rem]">
                                 <p class="inline-flex rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200">
                                     Early Access
                                 </p>
-                                <h1 class="mt-6 max-w-4xl text-balance text-4xl font-semibold leading-[1.02] text-white sm:text-5xl xl:text-[4.2rem]">
+                                <h1 class="mt-6 max-w-[54rem] text-balance text-4xl font-semibold leading-[1.02] text-white sm:text-5xl xl:text-[4.55rem]">
                                     Managed edge protection for WordPress and WooCommerce sites that need real clarity, not security jargon.
                                 </h1>
-                                <p class="mt-8 max-w-3xl text-lg leading-8 text-slate-200/85 xl:text-[1.18rem]">
+                                <p class="mt-8 max-w-[46rem] text-lg leading-8 text-slate-200/85 xl:text-[1.28rem] xl:leading-9">
                                     FirePhage gives you managed WAF protection, origin IP shielding, uptime visibility, and clean onboarding in one place.
                                     It is built for teams who want to protect revenue-driving sites without stitching together complicated tools or figuring out DNS changes alone.
                                 </p>
@@ -144,24 +144,24 @@
                                 </div>
 
                                 <div class="mt-6 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center">
-                                    <a href="#early-access-form" class="inline-flex items-center justify-center rounded-xl bg-cyan-400 px-6 py-3 text-sm font-semibold text-slate-950 shadow-[0_0_0_1px_rgba(34,211,238,0.24),0_0_26px_rgba(34,211,238,0.22)] transition hover:bg-cyan-300">
+                                    <a href="#early-access-form" class="inline-flex items-center justify-center rounded-xl bg-cyan-400 px-7 py-3.5 text-sm font-semibold text-slate-950 shadow-[0_0_0_1px_rgba(34,211,238,0.24),0_0_26px_rgba(34,211,238,0.22)] transition hover:bg-cyan-300 xl:text-[0.95rem]">
                                         Lock in launch pricing
                                     </a>
-                                    <a href="{{ route('contact') }}" class="inline-flex items-center justify-center rounded-xl border border-white/10 px-6 py-3 text-sm font-semibold text-slate-100 transition hover:border-cyan-300/60 hover:text-white">
+                                    <a href="{{ route('contact') }}" class="inline-flex items-center justify-center rounded-xl border border-white/10 px-7 py-3.5 text-sm font-semibold text-slate-100 transition hover:border-cyan-300/60 hover:text-white xl:text-[0.95rem]">
                                         Talk to the team
                                     </a>
                                 </div>
                             </div>
 
                             <div class="lg:pt-6">
-                                <div class="hero-visual rounded-[2rem] p-8 lg:p-8">
+                                <div class="hero-visual rounded-[2rem] p-8 lg:p-10 xl:p-11">
                                     <p class="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">What teams get</p>
                                     <div class="mt-8 space-y-6">
                                         <div class="flow-node rounded-2xl px-7 py-6">
                                             <div class="flex items-center justify-between gap-3">
                                                 <div>
-                                                    <p class="text-sm font-medium text-white">Traffic reaches FirePhage edge</p>
-                                                    <p class="mt-1 text-xs leading-5 text-slate-400">Managed WAF and origin shielding happen before traffic reaches your server.</p>
+                                                    <p class="text-sm font-medium text-white xl:text-[1rem]">Traffic reaches FirePhage edge</p>
+                                                    <p class="mt-1 text-xs leading-5 text-slate-400 xl:text-[0.9rem] xl:leading-6">Managed WAF and origin shielding happen before traffic reaches your server.</p>
                                                 </div>
                                                 <span class="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-semibold text-cyan-200">Managed</span>
                                             </div>
@@ -170,8 +170,8 @@
                                         <div class="flow-node rounded-2xl px-7 py-6">
                                             <div class="flex items-center justify-between gap-3">
                                                 <div>
-                                                    <p class="text-sm font-medium text-white">Your team sees clear updates</p>
-                                                    <p class="mt-1 text-xs leading-5 text-slate-400">Human-readable alerts, blocked attack summaries, and useful traffic visibility.</p>
+                                                    <p class="text-sm font-medium text-white xl:text-[1rem]">Your team sees clear updates</p>
+                                                    <p class="mt-1 text-xs leading-5 text-slate-400 xl:text-[0.9rem] xl:leading-6">Human-readable alerts, blocked attack summaries, and useful traffic visibility.</p>
                                                 </div>
                                                 <span class="rounded-full bg-white/6 px-3 py-1 text-xs font-semibold text-slate-200">Readable</span>
                                             </div>
@@ -180,8 +180,8 @@
                                         <div class="flow-node rounded-2xl px-7 py-6">
                                             <div class="flex items-center justify-between gap-3">
                                                 <div>
-                                                    <p class="text-sm font-medium text-white">Onboarding help included</p>
-                                                    <p class="mt-1 text-xs leading-5 text-slate-400">FirePhage can guide or handle DNS and setup so you do not have to do it alone.</p>
+                                                    <p class="text-sm font-medium text-white xl:text-[1rem]">Onboarding help included</p>
+                                                    <p class="mt-1 text-xs leading-5 text-slate-400 xl:text-[0.9rem] xl:leading-6">FirePhage can guide or handle DNS and setup so you do not have to do it alone.</p>
                                                 </div>
                                                 <span class="rounded-full bg-white/6 px-3 py-1 text-xs font-semibold text-slate-200">Included</span>
                                             </div>
@@ -212,54 +212,54 @@
                         <div class="surface rounded-[2rem] p-10 lg:p-[2.5rem]">
                             <div class="max-w-3xl">
                                 <p class="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Why join now</p>
-                                <h2 class="mt-5 text-3xl font-semibold text-white sm:text-4xl">Early access without the usual rollout friction.</h2>
-                                <p class="mt-6 text-base leading-7 text-slate-300">
+                                <h2 class="mt-5 text-3xl font-semibold text-white sm:text-4xl xl:text-[2.85rem]">Early access without the usual rollout friction.</h2>
+                                <p class="mt-6 text-base leading-7 text-slate-300 xl:text-[1.08rem] xl:leading-8">
                                     FirePhage is designed to protect serious WordPress and WooCommerce sites while staying understandable for owners, operators, and agencies. Join early to secure better pricing, faster onboarding, and a product that explains what matters clearly.
                                 </p>
                             </div>
 
                             <div class="mt-8 grid gap-7 md:grid-cols-3 lg:mt-10 lg:gap-8">
-                                <article class="soft-card rounded-[1.5rem] p-8">
-                                    <h3 class="text-lg font-semibold text-white">Launch pricing</h3>
-                                    <p class="mt-3 text-sm leading-7 text-slate-300">Secure the lowest pricing before the public rollout.</p>
+                                <article class="soft-card rounded-[1.5rem] p-8 xl:p-9">
+                                    <h3 class="text-lg font-semibold text-white xl:text-[1.18rem]">Launch pricing</h3>
+                                    <p class="mt-3 text-sm leading-7 text-slate-300 xl:text-[0.98rem] xl:leading-8">Secure the lowest pricing before the public rollout.</p>
                                 </article>
-                                <article class="soft-card rounded-[1.5rem] p-8">
-                                    <h3 class="text-lg font-semibold text-white">Priority onboarding</h3>
-                                    <p class="mt-3 text-sm leading-7 text-slate-300">Your sites are onboarded earlier as FirePhage opens access.</p>
+                                <article class="soft-card rounded-[1.5rem] p-8 xl:p-9">
+                                    <h3 class="text-lg font-semibold text-white xl:text-[1.18rem]">Priority onboarding</h3>
+                                    <p class="mt-3 text-sm leading-7 text-slate-300 xl:text-[0.98rem] xl:leading-8">Your sites are onboarded earlier as FirePhage opens access.</p>
                                 </article>
-                                <article class="soft-card rounded-[1.5rem] p-8">
-                                    <h3 class="text-lg font-semibold text-white">Human-readable dashboard</h3>
-                                    <p class="mt-3 text-sm leading-7 text-slate-300">Security events explained in plain language your team can understand.</p>
-                                </article>
-                            </div>
-
-                            <div class="mt-6 grid gap-7 md:grid-cols-3 lg:mt-8 lg:gap-8">
-                                <article class="soft-card rounded-[1.5rem] p-8">
-                                    <h3 class="text-lg font-semibold text-white">No DNS guesswork</h3>
-                                    <p class="mt-3 text-sm leading-7 text-slate-300">We guide the setup so teams do not struggle with DNS changes.</p>
-                                </article>
-                                <article class="soft-card rounded-[1.5rem] p-8">
-                                    <h3 class="text-lg font-semibold text-white">No unreadable dashboards</h3>
-                                    <p class="mt-3 text-sm leading-7 text-slate-300">Security events explained clearly instead of cryptic logs.</p>
-                                </article>
-                                <article class="soft-card rounded-[1.5rem] p-8">
-                                    <h3 class="text-lg font-semibold text-white">No security noise</h3>
-                                    <p class="mt-3 text-sm leading-7 text-slate-300">Important events are surfaced without overwhelming alerts.</p>
+                                <article class="soft-card rounded-[1.5rem] p-8 xl:p-9">
+                                    <h3 class="text-lg font-semibold text-white xl:text-[1.18rem]">Human-readable dashboard</h3>
+                                    <p class="mt-3 text-sm leading-7 text-slate-300 xl:text-[0.98rem] xl:leading-8">Security events explained in plain language your team can understand.</p>
                                 </article>
                             </div>
 
                             <div class="mt-6 grid gap-7 md:grid-cols-3 lg:mt-8 lg:gap-8">
-                                <article class="soft-card rounded-[1.5rem] p-8">
-                                    <h3 class="text-lg font-semibold text-white">Launch pricing</h3>
-                                    <p class="mt-3 text-sm leading-7 text-slate-300">Join now and hold your early-access pricing window before wider rollout.</p>
+                                <article class="soft-card rounded-[1.5rem] p-8 xl:p-9">
+                                    <h3 class="text-lg font-semibold text-white xl:text-[1.18rem]">No DNS guesswork</h3>
+                                    <p class="mt-3 text-sm leading-7 text-slate-300 xl:text-[0.98rem] xl:leading-8">We guide the setup so teams do not struggle with DNS changes.</p>
                                 </article>
-                                <article class="soft-card rounded-[1.5rem] p-8">
-                                    <h3 class="text-lg font-semibold text-white">Human-friendly dashboard</h3>
-                                    <p class="mt-3 text-sm leading-7 text-slate-300">See what is happening without translating raw security noise into business meaning yourself.</p>
+                                <article class="soft-card rounded-[1.5rem] p-8 xl:p-9">
+                                    <h3 class="text-lg font-semibold text-white xl:text-[1.18rem]">No unreadable dashboards</h3>
+                                    <p class="mt-3 text-sm leading-7 text-slate-300 xl:text-[0.98rem] xl:leading-8">Security events explained clearly instead of cryptic logs.</p>
                                 </article>
-                                <article class="highlight-card rounded-[1.5rem] p-9">
-                                    <h3 class="text-lg font-semibold text-white">Free assisted onboarding</h3>
-                                    <p class="mt-3 text-sm leading-7 text-slate-200">We can handle DNS and setup for you at no extra cost, so activation is faster and less risky for your team.</p>
+                                <article class="soft-card rounded-[1.5rem] p-8 xl:p-9">
+                                    <h3 class="text-lg font-semibold text-white xl:text-[1.18rem]">No security noise</h3>
+                                    <p class="mt-3 text-sm leading-7 text-slate-300 xl:text-[0.98rem] xl:leading-8">Important events are surfaced without overwhelming alerts.</p>
+                                </article>
+                            </div>
+
+                            <div class="mt-6 grid gap-7 md:grid-cols-3 lg:mt-8 lg:gap-8">
+                                <article class="soft-card rounded-[1.5rem] p-8 xl:p-9">
+                                    <h3 class="text-lg font-semibold text-white xl:text-[1.18rem]">Launch pricing</h3>
+                                    <p class="mt-3 text-sm leading-7 text-slate-300 xl:text-[0.98rem] xl:leading-8">Join now and hold your early-access pricing window before wider rollout.</p>
+                                </article>
+                                <article class="soft-card rounded-[1.5rem] p-8 xl:p-9">
+                                    <h3 class="text-lg font-semibold text-white xl:text-[1.18rem]">Human-friendly dashboard</h3>
+                                    <p class="mt-3 text-sm leading-7 text-slate-300 xl:text-[0.98rem] xl:leading-8">See what is happening without translating raw security noise into business meaning yourself.</p>
+                                </article>
+                                <article class="highlight-card rounded-[1.5rem] p-9 xl:p-10">
+                                    <h3 class="text-lg font-semibold text-white xl:text-[1.18rem]">Free assisted onboarding</h3>
+                                    <p class="mt-3 text-sm leading-7 text-slate-200 xl:text-[0.98rem] xl:leading-8">We can handle DNS and setup for you at no extra cost, so activation is faster and less risky for your team.</p>
                                 </article>
                             </div>
                         </div>
@@ -267,39 +267,39 @@
                 </section>
 
                 <section class="section-fade relative py-28 lg:py-36">
-                    <div class="page-shell grid grid-cols-1 gap-16 lg:grid-cols-[0.95fr_1.05fr] lg:items-center lg:gap-20">
-                        <div class="surface rounded-[2rem] p-10 lg:p-[2.5rem]">
+                    <div class="page-shell grid grid-cols-1 gap-16 lg:grid-cols-[1fr_1.12fr] lg:items-center lg:gap-20 xl:gap-24">
+                        <div class="surface rounded-[2rem] p-10 lg:p-[2.75rem]">
                             <p class="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Product Proof</p>
-                            <h2 class="mt-5 text-3xl font-semibold text-white sm:text-4xl">A dashboard built for humans</h2>
-                            <p class="mt-6 max-w-2xl text-base leading-7 text-slate-300">
+                            <h2 class="mt-5 text-3xl font-semibold text-white sm:text-4xl xl:text-[2.85rem]">A dashboard built for humans</h2>
+                            <p class="mt-6 max-w-2xl text-base leading-7 text-slate-300 xl:text-[1.08rem] xl:leading-8">
                                 FirePhage is designed to make protection understandable. You should be able to see what is being blocked, what matters, and what needs action without decoding a wall of security terms.
                             </p>
 
                             <div class="mt-8 grid gap-7 sm:grid-cols-2 lg:mt-10 lg:gap-8">
-                                <div class="soft-card rounded-[1.2rem] p-8">
-                                    <p class="text-base font-semibold text-white">Blocked attack summaries</p>
-                                    <p class="mt-2 text-sm leading-6 text-slate-400">Understand what was stopped and why it matters.</p>
+                                <div class="soft-card rounded-[1.2rem] p-8 xl:p-9">
+                                    <p class="text-base font-semibold text-white xl:text-[1.12rem]">Blocked attack summaries</p>
+                                    <p class="mt-2 text-sm leading-6 text-slate-400 xl:text-[0.98rem] xl:leading-7">Understand what was stopped and why it matters.</p>
                                 </div>
-                                <div class="soft-card rounded-[1.2rem] p-8">
-                                    <p class="text-base font-semibold text-white">Simple explanations</p>
-                                    <p class="mt-2 text-sm leading-6 text-slate-400">See plain-language context instead of raw security noise.</p>
+                                <div class="soft-card rounded-[1.2rem] p-8 xl:p-9">
+                                    <p class="text-base font-semibold text-white xl:text-[1.12rem]">Simple explanations</p>
+                                    <p class="mt-2 text-sm leading-6 text-slate-400 xl:text-[0.98rem] xl:leading-7">See plain-language context instead of raw security noise.</p>
                                 </div>
-                                <div class="soft-card rounded-[1.2rem] p-8">
-                                    <p class="text-base font-semibold text-white">Useful alerts</p>
-                                    <p class="mt-2 text-sm leading-6 text-slate-400">Get alerts that help you act, not alerts that waste your day.</p>
+                                <div class="soft-card rounded-[1.2rem] p-8 xl:p-9">
+                                    <p class="text-base font-semibold text-white xl:text-[1.12rem]">Useful alerts</p>
+                                    <p class="mt-2 text-sm leading-6 text-slate-400 xl:text-[0.98rem] xl:leading-7">Get alerts that help you act, not alerts that waste your day.</p>
                                 </div>
-                                <div class="soft-card rounded-[1.2rem] p-8">
-                                    <p class="text-base font-semibold text-white">Traffic visibility</p>
-                                    <p class="mt-2 text-sm leading-6 text-slate-400">Track protection, traffic patterns, and uptime posture in one place.</p>
+                                <div class="soft-card rounded-[1.2rem] p-8 xl:p-9">
+                                    <p class="text-base font-semibold text-white xl:text-[1.12rem]">Traffic visibility</p>
+                                    <p class="mt-2 text-sm leading-6 text-slate-400 xl:text-[0.98rem] xl:leading-7">Track protection, traffic patterns, and uptime posture in one place.</p>
                                 </div>
                             </div>
                         </div>
 
                         <div class="relative pt-16 lg:pt-20">
                             <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_68%_40%,rgba(34,211,238,0.18),transparent_60%)] blur-3xl opacity-75" aria-hidden="true"></div>
-                            <div class="surface relative rounded-[2rem] p-10 lg:p-12">
+                            <div class="surface relative rounded-[2rem] p-10 lg:p-12 xl:p-14">
                                 <p class="mb-6 text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">Example FirePhage dashboard</p>
-                                <div class="rounded-[1.35rem] bg-slate-950/82 p-8 sm:p-10 shadow-[0_30px_90px_rgba(2,8,23,0.45)]">
+                                <div class="rounded-[1.35rem] bg-slate-950/82 p-8 sm:p-10 xl:p-11 shadow-[0_30px_90px_rgba(2,8,23,0.45)]">
                                     <div class="mb-8 flex items-center justify-between gap-3 border-b border-white/6 pb-8">
                                         <div>
                                             <p class="text-sm font-semibold text-white">Protection overview</p>
@@ -308,17 +308,17 @@
                                         <span class="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300">Origin protected</span>
                                     </div>
                                     <div class="grid gap-6 sm:grid-cols-2 lg:gap-7">
-                                        <div class="soft-card rounded-[1rem] p-6">
+                                        <div class="soft-card rounded-[1rem] p-6 xl:p-7">
                                             <p class="text-xs font-semibold uppercase tracking-[0.14em] text-cyan-200">Last 24 hours</p>
                                             <p class="mt-4 text-3xl font-semibold text-white">3.2M</p>
                                             <p class="mt-2 text-sm text-slate-400">Requests inspected</p>
                                         </div>
-                                        <div class="soft-card rounded-[1rem] p-6">
+                                        <div class="soft-card rounded-[1rem] p-6 xl:p-7">
                                             <p class="text-xs font-semibold uppercase tracking-[0.14em] text-cyan-200">Blocked threats</p>
                                             <p class="mt-4 text-3xl font-semibold text-white">18.4K</p>
                                             <p class="mt-2 text-sm text-slate-400">Bots, probes, and abusive requests stopped</p>
                                         </div>
-                                        <div class="soft-card rounded-[1rem] p-6 sm:col-span-2">
+                                        <div class="soft-card rounded-[1rem] p-6 xl:p-7 sm:col-span-2">
                                             <div class="flex items-center justify-between gap-3">
                                                 <div>
                                                     <p class="text-sm font-semibold text-white">Most recent attacks</p>
@@ -351,31 +351,31 @@
                 </section>
 
                 <section id="early-access-form" class="relative py-28 lg:py-36">
-                    <div class="page-shell grid grid-cols-1 gap-16 lg:grid-cols-[0.78fr_1.02fr] lg:items-start lg:gap-20">
-                        <div class="lg:pt-8">
+                    <div class="page-shell grid grid-cols-1 gap-16 lg:grid-cols-[0.9fr_1.1fr] lg:items-start lg:gap-20 xl:gap-24">
+                        <div class="lg:pt-8 xl:pt-10">
                             <p class="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Join The List</p>
-                            <h2 class="mt-5 text-3xl font-semibold text-white sm:text-4xl">Get the launch invite, onboarding priority, and early pricing access.</h2>
-                            <p class="mt-8 max-w-xl text-base leading-7 text-slate-300">
+                            <h2 class="mt-5 text-3xl font-semibold text-white sm:text-4xl xl:text-[2.85rem]">Get the launch invite, onboarding priority, and early pricing access.</h2>
+                            <p class="mt-8 max-w-[34rem] text-base leading-7 text-slate-300 xl:text-[1.08rem] xl:leading-8">
                                 Joining now puts you in the first launch cohort. We will use this list to offer early pricing, onboarding priority, direct launch invites, and setup guidance as FirePhage opens wider access.
                             </p>
-                            <p class="mt-8 max-w-xl text-sm leading-7 text-slate-400">
+                            <p class="mt-8 max-w-[34rem] text-sm leading-7 text-slate-400 xl:text-[0.98rem] xl:leading-8">
                                 Built from real-world experience securing WordPress and WooCommerce sites, FirePhage focuses on clarity, protection, and clean onboarding instead of security noise.
                             </p>
 
                             <div class="mt-8 space-y-6 lg:mt-10">
-                                <div class="soft-card rounded-[1.5rem] p-6 lg:p-7">
-                                    <p class="text-sm font-medium text-white">What you get</p>
-                                    <p class="mt-2 text-sm leading-6 text-slate-400">Launch pricing access, onboarding priority, launch invitation, and setup guidance as access opens.</p>
+                                <div class="soft-card rounded-[1.5rem] p-6 lg:p-7 xl:p-8">
+                                    <p class="text-sm font-medium text-white xl:text-[1rem]">What you get</p>
+                                    <p class="mt-2 text-sm leading-6 text-slate-400 xl:text-[0.98rem] xl:leading-7">Launch pricing access, onboarding priority, launch invitation, and setup guidance as access opens.</p>
                                 </div>
-                                <div class="soft-card rounded-[1.5rem] p-6 lg:p-7">
-                                    <p class="text-sm font-medium text-white">Who this is best for</p>
-                                    <p class="mt-2 text-sm leading-6 text-slate-400">Site owners, WooCommerce operators, and agencies that want cleaner protection without a heavy technical lift.</p>
+                                <div class="soft-card rounded-[1.5rem] p-6 lg:p-7 xl:p-8">
+                                    <p class="text-sm font-medium text-white xl:text-[1rem]">Who this is best for</p>
+                                    <p class="mt-2 text-sm leading-6 text-slate-400 xl:text-[0.98rem] xl:leading-7">Site owners, WooCommerce operators, and agencies that want cleaner protection without a heavy technical lift.</p>
                                 </div>
                             </div>
                         </div>
 
                         <div>
-                            <div class="surface rounded-[2rem] p-10">
+                            <div class="surface rounded-[2rem] p-10 xl:p-11">
                                 <div class="mb-10 lg:mb-12">
                                     <p class="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-200">Reserve Your Spot</p>
                                     <h3 class="mt-4 text-2xl font-semibold text-white">Request early access</h3>
