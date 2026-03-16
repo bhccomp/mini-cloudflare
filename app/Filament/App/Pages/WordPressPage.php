@@ -3,7 +3,13 @@
 namespace App\Filament\App\Pages;
 
 use App\Models\Site;
+use App\Filament\App\Widgets\WordPress\WordPressConnectionStats;
+use App\Filament\App\Widgets\WordPress\WordPressFirewallEventsTable;
+use App\Filament\App\Widgets\WordPress\WordPressHealthStats;
+use App\Filament\App\Widgets\WordPress\WordPressMalwareFindingsTable;
+use App\Filament\App\Widgets\WordPress\WordPressMalwareScanStats;
 use App\Services\WordPress\PluginSiteService;
+use Filament\Actions\Action;
 
 class WordPressPage extends BaseProtectionPage
 {
@@ -24,6 +30,53 @@ class WordPressPage extends BaseProtectionPage
     public ?string $pluginConnectionToken = null;
 
     public ?string $pluginConnectionTokenExpiresAt = null;
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('generatePluginToken')
+                ->label($this->isPluginConnected() ? 'Generate new token' : 'Generate token')
+                ->icon('heroicon-m-key')
+                ->color('gray')
+                ->action('generatePluginToken')
+                ->disabled(fn (): bool => ! $this->site),
+        ];
+    }
+
+    protected function getHeaderWidgets(): array
+    {
+        if (! $this->site || ! $this->isPluginConnected()) {
+            return [];
+        }
+
+        return [
+            WordPressConnectionStats::class,
+            WordPressHealthStats::class,
+            WordPressMalwareScanStats::class,
+        ];
+    }
+
+    protected function getFooterWidgets(): array
+    {
+        if (! $this->site || ! $this->isPluginConnected()) {
+            return [];
+        }
+
+        return [
+            WordPressMalwareFindingsTable::class,
+            WordPressFirewallEventsTable::class,
+        ];
+    }
+
+    public function getHeaderWidgetsColumns(): int|array
+    {
+        return 1;
+    }
+
+    public function getFooterWidgetsColumns(): int|array
+    {
+        return 1;
+    }
 
     public function generatePluginToken(): void
     {
@@ -72,9 +125,7 @@ class WordPressPage extends BaseProtectionPage
      */
     public function latestPluginReport(): array
     {
-        $payload = $this->site?->pluginConnection?->last_report_payload;
-
-        return is_array($payload) ? $payload : [];
+        return $this->site ? app(PluginSiteService::class)->latestReportForSite($this->site) : [];
     }
 
     /**
@@ -82,22 +133,7 @@ class WordPressPage extends BaseProtectionPage
      */
     public function wordpressHealthSummary(): array
     {
-        $report = $this->latestPluginReport();
-        $summary = data_get($report, 'health.summary', []);
-        $updates = data_get($report, 'health.updates', []);
-        $checksum = data_get($report, 'health.core_checksum', []);
-
-        return [
-            'good' => (int) ($summary['good'] ?? 0),
-            'warning' => (int) ($summary['warning'] ?? 0),
-            'critical' => (int) ($summary['critical'] ?? 0),
-            'core_updates' => (int) ($updates['core_updates'] ?? 0),
-            'plugin_updates' => (int) ($updates['plugin_updates'] ?? 0),
-            'theme_updates' => (int) ($updates['theme_updates'] ?? 0),
-            'inactive_plugins' => (int) ($updates['inactive_plugins'] ?? 0),
-            'checksum_status' => (string) ($checksum['status'] ?? 'unknown'),
-            'checksum_summary' => (string) ($checksum['summary'] ?? 'No core checksum report yet.'),
-        ];
+        return $this->site ? app(PluginSiteService::class)->wordpressHealthSummaryForSite($this->site) : [];
     }
 
     /**
@@ -105,18 +141,7 @@ class WordPressPage extends BaseProtectionPage
      */
     public function wordpressScanSummary(): array
     {
-        $scan = data_get($this->latestPluginReport(), 'malware_scan', []);
-
-        return [
-            'status' => (string) ($scan['status'] ?? 'idle'),
-            'scanned_files' => (int) ($scan['scanned_files'] ?? 0),
-            'discovered_files' => (int) ($scan['discovered_files'] ?? 0),
-            'suspicious_files' => (int) ($scan['suspicious_files'] ?? 0),
-            'skipped_files' => (int) ($scan['skipped_files'] ?? 0),
-            'findings' => is_array($scan['findings'] ?? null) ? $scan['findings'] : [],
-            'updated_at' => (string) ($scan['updated_at'] ?? ''),
-            'finished_at' => (string) ($scan['finished_at'] ?? ''),
-        ];
+        return $this->site ? app(PluginSiteService::class)->wordpressScanSummaryForSite($this->site) : [];
     }
 
     /**
@@ -124,16 +149,15 @@ class WordPressPage extends BaseProtectionPage
      */
     public function wordpressSiteMeta(): array
     {
-        $site = data_get($this->latestPluginReport(), 'site', []);
+        return $this->site ? app(PluginSiteService::class)->wordpressSiteMetaForSite($this->site) : [];
+    }
 
-        return [
-            'home_url' => (string) ($site['home_url'] ?? ''),
-            'site_url' => (string) ($site['site_url'] ?? ''),
-            'wp_version' => (string) ($site['wp_version'] ?? ''),
-            'php_version' => (string) ($site['php_version'] ?? ''),
-            'plugin_version' => (string) ($site['plugin_version'] ?? ''),
-            'generated_at' => (string) data_get($this->latestPluginReport(), 'generated_at', ''),
-        ];
+    /**
+     * @return array<string, mixed>
+     */
+    public function pluginBillingSummary(): array
+    {
+        return $this->site ? app(PluginSiteService::class)->billingAccessSummaryForSite($this->site) : [];
     }
 
     public function pluginRouteUrl(string $path): string

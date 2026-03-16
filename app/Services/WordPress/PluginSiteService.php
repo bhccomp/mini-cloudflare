@@ -3,12 +3,12 @@
 namespace App\Services\WordPress;
 
 use App\Models\EdgeRequestLog;
-use App\Models\OrganizationSubscription;
 use App\Models\PluginConnectionToken;
 use App\Models\PluginSiteConnection;
 use App\Models\Site;
 use App\Services\ActivityFeedService;
 use App\Services\BandwidthUsageService;
+use App\Services\Billing\SiteBillingStateService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -19,6 +19,7 @@ class PluginSiteService
     public function __construct(
         protected ActivityFeedService $activityFeed,
         protected BandwidthUsageService $bandwidthUsage,
+        protected SiteBillingStateService $billingState,
     ) {}
 
     /**
@@ -150,10 +151,145 @@ class PluginSiteService
     /**
      * @return array<string, mixed>
      */
+    public function latestReportForSite(Site $site): array
+    {
+        $payload = $site->pluginConnection?->last_report_payload;
+
+        return is_array($payload) ? $payload : [];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function wordpressHealthSummaryForSite(Site $site): array
+    {
+        $report = $this->latestReportForSite($site);
+        $summary = data_get($report, 'health.summary', []);
+        $updates = data_get($report, 'health.updates', []);
+        $checksum = data_get($report, 'health.core_checksum', []);
+
+        return [
+            'good' => (int) ($summary['good'] ?? 0),
+            'warning' => (int) ($summary['warning'] ?? 0),
+            'critical' => (int) ($summary['critical'] ?? 0),
+            'core_updates' => (int) ($updates['core_updates'] ?? 0),
+            'plugin_updates' => (int) ($updates['plugin_updates'] ?? 0),
+            'theme_updates' => (int) ($updates['theme_updates'] ?? 0),
+            'inactive_plugins' => (int) ($updates['inactive_plugins'] ?? 0),
+            'checksum_status' => (string) ($checksum['status'] ?? 'unknown'),
+            'checksum_summary' => (string) ($checksum['summary'] ?? 'No core checksum report yet.'),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function wordpressScanSummaryForSite(Site $site): array
+    {
+        $scan = data_get($this->latestReportForSite($site), 'malware_scan', []);
+
+        return [
+            'status' => (string) ($scan['status'] ?? 'idle'),
+            'scanned_files' => (int) ($scan['scanned_files'] ?? 0),
+            'discovered_files' => (int) ($scan['discovered_files'] ?? 0),
+            'suspicious_files' => (int) ($scan['suspicious_files'] ?? 0),
+            'skipped_files' => (int) ($scan['skipped_files'] ?? 0),
+            'findings' => is_array($scan['findings'] ?? null) ? $scan['findings'] : [],
+            'updated_at' => (string) ($scan['updated_at'] ?? ''),
+            'finished_at' => (string) ($scan['finished_at'] ?? ''),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function wordpressSiteMetaForSite(Site $site): array
+    {
+        $report = $this->latestReportForSite($site);
+        $siteMeta = data_get($report, 'site', []);
+
+        return [
+            'home_url' => (string) ($siteMeta['home_url'] ?? ''),
+            'site_url' => (string) ($siteMeta['site_url'] ?? ''),
+            'wp_version' => (string) ($siteMeta['wp_version'] ?? ''),
+            'php_version' => (string) ($siteMeta['php_version'] ?? ''),
+            'plugin_version' => (string) ($siteMeta['plugin_version'] ?? ''),
+            'generated_at' => (string) data_get($report, 'generated_at', ''),
+        ];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function wordpressMalwareFindingsForSite(Site $site): array
+    {
+        return collect((array) data_get($this->wordpressScanSummaryForSite($site), 'findings', []))
+            ->map(function (mixed $finding): array {
+                $payload = is_array($finding) ? $finding : [];
+
+                return [
+                    'file' => (string) data_get($payload, 'file', '--'),
+                    'type' => ucfirst((string) data_get($payload, 'type', 'review')),
+                    'confidence' => ucfirst((string) data_get($payload, 'confidence', 'n/a')),
+                    'reasons' => implode(', ', array_filter((array) data_get($payload, 'reasons', []))) ?: 'No reasons provided',
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function billingAccessSummaryForSite(Site $site): array
+    {
+        $summary = $this->billingState->summaryForSite($site);
+        $status = (string) ($summary['status'] ?? 'not_set_up');
+        $plan = $summary['plan'];
+        $proEnabled = in_array($status, ['active', 'trialing'], true);
+
+        return [
+            'pro_enabled' => $proEnabled,
+            'status' => $status,
+            'plan_name' => $plan?->name,
+            'message' => $proEnabled
+                ? (($plan?->name ?? 'Current plan') . ' includes live WordPress firewall and performance telemetry.')
+                : ($plan
+                    ? "Finish billing for {$plan->name} to unlock live firewall and performance telemetry in WordPress."
+                    : 'Choose a paid FirePhage plan to unlock live firewall and performance telemetry in WordPress.'),
+        ];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function recentFirewallEventsForSite(Site $site, int $limit = 10): array
+    {
+        return EdgeRequestLog::query()
+            ->where('site_id', $site->id)
+            ->latest('event_at')
+            ->limit(max(1, $limit))
+            ->get()
+            ->map(fn (EdgeRequestLog $row): array => [
+                'timestamp' => optional($row->event_at)->toIso8601String(),
+                'action' => (string) ($row->action ?: 'ALLOW'),
+                'path' => (string) ($row->path ?: '/'),
+                'status_code' => (int) ($row->status_code ?? 0),
+                'country' => strtoupper((string) ($row->country ?: 'n/a')),
+                'ip' => (string) ($row->ip ?: '-'),
+                'method' => strtoupper((string) ($row->method ?: 'GET')),
+            ])
+            ->all();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
     public function firewallSummary(PluginSiteConnection $connection): array
     {
         $site = $connection->site;
         $site->loadMissing('analyticsMetric', 'organization.subscriptions.plan');
+        $access = $this->billingAccessSummaryForSite($site);
 
         $since = now()->subDay();
         $blockedActions = ['BLOCK', 'DENY', 'CHALLENGE'];
@@ -171,23 +307,11 @@ class PluginSiteService
         $challengeRate = round(($challengeCount / $requestTotal) * 100, 2);
         $botPressure = round(($blockedCount / $requestTotal) * 100, 2);
 
-        $recentActivity = EdgeRequestLog::query()
-            ->where('site_id', $site->id)
-            ->latest('event_at')
-            ->limit(5)
-            ->get()
-            ->map(fn (EdgeRequestLog $row): array => [
-                'timestamp' => optional($row->event_at)->toIso8601String(),
-                'action' => (string) ($row->action ?: 'ALLOW'),
-                'path' => (string) ($row->path ?: '/'),
-                'status_code' => (int) ($row->status_code ?? 0),
-                'country' => strtoupper((string) ($row->country ?: 'n/a')),
-            ])
-            ->all();
-
         return [
             'connected' => true,
-            'pro_enabled' => $this->isProEnabled($site),
+            'pro_enabled' => $access['pro_enabled'],
+            'message' => (string) $access['message'],
+            'plan_name' => (string) ($access['plan_name'] ?? ''),
             'site' => [
                 'id' => (string) $site->id,
                 'domain' => (string) ($site->apex_domain ?: $site->name),
@@ -201,17 +325,23 @@ class PluginSiteService
                 'waf_status' => (string) data_get($site->provider_meta, 'shield_status', $site->waf_web_acl_arn ? 'active' : 'pending'),
             ],
             'metrics' => [
-                'requests_blocked' => $blockedCount,
-                'challenge_rate' => $challengeRate,
-                'bot_pressure' => $botPressure,
+                'requests_blocked' => $access['pro_enabled'] ? $blockedCount : 0,
+                'challenge_rate' => $access['pro_enabled'] ? $challengeRate : 0,
+                'bot_pressure' => $access['pro_enabled'] ? $botPressure : 0,
             ],
             'controls' => [
-                'protection_mode' => $site->under_attack ? 'Under Attack' : 'Adaptive WAF',
-                'trusted_ips' => implode(', ', (array) data_get($site->provider_meta, 'firewall_policy.allow_ips', [])),
-                'country_blocks' => implode(', ', (array) data_get($site->provider_meta, 'firewall_policy.block_countries', [])),
+                'protection_mode' => $access['pro_enabled']
+                    ? ($site->under_attack ? 'Under Attack' : 'Adaptive WAF')
+                    : 'Upgrade required',
+                'trusted_ips' => $access['pro_enabled']
+                    ? implode(', ', (array) data_get($site->provider_meta, 'firewall_policy.allow_ips', []))
+                    : '',
+                'country_blocks' => $access['pro_enabled']
+                    ? implode(', ', (array) data_get($site->provider_meta, 'firewall_policy.block_countries', []))
+                    : '',
             ],
-            'activity' => $recentActivity,
-            'feed' => $this->activityFeed->forSite($site, 5),
+            'activity' => $access['pro_enabled'] ? $this->recentFirewallEventsForSite($site, 10) : [],
+            'feed' => $access['pro_enabled'] ? $this->activityFeed->forSite($site, 10) : [],
         ];
     }
 
@@ -222,6 +352,7 @@ class PluginSiteService
     {
         $site = $connection->site;
         $site->loadMissing('analyticsMetric', 'organization.subscriptions.plan');
+        $access = $this->billingAccessSummaryForSite($site);
 
         $metric = $site->analyticsMetric;
         $bandwidth = $this->bandwidthUsage->forSite($site);
@@ -245,7 +376,9 @@ class PluginSiteService
 
         return [
             'connected' => true,
-            'pro_enabled' => $this->isProEnabled($site),
+            'pro_enabled' => $access['pro_enabled'],
+            'message' => (string) $access['message'],
+            'plan_name' => (string) ($access['plan_name'] ?? ''),
             'site' => [
                 'id' => (string) $site->id,
                 'domain' => (string) ($site->apex_domain ?: $site->name),
@@ -253,31 +386,41 @@ class PluginSiteService
             'summary' => [
                 'edge_hostname' => (string) ($site->cloudfront_domain_name ?: data_get($site->provider_meta, 'edge_domain', '')),
                 'development_mode' => (bool) $site->development_mode,
-                'requests_24h' => (int) ($metric?->total_requests_24h ?? 0),
-                'cache_hit_ratio' => round((float) ($metric?->cache_hit_ratio ?? 0), 2),
-                'origin_offload_ratio' => round(($cached / $total) * 100, 2),
-                'bandwidth_usage_gb' => (float) $bandwidth['usage_gb'],
-                'bandwidth_limit_gb' => (int) $bandwidth['included_gb'],
+                'requests_24h' => $access['pro_enabled'] ? (int) ($metric?->total_requests_24h ?? 0) : 0,
+                'cache_hit_ratio' => $access['pro_enabled'] ? round((float) ($metric?->cache_hit_ratio ?? 0), 2) : 0.0,
+                'origin_offload_ratio' => $access['pro_enabled'] ? round(($cached / $total) * 100, 2) : 0.0,
+                'bandwidth_usage_gb' => $access['pro_enabled'] ? (float) $bandwidth['usage_gb'] : 0.0,
+                'bandwidth_limit_gb' => $access['pro_enabled'] ? (int) $bandwidth['included_gb'] : 0,
             ],
             'settings' => [
-                'smart_image_optimization' => ! $site->development_mode,
-                'edge_compression' => ! $site->development_mode,
+                'smart_image_optimization' => $access['pro_enabled'] && ! $site->development_mode,
+                'edge_compression' => $access['pro_enabled'] && ! $site->development_mode,
             ],
-            'cache_rules' => [
-                ['path' => '/cart', 'behavior' => 'Bypass cache', 'state' => 'Enabled'],
-                ['path' => '/checkout', 'behavior' => 'Bypass cache', 'state' => 'Enabled'],
-                ['path' => '/blog/*', 'behavior' => 'TTL 1 hour', 'state' => 'Enabled'],
-            ],
-            'top_paths' => $topPaths,
+            'cache_rules' => $access['pro_enabled']
+                ? [
+                    [
+                        'path' => 'Global edge cache',
+                        'behavior' => 'Default cached delivery for anonymous traffic',
+                        'state' => $site->status === Site::STATUS_ACTIVE ? 'Active' : 'Pending',
+                    ],
+                    [
+                        'path' => 'Development mode',
+                        'behavior' => 'Bypass cache while origin changes are being tested',
+                        'state' => $site->development_mode ? 'Enabled' : 'Disabled',
+                    ],
+                    [
+                        'path' => 'Edge compression',
+                        'behavior' => 'Compress cacheable responses at the FirePhage edge',
+                        'state' => ! $site->development_mode ? 'Enabled' : 'Disabled',
+                    ],
+                    [
+                        'path' => 'Image optimization',
+                        'behavior' => 'Optimize eligible images before delivery from the edge',
+                        'state' => ! $site->development_mode ? 'Enabled' : 'Disabled',
+                    ],
+                ]
+                : [],
+            'top_paths' => $access['pro_enabled'] ? $topPaths : [],
         ];
-    }
-
-    private function isProEnabled(Site $site): bool
-    {
-        /** @var OrganizationSubscription|null $subscription */
-        $subscription = $site->organization?->subscriptions
-            ?->first(fn (OrganizationSubscription $sub): bool => in_array((string) $sub->status, ['active', 'trialing'], true));
-
-        return $subscription !== null;
     }
 }

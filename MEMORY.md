@@ -1734,3 +1734,29 @@
     - `SiteUsageMeteringTest`
     - `StripeWebhookTest`
     - `BillingPageTest`
+- WordPress plugin/dashboard integration follow-up:
+  - the app `WordPress` page is now a functional Filament-native page instead of a custom report layout
+  - added dedicated WordPress widgets/tables for:
+    - plugin connection and paid-access status
+    - WordPress health and update posture
+    - malware scan summary
+    - malware findings
+    - recent firewall activity
+  - `PluginSiteService` now acts as the shared formatter for:
+    - latest plugin report payload
+    - WordPress health summary
+    - malware scan summary
+    - site meta/context
+    - malware findings
+    - recent firewall events
+  - paid plugin firewall/performance telemetry is now gated per covered site using `SiteBillingStateService`
+    - not merely by any org-level subscription existing
+    - unpaid sites receive gated responses instead of full telemetry payloads
+    - paid covered sites receive live firewall logs and live performance telemetry
+  - current plugin report storage still uses `plugin_site_connections.last_report_payload`
+    - no normalized malware-finding tables were added yet
+    - the new Filament page reads from the stored payload through `PluginSiteService`
+  - current coverage added:
+    - `tests/Feature/PluginWordPressIntegrationTest.php`
+    - verifies unpaid sites do not receive live Pro telemetry
+    - verifies covered paid sites do receive live Pro telemetry and malware findings
