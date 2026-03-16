@@ -1609,3 +1609,19 @@
   - if an old Stripe webhook existed for the `waf-saas.firephage.com` host, it must be replaced or retired separately.
 - Plugin follow-up:
   - default plugin dashboard/checksum URLs were also updated to `https://firephage.com` in the separate plugin repo so new/plugin-default connections point at the canonical domain.
+
+## Early Access Landing Page Refinement (Latest)
+- The `/early-access` landing page has gone through multiple refinement passes focused on:
+  - layout composition
+  - spacing rhythm
+  - stronger internal container padding
+  - clearer premium SaaS presentation without changing the brand direction
+- Important implementation note:
+  - some of the visual changes did not appear at first because the Vite/Tailwind production assets had not been rebuilt after the Blade utility-class updates
+  - running `pnpm build` regenerated `public/build` and made the current spacing/padding changes visible
+- Current expectation when iterating on the marketing landing page:
+  - if Blade utility classes change and the rendered page still looks stale, rebuild the frontend assets before assuming the styling changes failed
+- Current page state:
+  - homepage gate remains active
+  - early-access page keeps the dark FirePhage look and current section structure
+  - latest adjustments were concentrated on making cards, panels, dashboard preview, and form container feel less glued to their borders
