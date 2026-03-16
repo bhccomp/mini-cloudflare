@@ -17,6 +17,12 @@
                 </x-slot>
 
                 <div class="space-y-2 text-sm">
+                    @if (! data_get($this->siteBillingState(), 'can_progress_protection', false))
+                        <div class="rounded-xl border border-warning-500/30 bg-warning-500/10 px-4 py-3 text-sm text-warning-100">
+                            {{ data_get($this->siteBillingState(), 'message') }}
+                        </div>
+                    @endif
+
                     <p><strong>Selected plan:</strong> {{ $this->sitePlan()?->name ?? 'No plan selected yet' }}</p>
                     <p><strong>Covered websites:</strong> {{ number_format((int) data_get($this->siteCapacitySummary(), 'used', 0)) }} / {{ number_format((int) data_get($this->siteCapacitySummary(), 'included', 0)) }}</p>
                     @if ($this->siteSubscription())
@@ -36,11 +42,20 @@
                 @if ($this->canCheckoutSitePlan())
                     <x-slot name="footer">
                         <x-filament::actions alignment="end">
+                            @if ((string) data_get($this->siteBillingState(), 'status') === 'past_due')
+                                <x-filament::button
+                                    tag="a"
+                                    color="gray"
+                                    href="{{ \App\Filament\App\Pages\BillingPage::getUrl() }}"
+                                >
+                                    Open billing
+                                </x-filament::button>
+                            @endif
                             <x-filament::button
                                 tag="a"
                                 :href="$this->siteCheckoutUrl()"
                             >
-                                {{ $this->siteSubscription() ? 'Restart checkout' : 'Complete checkout' }}
+                                {{ data_get($this->siteBillingState(), 'requires_checkout', false) ? 'Complete checkout' : 'Restart checkout' }}
                             </x-filament::button>
                         </x-filament::actions>
                     </x-slot>

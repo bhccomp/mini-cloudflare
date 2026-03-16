@@ -16,6 +16,7 @@ class StripeWebhookService
 {
     public function __construct(
         private readonly SubscriptionSiteAssignmentService $assignmentService,
+        private readonly BillingNotificationService $notifications,
     ) {}
 
     public function handle(string $payload, string $signature): void
@@ -165,6 +166,10 @@ class StripeWebhookService
         $canceledAt = $this->timestampToDateTime($subscription->canceled_at ?? null);
         $endedAt = $this->timestampToDateTime($subscription->ended_at ?? null);
 
+        $existingRecord = OrganizationSubscription::query()
+            ->where('stripe_subscription_id', $subscriptionId)
+            ->first();
+
         $record = OrganizationSubscription::query()->updateOrCreate(
             ['stripe_subscription_id' => $subscriptionId],
             [
@@ -189,6 +194,8 @@ class StripeWebhookService
         if ($site) {
             $this->assignmentService->assignSite($record->fresh(['plan', 'sites']), $site);
         }
+
+        $this->maybeSendActivationNotification($organization, $record->fresh('plan'), $existingRecord?->status);
     }
 
     private function handleInvoiceEvent(Event $event): void
@@ -348,5 +355,28 @@ class StripeWebhookService
     public function stripe(): StripeClient
     {
         return new StripeClient((string) config('services.stripe.secret'));
+    }
+
+    private function maybeSendActivationNotification(Organization $organization, OrganizationSubscription $subscription, ?string $previousStatus): void
+    {
+        if (! in_array((string) $subscription->status, ['active', 'trialing'], true)) {
+            return;
+        }
+
+        if (in_array((string) $previousStatus, ['active', 'trialing'], true)) {
+            return;
+        }
+
+        if (data_get($subscription->meta, 'activation_notified_at')) {
+            return;
+        }
+
+        $this->notifications->sendSubscriptionActivated($organization, $subscription);
+
+        $subscription->forceFill([
+            'meta' => array_merge($subscription->meta ?? [], [
+                'activation_notified_at' => now()->toIso8601String(),
+            ]),
+        ])->save();
     }
 }

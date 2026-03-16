@@ -8,9 +8,10 @@ use App\Jobs\MarkSiteReadyForCutoverJob;
 use App\Jobs\ProvisionEdgeDeploymentJob;
 use App\Models\Plan;
 use App\Models\Site;
-use App\Services\OrganizationAccessService;
+use App\Services\Billing\BillingNotificationService;
 use App\Services\Billing\SubscriptionSiteAssignmentService;
 use App\Services\Edge\EdgeProviderManager;
+use App\Services\OrganizationAccessService;
 use App\Services\SiteContext;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -107,7 +108,11 @@ class CreateSite extends CreateRecord
             $body = 'Site draft created. A team member with billing access must complete checkout for this domain.';
         }
 
-        if ($this->record->provider === Site::PROVIDER_BUNNY && ! app()->runningUnitTests()) {
+        if (
+            $this->record->provider === Site::PROVIDER_BUNNY
+            && ! app()->runningUnitTests()
+            && ($this->subscriptionSlotAssigned || ! $this->selectedPlan)
+        ) {
             try {
                 (new ProvisionEdgeDeploymentJob($this->record->id, auth()->id()))
                     ->handle(app(EdgeProviderManager::class));
@@ -118,6 +123,12 @@ class CreateSite extends CreateRecord
                 $body = 'Site created, but edge provisioning failed. Open Status Hub for details and retry.';
             }
         }
+
+        app(BillingNotificationService::class)->sendSiteAdded(
+            $this->record->fresh('organization'),
+            $this->selectedPlan,
+            $this->subscriptionSlotAssigned,
+        );
 
         Notification::make()
             ->title('Site created')

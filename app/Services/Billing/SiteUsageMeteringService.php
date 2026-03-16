@@ -12,6 +12,7 @@ class SiteUsageMeteringService
 {
     public function __construct(
         private readonly SubscriptionSiteAssignmentService $assignmentService,
+        private readonly BillingNotificationService $notifications,
     ) {}
 
     public function currentMonthSummary(Site $site, ?Plan $plan = null, ?OrganizationSubscription $subscription = null): array
@@ -79,6 +80,7 @@ class SiteUsageMeteringService
             : 0;
 
         $delta = max(0, (int) $summary['overage_requests'] - $alreadyReported);
+        $this->notifyUsageThresholds($subscription->fresh(['plan', 'organization', 'sites']), $summary, $billingMonth);
 
         if ($delta <= 0) {
             return ['reported' => false, 'reason' => 'no_new_overage', 'summary' => $summary];
@@ -103,6 +105,44 @@ class SiteUsageMeteringService
         ])->save();
 
         return ['reported' => true, 'summary' => $summary, 'delta' => $delta];
+    }
+
+    public function notifyUsageThresholds(OrganizationSubscription $subscription, array $summary, string $billingMonth): void
+    {
+        $included = (int) ($summary['included_requests'] ?? 0);
+
+        if ($included < 1) {
+            return;
+        }
+
+        $requests = (int) ($summary['requests'] ?? 0);
+        $thresholds = [];
+
+        if ($requests >= $included) {
+            $thresholds[] = 100;
+        } elseif ($requests >= (int) ceil($included * 0.8)) {
+            $thresholds[] = 80;
+        }
+
+        if ($thresholds === []) {
+            return;
+        }
+
+        $meta = $subscription->meta ?? [];
+
+        foreach ($thresholds as $threshold) {
+            $metaKey = sprintf('usage_threshold_%d_month', $threshold);
+
+            if ((string) data_get($meta, $metaKey, '') === $billingMonth) {
+                continue;
+            }
+
+            $this->notifications->sendUsageThreshold($subscription, $threshold, $summary);
+            $meta[$metaKey] = $billingMonth;
+            $meta[sprintf('usage_threshold_%d_sent_at', $threshold)] = now()->toIso8601String();
+        }
+
+        $subscription->forceFill(['meta' => $meta])->save();
     }
 
     public function subscriptionForSite(Site $site): ?OrganizationSubscription

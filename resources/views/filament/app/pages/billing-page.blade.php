@@ -157,4 +157,34 @@
             </table>
         </div>
     </x-filament::section>
+
+    <x-filament::section
+        heading="Usage Watch"
+        description="Sites that are getting close to or have reached their included request allowance this month."
+        icon="heroicon-o-chart-bar"
+    >
+        <div class="space-y-3">
+            @forelse ($this->usageWatchlist() as $row)
+                <div class="rounded-xl border border-gray-200 px-4 py-3 dark:border-gray-800">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <div class="text-sm font-medium text-gray-950 dark:text-white">{{ $row['site']->apex_domain }}</div>
+                            <div class="mt-1 text-xs text-gray-500">
+                                {{ number_format((int) data_get($row, 'summary.requests', 0)) }} requests used out of
+                                {{ number_format((int) data_get($row, 'summary.included_requests', 0)) }} included
+                            </div>
+                        </div>
+
+                        <x-filament::badge :color="$row['percent'] >= 100 ? 'danger' : 'warning'">
+                            {{ number_format((float) $row['percent'], 0) }}%
+                        </x-filament::badge>
+                    </div>
+                </div>
+            @empty
+                <div class="text-sm text-gray-500">
+                    No sites are near their included request allowance right now.
+                </div>
+            @endforelse
+        </div>
+    </x-filament::section>
 </x-filament-panels::page>

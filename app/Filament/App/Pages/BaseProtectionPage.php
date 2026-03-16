@@ -13,6 +13,7 @@ use App\Jobs\ToggleDevelopmentModeJob;
 use App\Jobs\ToggleUnderAttackModeJob;
 use App\Models\AuditLog;
 use App\Models\Site;
+use App\Services\Billing\SiteBillingStateService;
 use App\Services\Edge\EdgeProviderManager;
 use App\Services\SiteContext;
 use App\Services\Sites\SiteRoutingStatusService;
@@ -147,6 +148,10 @@ abstract class BaseProtectionPage extends Page
             return;
         }
 
+        if (! $this->ensureBillingReadyForProtectionAction('Provisioning')) {
+            return;
+        }
+
         $this->pollingEnabled = true;
         if (! $this->throttle('provision')) {
             return;
@@ -179,6 +184,10 @@ abstract class BaseProtectionPage extends Page
             return;
         }
 
+        if (! $this->ensureBillingReadyForProtectionAction('DNS validation')) {
+            return;
+        }
+
         $this->pollingEnabled = true;
         if (! $this->throttle('check-dns-validation')) {
             return;
@@ -197,6 +206,10 @@ abstract class BaseProtectionPage extends Page
     public function checkCutover(): void
     {
         if (! $this->site) {
+            return;
+        }
+
+        if (! $this->ensureBillingReadyForProtectionAction('Cutover checks')) {
             return;
         }
 
@@ -531,6 +544,27 @@ abstract class BaseProtectionPage extends Page
         Notification::make()->title($message)->success()->send();
 
         $this->refreshSite();
+    }
+
+    protected function ensureBillingReadyForProtectionAction(string $action): bool
+    {
+        if (! $this->site) {
+            return false;
+        }
+
+        $billing = app(SiteBillingStateService::class);
+
+        if ($billing->canProgressProtection($this->site)) {
+            return true;
+        }
+
+        Notification::make()
+            ->title('Billing action required')
+            ->body($billing->blockedActionMessage($this->site, $action))
+            ->warning()
+            ->send();
+
+        return false;
     }
 
     public function pollStatus(): void

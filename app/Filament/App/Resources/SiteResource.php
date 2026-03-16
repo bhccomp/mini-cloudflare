@@ -14,6 +14,7 @@ use App\Models\Plan;
 use App\Models\Site;
 use App\Rules\ApexDomainRule;
 use App\Rules\OriginIpRule;
+use App\Services\Billing\SiteBillingStateService;
 use App\Services\Edge\EdgeProviderManager;
 use App\Services\Sites\SiteDeletionService;
 use App\Services\Sites\SiteRoutingStatusService;
@@ -483,6 +484,16 @@ class SiteResource extends Resource
                     ->color('warning')
                     ->requiresConfirmation()
                     ->action(function (Site $record): void {
+                        if (! app(SiteBillingStateService::class)->canProgressProtection($record)) {
+                            Notification::make()
+                                ->title('Billing action required')
+                                ->body(app(SiteBillingStateService::class)->blockedActionMessage($record, 'Provisioning'))
+                                ->warning()
+                                ->send();
+
+                            return;
+                        }
+
                         static::throttle($record, 'provision');
                         RequestAcmCertificateJob::dispatch($record->id, auth()->id());
                         Notification::make()->title('Provision request queued')->success()->send();
@@ -492,6 +503,16 @@ class SiteResource extends Resource
                     ->label('Check DNS (validation)')
                     ->color('info')
                     ->action(function (Site $record): void {
+                        if (! app(SiteBillingStateService::class)->canProgressProtection($record)) {
+                            Notification::make()
+                                ->title('Billing action required')
+                                ->body(app(SiteBillingStateService::class)->blockedActionMessage($record, 'DNS validation'))
+                                ->warning()
+                                ->send();
+
+                            return;
+                        }
+
                         static::throttle($record, 'check-dns');
                         CheckAcmDnsValidationJob::dispatch($record->id, auth()->id());
                         Notification::make()->title('DNS check queued')->success()->send();
@@ -501,6 +522,16 @@ class SiteResource extends Resource
                     ->label('Check cutover')
                     ->color('info')
                     ->action(function (Site $record): void {
+                        if (! app(SiteBillingStateService::class)->canProgressProtection($record)) {
+                            Notification::make()
+                                ->title('Billing action required')
+                                ->body(app(SiteBillingStateService::class)->blockedActionMessage($record, 'Cutover checks'))
+                                ->warning()
+                                ->send();
+
+                            return;
+                        }
+
                         static::throttle($record, 'check-cutover');
                         CheckAcmDnsValidationJob::dispatch($record->id, auth()->id());
                         Notification::make()->title('Cutover check queued')->success()->send();

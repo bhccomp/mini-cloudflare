@@ -1683,3 +1683,54 @@
   - `starter`, `growth`, and `pro` each have one canonical Stripe product and three billing objects (monthly, yearly, request overage)
   - `enterprise` / contact-sales remains unsynced with no Stripe product or prices
   - if an extra duplicate Stripe product exists without prices, it was likely created before the product-ID persistence fix and can be removed manually from Stripe
+
+## Billing Enforcement + Customer Notifications (Latest)
+- Billing enforcement is now part of the real site lifecycle, not just a status badge:
+  - unpaid and past-due sites are blocked from progressing through provisioning / DNS validation / cutover actions
+  - this gating now applies in both:
+    - shared protection-page actions (`BaseProtectionPage`)
+    - site table actions in the app resource
+  - new Bunny site drafts no longer auto-provision immediately if a paid plan is selected but billing is not yet valid
+- Shared billing-state logic:
+  - `app/Services/Billing/SiteBillingStateService.php` is now the source of truth for:
+    - whether a site can continue protection setup
+    - whether checkout is still required
+    - whether the site is blocked by `past_due` or sync-in-progress state
+    - the human-readable message shown to the user
+- Status Hub follow-up:
+  - Site Billing section now surfaces a warning banner/message when billing blocks further protection progress
+  - if the site is `past_due`, users are pushed toward the billing page / Stripe portal instead of continuing provisioning blindly
+- Billing page follow-up:
+  - added a `Usage Watch` section showing sites that are at or above warning thresholds relative to included request allowance
+  - current threshold visibility is focused on `>= 80%` and `>= 100%`
+- Customer email notifications:
+  - new notification pipeline:
+    - `app/Services/Billing/BillingEmailRecipientService.php`
+    - `app/Services/Billing/BillingNotificationService.php`
+  - recipients currently include:
+    - organization billing email
+    - owner/admin organization members
+  - new outbound notifications:
+    - `SubscriptionActivatedNotification`
+    - `SiteAddedNotification`
+    - `UsageThresholdNotification`
+  - new email templates:
+    - `resources/views/emails/subscription-activated.blade.php`
+    - `resources/views/emails/site-added.blade.php`
+    - `resources/views/emails/usage-threshold.blade.php`
+  - tone direction:
+    - friendly and product-led
+    - not childish / not founder-centric
+    - keeps the existing FirePhage transactional visual shell
+- Notification trigger points:
+  - subscription activation emails are sent when webhook sync moves a subscription into `active` / `trialing` and the subscription was not already in an active-like state
+  - site-added emails are sent when a new site draft is created
+  - usage threshold emails are sent from `SiteUsageMeteringService` during analytics sync
+  - usage threshold emails are deduplicated per billing month using subscription `meta`
+- Current verification state:
+  - billing-focused tests passed after the enforcement/notification pass:
+    - `SiteBillingStatusTest`
+    - `SiteCheckoutTest`
+    - `SiteUsageMeteringTest`
+    - `StripeWebhookTest`
+    - `BillingPageTest`

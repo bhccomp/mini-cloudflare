@@ -3,7 +3,9 @@
 namespace App\Filament\App\Pages;
 
 use App\Models\Organization;
+use App\Models\Site;
 use App\Services\Billing\OrganizationBillingService;
+use App\Services\Billing\SiteUsageMeteringService;
 use App\Services\OrganizationAccessService;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -151,5 +153,32 @@ class BillingPage extends Page implements HasForms
     {
         return (bool) ($this->organization?->stripe_customer_id
             ?? app(OrganizationBillingService::class)->resolveCustomerId($this->organization));
+    }
+
+    public function usageWatchlist(): Collection
+    {
+        if (! $this->organization) {
+            return collect();
+        }
+
+        return Site::query()
+            ->where('organization_id', $this->organization->id)
+            ->orderBy('apex_domain')
+            ->get()
+            ->map(function (Site $site): array {
+                $summary = app(SiteUsageMeteringService::class)->currentMonthSummary($site);
+                $included = (int) ($summary['included_requests'] ?? 0);
+                $requests = (int) ($summary['requests'] ?? 0);
+                $percent = $included > 0 ? round(($requests / $included) * 100, 2) : 0;
+
+                return [
+                    'site' => $site,
+                    'summary' => $summary,
+                    'percent' => $percent,
+                    'warning' => $included > 0 && $percent >= 80,
+                ];
+            })
+            ->filter(fn (array $row): bool => (bool) $row['warning'])
+            ->values();
     }
 }

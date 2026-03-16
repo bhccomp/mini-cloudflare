@@ -48,7 +48,7 @@ class SiteCheckoutTest extends TestCase
         ]);
 
         $plan = Plan::create([
-            'code' => 'pro',
+            'code' => 'pro-'.$organization->id,
             'name' => 'Pro',
             'headline' => 'Pro',
             'description' => 'Pro plan',

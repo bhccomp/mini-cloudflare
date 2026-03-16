@@ -13,6 +13,7 @@ use App\Jobs\CheckAcmDnsValidationJob;
 use App\Models\OrganizationSubscription;
 use App\Models\Plan;
 use App\Models\Site;
+use App\Services\Billing\SiteBillingStateService;
 use App\Services\Billing\SiteUsageMeteringService;
 use App\Services\Billing\SubscriptionSiteAssignmentService;
 use App\Services\OrganizationAccessService;
@@ -397,5 +398,21 @@ class SiteStatusHubPage extends BaseProtectionPage
             'used' => 1,
             'included' => $plan?->includedWebsites() ?? 1,
         ];
+    }
+
+    public function siteBillingState(): array
+    {
+        if (! $this->site) {
+            return [
+                'status' => 'not_set_up',
+                'subscription' => null,
+                'plan' => null,
+                'requires_checkout' => false,
+                'can_progress_protection' => false,
+                'message' => 'No site selected.',
+            ];
+        }
+
+        return app(SiteBillingStateService::class)->summaryForSite($this->site);
     }
 }
