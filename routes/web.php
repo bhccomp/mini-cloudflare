@@ -1,13 +1,19 @@
 <?php
 
+use App\Http\Controllers\EarlyAccessController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\App\AcceptOrganizationInvitationController;
 use App\Http\Controllers\WordPress\VerifyFreeTokenController;
+use App\Http\Middleware\RedirectPublicHomeToEarlyAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
-Route::view('/', 'marketing.home-variant-1')->name('home');
+Route::view('/', 'marketing.home-variant-1')
+    ->middleware(RedirectPublicHomeToEarlyAccess::class)
+    ->name('home');
+Route::get('/early-access', [EarlyAccessController::class, 'create'])->name('early-access');
+Route::post('/early-access', [EarlyAccessController::class, 'store'])->name('early-access.store');
 Route::view('/blue-alternative', 'marketing.home')->name('home.blue');
 Route::view('/contact', 'marketing.contact')->name('contact');
 Route::view('/logos', 'marketing.logos')->name('logos');

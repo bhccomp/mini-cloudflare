@@ -13,7 +13,9 @@ class MarketingCtaTest extends TestCase
 
     public function test_guest_sees_start_free_call_to_action(): void
     {
-        $response = $this->get('/');
+        $response = $this->withServerVariables([
+            'REMOTE_ADDR' => '87.116.135.34',
+        ])->get('/');
 
         $response->assertOk();
         $response->assertSee('Start Free');

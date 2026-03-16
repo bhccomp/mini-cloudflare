@@ -51,7 +51,9 @@ class MarketingPricingTest extends TestCase
             'is_active' => true,
         ]);
 
-        $response = $this->get('/');
+        $response = $this->withServerVariables([
+            'REMOTE_ADDR' => '87.116.135.34',
+        ])->get('/');
 
         $response->assertOk();
         $response->assertSee('Starter');

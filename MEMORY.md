@@ -12,6 +12,25 @@
   - user `codex`
   - WordPress path `/var/www/nodesfoundry.com`
 
+## FirePhage Domain + Early Access Gate (Latest)
+- Production-facing app/domain direction is now `https://firephage.com`.
+- The earlier `https://waf-saas.firephage.com` hostname is no longer the intended canonical public domain for the SaaS app or plugin defaults.
+- Current public-home behavior:
+  - `/` redirects public visitors to `/early-access`
+  - the real homepage remains visible for:
+    - IP `87.116.135.34`
+    - any authenticated user
+  - app routes, admin routes, plugin/API routes, and other development routes remain open
+- Early access implementation:
+  - new public page at `/early-access`
+  - stores leads locally in `early_access_leads`
+  - includes optional field `How many websites do you manage?`
+  - leads are manageable from the Filament admin panel
+- Current positioning of the early-access page:
+  - premium dark/cyan marketing direction aligned with the existing homepage
+  - focused on launch pricing, human-friendly dashboard clarity, and free assisted onboarding
+  - recent iteration priority has been layout quality, spacing rhythm, and calmer section composition rather than adding new content
+
 ## GitHub Push Environment Note
 - In this environment, GitHub operations for the Laravel app repo may fail with `Could not resolve host: github.com` when run through the restricted command path.
 - If a Laravel repo `git push` or `git ls-remote` fails that way, retry it with unrestricted/escalated execution rather than assuming the repo remote or credentials are broken.
