@@ -135,6 +135,36 @@
   - do not expose the entire platform as a public API by default
   - add customer-facing APIs selectively when there is a clear automation use case and support model
 
+## API Docs + Scramble (Latest)
+- Installed `dedoc/scramble` for Laravel API discovery and interactive API documentation.
+- Current docs endpoints:
+  - `/docs/api`
+  - `/docs/api.json`
+- Current access model:
+  - outside local/dev, Scramble docs are restricted
+  - `viewApiDocs` is now allowed for super admins via `AuthServiceProvider`
+- Current config lives in:
+  - `config/scramble.php`
+- Current documented API scope is focused on the plugin/public integration endpoints under `/api`, not a full customer-facing platform API.
+- Documentation improvements already added:
+  - grouped endpoint docs for:
+    - WordPress Plugin Integration
+    - WordPress Signature & Checksum Feed
+  - explicit endpoint titles/descriptions
+  - auth header hints
+  - parameter hints
+  - response descriptions
+- New API endpoint added during this pass:
+  - `GET /api/plugin/status`
+  - purpose:
+    - validate plugin site token
+    - return connected-site status
+    - return billing/pro access state
+    - return enabled capabilities in one machine-readable payload
+- Practical note:
+  - Scramble should remain the primary API-docs surface for now
+  - keep future `/api` endpoints cleanly validated and JSON-consistent so Scramble can document them with minimal extra work
+
 ## GitHub Push Environment Note
 - In this environment, GitHub operations for the Laravel app repo may fail with `Could not resolve host: github.com` when run through the restricted command path.
 - If a Laravel repo `git push` or `git ls-remote` fails that way, retry it with unrestricted/escalated execution rather than assuming the repo remote or credentials are broken.
