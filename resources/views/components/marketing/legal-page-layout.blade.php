@@ -19,6 +19,8 @@
                 <div class="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.14),transparent_36%),linear-gradient(180deg,rgba(2,8,23,0.92),rgba(2,6,23,1))]"></div>
             </div>
 
+            <x-marketing.site-header />
+
             <main class="relative mx-auto w-full max-w-5xl px-6 py-16 lg:px-8 lg:py-20">
                 <div class="rounded-3xl border border-white/10 bg-slate-900/80 p-8 shadow-[0_32px_90px_rgba(2,8,23,0.55)] backdrop-blur xl:p-12">
                     <div class="mb-10 flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-8">

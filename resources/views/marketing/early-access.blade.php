@@ -104,19 +104,9 @@
         <div class="relative isolate overflow-hidden">
             <div class="hero-overlay pointer-events-none absolute inset-0 -z-10"></div>
 
-            <header class="relative z-20">
-                <div class="page-shell flex items-center justify-between py-6">
-                    <a href="{{ route('early-access') }}" class="inline-flex items-center gap-3 text-sm font-semibold text-white">
-                        <img src="{{ asset('images/logo-shield-phage-mark.svg') }}" alt="FirePhage logo" class="h-5 w-5" loading="eager" decoding="async">
-                        <span>FirePhage</span>
-                    </a>
-
-                    <nav class="flex items-center gap-3 text-sm text-slate-300">
-                        <a href="{{ route('contact') }}" class="rounded-lg border border-white/10 px-4 py-2 hover:border-cyan-300/60 hover:text-white">Contact</a>
-                        <x-marketing.auth-aware-session-link class="rounded-lg border border-white/10 px-4 py-2 hover:border-cyan-300/60 hover:text-white" />
-                    </nav>
-                </div>
-            </header>
+            <div class="page-shell">
+                <x-marketing.site-header />
+            </div>
 
             <main>
                 <section class="relative overflow-hidden pb-32 pt-20 lg:pb-40 lg:pt-28">

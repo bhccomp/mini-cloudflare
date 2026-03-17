@@ -11,6 +11,81 @@
 }
 
 @layer components {
+    .blog-article-content {
+        color: rgb(203 213 225);
+        font-size: 1rem;
+        line-height: 1.9;
+    }
+
+    .blog-article-content > * + * {
+        margin-top: 1.5rem;
+    }
+
+    .blog-article-content h2,
+    .blog-article-content h3,
+    .blog-article-content h4 {
+        color: white;
+        font-weight: 600;
+        line-height: 1.2;
+        margin-top: 2.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .blog-article-content h2 {
+        font-size: 1.875rem;
+    }
+
+    .blog-article-content h3 {
+        font-size: 1.5rem;
+    }
+
+    .blog-article-content p {
+        margin-top: 1.5rem;
+        margin-bottom: 1.5rem;
+        color: rgb(203 213 225);
+    }
+
+    .blog-article-content ul,
+    .blog-article-content ol {
+        margin-top: 1.5rem;
+        margin-bottom: 1.5rem;
+        padding-left: 1.5rem;
+    }
+
+    .blog-article-content ul {
+        list-style: disc;
+    }
+
+    .blog-article-content ol {
+        list-style: decimal;
+    }
+
+    .blog-article-content li {
+        margin-top: 0.75rem;
+        color: rgb(203 213 225);
+    }
+
+    .blog-article-content strong {
+        color: white;
+        font-weight: 600;
+    }
+
+    .blog-article-content a {
+        color: rgb(103 232 249);
+    }
+
+    .blog-article-content a:hover {
+        color: rgb(165 243 252);
+    }
+
+    .blog-article-content code {
+        border-radius: 0.5rem;
+        background: rgba(15, 23, 42, 0.9);
+        padding: 0.15rem 0.45rem;
+        color: white;
+        font-size: 0.95em;
+    }
+
     .hero-visual-laptop {
         width: 100%;
         max-width: 480px;

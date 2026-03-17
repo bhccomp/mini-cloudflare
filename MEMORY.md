@@ -39,6 +39,51 @@
   - all legal pages use a shared premium dark/cyan marketing layout rather than plain scaffolding
   - both marketing footer variants now link to all legal pages plus contact
   - homepage hero spacing was tightened slightly under the trust strip (`Already protecting 40+ WordPress websites ...`) so the next section sits closer
+- Future reminder:
+  - later, after core product flow is stable, consider adding a true `live demo dashboard` experience instead of only a marketing preview
+  - preferred direction:
+    - a dedicated demo org / demo sites with seeded realistic data
+    - read-only or safely resettable interactions
+    - realistic firewall events, WordPress findings, uptime signals, billing/usage examples
+    - isolated from real customer data
+  - avoid using real customer dashboards or a static fake screenshot-only approach for this
+
+## Marketing Site Expansion (Latest)
+- The public marketing site now has a broader content structure beyond the homepage and early-access page.
+- New public content areas:
+  - `/blog`
+  - `/blog/{slug}`
+  - `/services`
+  - `/services/{service}`
+- Blog system status:
+  - DB-backed blog categories and blog posts now exist in the SaaS app
+  - blog management is available from Filament admin resources
+  - public blog pages are live with SEO fields, featured-post support, category assignment, and markdown article bodies
+  - the current public blog has seeded sample launch content so the frontend is not empty during review
+- Services system status:
+  - FirePhage now has dedicated service marketing pages for:
+    - WAF
+    - CDN
+    - Cache
+    - DDoS Protection
+    - Bot Protection
+    - WordPress Plugin
+    - Uptime Monitor
+  - service content currently comes from `config/marketing-services.php`
+  - each service page is meant to act as a distinct SEO/product-explainer landing page, not a thin duplicate shell
+- Navigation follow-up:
+  - public marketing pages now use a shared site-header component so nav structure stays consistent across homepage, early access, blog, services, and legal pages
+  - nav items are now standardized around:
+    - Services
+    - Features
+    - Pricing
+    - Blog
+    - Contact
+    - session/auth CTA
+  - the Services dropdown behavior is now handled in the frontend JS bundle instead of brittle inline Blade-only logic
+- Blog/article rendering follow-up:
+  - frontend blog article formatting now uses explicit CSS rules in `resources/css/app.css` instead of relying on Tailwind `prose` classes
+  - if article typography looks broken again, check whether the frontend bundle has been rebuilt with `pnpm build`
 
 ## GitHub Push Environment Note
 - In this environment, GitHub operations for the Laravel app repo may fail with `Could not resolve host: github.com` when run through the restricted command path.
