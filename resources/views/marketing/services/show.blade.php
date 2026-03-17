@@ -3,15 +3,34 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>{{ 'FirePhage ' . $service['nav_label'] . ' | ' . $service['summary'] }}</title>
-        <meta name="description" content="{{ $service['description'] }}">
-        <meta property="og:type" content="website">
-        <meta property="og:title" content="{{ 'FirePhage ' . $service['nav_label'] }}">
-        <meta property="og:description" content="{{ $service['description'] }}">
-        <meta property="og:url" content="{{ route('services.show', $serviceKey) }}">
-        <meta property="og:site_name" content="FirePhage">
-        <meta name="theme-color" content="#030712">
-        <link rel="canonical" href="{{ route('services.show', $serviceKey) }}">
+        <x-marketing.seo-meta
+            :title="'FirePhage ' . $service['nav_label'] . ' | ' . $service['summary']"
+            :description="$service['description']"
+            :canonical="route('services.show', $serviceKey)"
+            :og-url="route('services.show', $serviceKey)"
+            :structured-data="[
+                [
+                    '@context' => 'https://schema.org',
+                    '@type' => 'WebPage',
+                    'name' => 'FirePhage ' . $service['nav_label'],
+                    'url' => route('services.show', $serviceKey),
+                    'description' => $service['description'],
+                ],
+                [
+                    '@context' => 'https://schema.org',
+                    '@type' => 'Service',
+                    'name' => 'FirePhage ' . $service['nav_label'],
+                    'provider' => [
+                        '@type' => 'Organization',
+                        'name' => 'FirePhage',
+                        'url' => route('home'),
+                    ],
+                    'serviceType' => $service['nav_label'],
+                    'description' => $service['summary'],
+                    'url' => route('services.show', $serviceKey),
+                ],
+            ]"
+        />
         <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
         <style>

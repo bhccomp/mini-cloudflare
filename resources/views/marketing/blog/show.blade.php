@@ -3,18 +3,39 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>{{ $post->seoTitle() }}</title>
-        <meta name="description" content="{{ $post->seoDescription() }}">
-        <meta property="og:type" content="article">
-        <meta property="og:title" content="{{ $post->seoTitle() }}">
-        <meta property="og:description" content="{{ $post->seoDescription() }}">
-        <meta property="og:url" content="{{ route('blog.show', $post) }}">
-        <meta property="og:site_name" content="FirePhage">
-        @if ($post->og_image_url)
-            <meta property="og:image" content="{{ $post->og_image_url }}">
-        @endif
-        <meta name="theme-color" content="#030712">
-        <link rel="canonical" href="{{ $post->canonical_url ?: route('blog.show', $post) }}">
+        <x-marketing.seo-meta
+            :title="$post->seoTitle()"
+            :description="$post->seoDescription()"
+            og-type="article"
+            :canonical="$post->canonical_url ?: route('blog.show', $post)"
+            :og-url="route('blog.show', $post)"
+            :og-image="$post->og_image_url"
+            :structured-data="[
+                [
+                    '@context' => 'https://schema.org',
+                    '@type' => 'BlogPosting',
+                    'headline' => $post->title,
+                    'description' => $post->seoDescription(),
+                    'datePublished' => optional($post->published_at ?? $post->created_at)->toAtomString(),
+                    'dateModified' => optional($post->updated_at ?? $post->published_at ?? $post->created_at)->toAtomString(),
+                    'mainEntityOfPage' => $post->canonical_url ?: route('blog.show', $post),
+                    'url' => route('blog.show', $post),
+                    'author' => [
+                        '@type' => 'Organization',
+                        'name' => 'FirePhage',
+                    ],
+                    'publisher' => [
+                        '@type' => 'Organization',
+                        'name' => 'FirePhage',
+                        'logo' => [
+                            '@type' => 'ImageObject',
+                            'url' => asset('images/logo-shield-phage-wordmark.svg'),
+                        ],
+                    ],
+                    'image' => $post->og_image_url ?: asset('images/dashboard-preview.png'),
+                ],
+            ]"
+        />
         <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>

@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\App\AcceptOrganizationInvitationController;
 use App\Http\Controllers\App\SiteCheckoutController;
 use App\Http\Controllers\BlogController;
+use App\Http\Controllers\SeoController;
 use App\Http\Controllers\ServicePageController;
 use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\WordPress\VerifyFreeTokenController;
@@ -16,6 +17,8 @@ use Illuminate\Support\Facades\Route;
 Route::view('/', 'marketing.home-variant-1')
     ->middleware(RedirectPublicHomeToEarlyAccess::class)
     ->name('home');
+Route::get('/robots.txt', [SeoController::class, 'robots'])->name('seo.robots');
+Route::get('/sitemap.xml', [SeoController::class, 'sitemap'])->name('seo.sitemap');
 Route::get('/early-access', [EarlyAccessController::class, 'create'])->name('early-access');
 Route::post('/early-access', [EarlyAccessController::class, 'store'])->name('early-access.store');
 Route::view('/blue-alternative', 'marketing.home')->name('home.blue');

@@ -3,15 +3,21 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>FirePhage Blog | WordPress Protection, Firewalls, and Bot Attacks</title>
-        <meta name="description" content="Clear FirePhage articles about WordPress protection, firewall strategy, bot attacks, WooCommerce security, origin protection, and practical onboarding guidance.">
-        <meta property="og:type" content="website">
-        <meta property="og:title" content="FirePhage Blog">
-        <meta property="og:description" content="Clear articles about WordPress protection, firewall strategy, bot attacks, and practical onboarding guidance.">
-        <meta property="og:url" content="{{ route('blog.index') }}">
-        <meta property="og:site_name" content="FirePhage">
-        <meta name="theme-color" content="#030712">
-        <link rel="canonical" href="{{ route('blog.index') }}">
+        <x-marketing.seo-meta
+            title="FirePhage Blog | WordPress Protection, Firewalls, and Bot Attacks"
+            description="Clear FirePhage articles about WordPress protection, firewall strategy, bot attacks, WooCommerce security, origin protection, and practical onboarding guidance."
+            :canonical="route('blog.index')"
+            :og-url="route('blog.index')"
+            :structured-data="[
+                [
+                    '@context' => 'https://schema.org',
+                    '@type' => 'Blog',
+                    'name' => 'FirePhage Blog',
+                    'url' => route('blog.index'),
+                    'description' => 'Clear articles about WordPress protection, firewall strategy, bot attacks, and practical onboarding guidance.',
+                ],
+            ]"
+        />
         <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>

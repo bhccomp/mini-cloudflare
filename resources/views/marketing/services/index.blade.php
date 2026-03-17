@@ -3,15 +3,21 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>FirePhage Services | WAF, CDN, Cache, DDoS, Bot Protection, WordPress Plugin, Uptime Monitor</title>
-        <meta name="description" content="Explore FirePhage services for managed WAF, CDN, cache, DDoS handling, bot protection, WordPress plugin visibility, and uptime monitoring.">
-        <meta property="og:type" content="website">
-        <meta property="og:title" content="FirePhage Services">
-        <meta property="og:description" content="Seven product pages explaining how FirePhage handles protection, speed, and operational visibility.">
-        <meta property="og:url" content="{{ route('services.index') }}">
-        <meta property="og:site_name" content="FirePhage">
-        <meta name="theme-color" content="#030712">
-        <link rel="canonical" href="{{ route('services.index') }}">
+        <x-marketing.seo-meta
+            title="FirePhage Services | WAF, CDN, Cache, DDoS, Bot Protection, WordPress Plugin, Uptime Monitor"
+            description="Explore FirePhage services for managed WAF, CDN, cache, DDoS handling, bot protection, WordPress plugin visibility, and uptime monitoring."
+            :canonical="route('services.index')"
+            :og-url="route('services.index')"
+            :structured-data="[
+                [
+                    '@context' => 'https://schema.org',
+                    '@type' => 'CollectionPage',
+                    'name' => 'FirePhage Services',
+                    'url' => route('services.index'),
+                    'description' => 'Product pages describing FirePhage security, performance, and monitoring services.',
+                ],
+            ]"
+        />
         <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>

@@ -3,14 +3,21 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>FirePhage | Early Access</title>
-        <meta name="description" content="Join the FirePhage early access list for launch pricing, guided onboarding, and first access to managed edge protection built for real websites.">
-        <meta property="og:type" content="website">
-        <meta property="og:title" content="FirePhage | Early Access">
-        <meta property="og:description" content="Reserve your place for launch pricing and guided onboarding.">
-        <meta property="og:url" content="{{ route('early-access') }}">
-        <meta property="og:site_name" content="FirePhage">
-        <meta name="theme-color" content="#030712">
+        <x-marketing.seo-meta
+            title="FirePhage Early Access | Managed WordPress WAF and Guided Onboarding"
+            description="Join FirePhage early access for launch pricing, onboarding priority, and guided setup for managed WAF, origin protection, and human-readable website security."
+            :canonical="route('early-access')"
+            :og-url="route('early-access')"
+            :structured-data="[
+                [
+                    '@context' => 'https://schema.org',
+                    '@type' => 'WebPage',
+                    'name' => 'FirePhage Early Access',
+                    'url' => route('early-access'),
+                    'description' => 'Early access page for launch pricing, onboarding priority, and managed edge protection.',
+                ],
+            ]"
+        />
         <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
         <style>

@@ -85,6 +85,36 @@
   - frontend blog article formatting now uses explicit CSS rules in `resources/css/app.css` instead of relying on Tailwind `prose` classes
   - if article typography looks broken again, check whether the frontend bundle has been rebuilt with `pnpm build`
 
+## SEO Baseline (Latest)
+- FirePhage now has a lightweight in-house SEO layer rather than a heavy third-party SEO package.
+- Current SEO primitives:
+  - shared meta component:
+    - `resources/views/components/marketing/seo-meta.blade.php`
+  - dynamic `robots.txt`
+  - dynamic `sitemap.xml`
+  - structured data / JSON-LD on key public pages
+- Public SEO routes:
+  - `/robots.txt`
+  - `/sitemap.xml`
+- Sitemap scope currently includes:
+  - homepage
+  - early access
+  - services index
+  - all individual service pages
+  - blog index
+  - published blog posts only
+  - contact and legal pages
+- Structured data currently covers:
+  - homepage
+  - early access
+  - services index
+  - service detail pages
+  - blog index
+  - blog posts (`BlogPosting`)
+- Operational note:
+  - this app is not relying on Tailwind typography or a full SEO package for metadata management
+  - if marketing pages need SEO changes, update the shared SEO component and page-level structured data directly
+
 ## GitHub Push Environment Note
 - In this environment, GitHub operations for the Laravel app repo may fail with `Could not resolve host: github.com` when run through the restricted command path.
 - If a Laravel repo `git push` or `git ls-remote` fails that way, retry it with unrestricted/escalated execution rather than assuming the repo remote or credentials are broken.

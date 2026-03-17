@@ -3,14 +3,36 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>FirePhage | Shield Your Origin and Control Edge Traffic</title>
-        <meta name="description" content="FirePhage combines WAF (Firewall rules), origin IP protection, and availability monitoring in one simple dashboard.">
-        <meta property="og:type" content="website">
-        <meta property="og:title" content="FirePhage | Shield Your Origin and Control Edge Traffic">
-        <meta property="og:description" content="WAF (Firewall rules), origin IP protection, and monitoring in one clear dashboard.">
-        <meta property="og:url" content="{{ url('/') }}">
-        <meta property="og:site_name" content="FirePhage">
-        <meta name="theme-color" content="#030712">
+        <x-marketing.seo-meta
+            title="FirePhage | Managed WAF, Origin Protection, and Human-Readable Edge Security"
+            description="FirePhage helps WordPress, WooCommerce, and agency teams protect websites with managed WAF controls, origin IP shielding, bot protection, and clear operational visibility."
+            :canonical="route('home')"
+            :og-url="route('home')"
+            :structured-data="[
+                [
+                    '@context' => 'https://schema.org',
+                    '@type' => 'Organization',
+                    'name' => 'FirePhage',
+                    'url' => route('home'),
+                    'logo' => asset('images/logo-shield-phage-wordmark.svg'),
+                ],
+                [
+                    '@context' => 'https://schema.org',
+                    '@type' => 'WebSite',
+                    'name' => 'FirePhage',
+                    'url' => route('home'),
+                ],
+                [
+                    '@context' => 'https://schema.org',
+                    '@type' => 'SoftwareApplication',
+                    'name' => 'FirePhage',
+                    'applicationCategory' => 'SecurityApplication',
+                    'operatingSystem' => 'Web',
+                    'url' => route('home'),
+                    'description' => 'Managed WAF, origin protection, uptime visibility, and WordPress-focused edge security in one dashboard.',
+                ],
+            ]"
+        />
         <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
         <style>
