@@ -15,6 +15,7 @@ use App\Models\AuditLog;
 use App\Models\Site;
 use App\Services\Billing\SiteBillingStateService;
 use App\Services\Edge\EdgeProviderManager;
+use App\Services\Firewall\FirewallInsightsPresenter;
 use App\Services\SiteContext;
 use App\Services\Sites\SiteRoutingStatusService;
 use App\Services\UiModeManager;
@@ -87,6 +88,106 @@ abstract class BaseProtectionPage extends Page
     public function showProModePrompt(): bool
     {
         return $this->isSimpleMode() && $this->site !== null;
+    }
+
+    /**
+     * @return array<int, array{label:string,value:string,support:string,help:string,color:string}>
+     */
+    public function simpleSecuritySnapshot(): array
+    {
+        if (! $this->site) {
+            return [];
+        }
+
+        $this->site->loadMissing('analyticsMetric');
+
+        $insightsPresenter = app(FirewallInsightsPresenter::class);
+        $insights = $insightsPresenter->insights($this->site);
+        $summary = (array) data_get($insights, 'summary', []);
+        $totalRequests = (int) ($summary['total'] ?? ($this->site->analyticsMetric?->total_requests_24h ?? 0));
+        $blockedRequests = (int) ($summary['blocked'] ?? ($this->site->analyticsMetric?->blocked_requests_24h ?? 0));
+        $suspiciousRequests = $insightsPresenter->suspiciousRequests($insights);
+        $threatLevel = $insightsPresenter->threatLevel($insights);
+        $blockRatio = $totalRequests > 0
+            ? (($blockedRequests / max(1, $totalRequests)) * 100)
+            : 0.0;
+
+        $threatColor = match ($threatLevel) {
+            'Under Attack' => 'danger',
+            'Active Mitigation' => 'warning',
+            default => 'success',
+        };
+
+        return [
+            [
+                'label' => 'Threat Level',
+                'value' => $threatLevel,
+                'support' => match ($threatLevel) {
+                    'Under Attack' => 'A high share of recent traffic is being blocked or challenged.',
+                    'Active Mitigation' => 'Protection is actively filtering noisy or risky traffic.',
+                    default => 'Recent traffic looks normal and protection is stable.',
+                },
+                'help' => 'This is a quick summary of how aggressive recent traffic looks, based mostly on how much traffic FirePhage had to block or challenge.',
+                'color' => $threatColor,
+            ],
+            [
+                'label' => 'Total Requests',
+                'value' => number_format($totalRequests),
+                'support' => 'Everything seen by the edge in the last 24 hours, including good and bad traffic.',
+                'help' => 'Use this to understand overall traffic volume. It includes normal visitors, bots, and blocked requests together.',
+                'color' => 'primary',
+            ],
+            [
+                'label' => 'Blocked',
+                'value' => number_format($blockedRequests),
+                'support' => $totalRequests > 0
+                    ? number_format($blockRatio, 2).'% of recent traffic was denied or challenged.'
+                    : 'No recent blocked traffic has been recorded yet.',
+                'help' => 'Blocked requests were denied outright or forced through a challenge because they matched a protection rule or looked abusive.',
+                'color' => 'danger',
+            ],
+            [
+                'label' => 'Suspicious',
+                'value' => number_format($suspiciousRequests),
+                'support' => 'Traffic that looks risky and deserves attention, even if it was not blocked.',
+                'help' => 'Suspicious traffic is traffic with risk signals like attack paths or odd request behavior, even when it was not fully blocked.',
+                'color' => 'warning',
+            ],
+            [
+                'label' => 'Last Sync',
+                'value' => $this->site->syncFreshnessForHumans('No sync yet'),
+                'support' => 'Shows how fresh the edge telemetry is right now.',
+                'help' => 'If sync freshness gets old, the numbers on this page may be stale and no longer reflect what is happening at the edge.',
+                'color' => 'gray',
+            ],
+        ];
+    }
+
+    /**
+     * @return array{title:string,body:string,color:string}
+     */
+    public function simpleSecurityRecommendation(): array
+    {
+        $snapshot = collect($this->simpleSecuritySnapshot())->keyBy('label');
+        $threatLevel = (string) data_get($snapshot, 'Threat Level.value', 'Healthy');
+
+        return match ($threatLevel) {
+            'Under Attack' => [
+                'title' => 'What to do now',
+                'body' => 'Traffic pressure is elevated. Review blocked activity, confirm origin protection is enabled, and consider switching to Pro mode for deeper event detail.',
+                'color' => 'danger',
+            ],
+            'Active Mitigation' => [
+                'title' => 'What to watch',
+                'body' => 'Protection is working. Keep an eye on blocked traffic and sync freshness so you can tell whether the spike is growing or settling down.',
+                'color' => 'warning',
+            ],
+            default => [
+                'title' => 'What this means',
+                'body' => 'Protection looks healthy. Simple Mode keeps the key numbers front and center while the site stays quiet and stable.',
+                'color' => 'success',
+            ],
+        };
     }
 
     public function switchToProMode(UiModeManager $uiMode): void

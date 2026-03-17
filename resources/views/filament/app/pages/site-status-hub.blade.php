@@ -5,6 +5,14 @@
         @if (! $this->site)
             @include('filament.app.pages.protection.empty-state')
         @else
+            @if ($this->isSiteLive() && $this->isSimpleMode())
+                <x-filament.app.simple-service-overview
+                    :items="$this->simpleServiceOverview()"
+                    :recommendation="$this->simpleServiceOverviewRecommendation()"
+                    :show-pro-button="true"
+                />
+            @endif
+
             <x-filament::section
                 heading="Site Billing"
                 description="{{ $this->siteBillingDescription() }}"
@@ -92,16 +100,6 @@
             </x-filament::section>
 
             @if ($this->isSiteLive())
-            @if ($this->isSimpleMode())
-                <x-filament::section heading="Need Deep Detail?" icon="heroicon-o-adjustments-horizontal">
-                    <p>Simple mode keeps this page compact. Switch to Pro mode to include activity feed and deeper technical detail.</p>
-                    <x-slot name="footer">
-                        <x-filament::actions alignment="end">
-                            <x-filament::button wire:click="switchToProMode" color="gray">Switch to Pro mode</x-filament::button>
-                        </x-filament::actions>
-                    </x-slot>
-                </x-filament::section>
-            @endif
             @else
             <x-filament::section
                 heading="Site Setup Progress"

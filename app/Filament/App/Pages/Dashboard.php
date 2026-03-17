@@ -4,11 +4,13 @@ namespace App\Filament\App\Pages;
 
 use App\Filament\App\Widgets\BandwidthUsageStats;
 use App\Filament\App\Widgets\CacheDistributionChart;
+use App\Filament\App\Widgets\EdgeServiceStatusStats;
 use App\Filament\App\Widgets\RegionalThreatLevelChart;
 use App\Filament\App\Widgets\RegionalTrafficShareChart;
-use App\Filament\App\Widgets\SimpleActivityFeedTable;
 use App\Filament\App\Widgets\SiteSignalsStats;
 use App\Filament\App\Widgets\TrafficTrendChart;
+use App\Filament\App\Widgets\AvailabilityStatusStats;
+use App\Filament\App\Widgets\WordPress\WordPressConnectionStats;
 
 class Dashboard extends BaseProtectionPage
 {
@@ -35,21 +37,25 @@ class Dashboard extends BaseProtectionPage
         }
 
         if ($this->isSimpleMode()) {
-            return [
-                SiteSignalsStats::class,
-                BandwidthUsageStats::class,
-                SimpleActivityFeedTable::class,
-            ];
+            return [];
         }
 
-        return [
+        $widgets = [
             SiteSignalsStats::class,
+            EdgeServiceStatusStats::class,
+            AvailabilityStatusStats::class,
             BandwidthUsageStats::class,
             TrafficTrendChart::class,
             CacheDistributionChart::class,
             RegionalTrafficShareChart::class,
             RegionalThreatLevelChart::class,
         ];
+
+        if ($this->site?->pluginConnection) {
+            $widgets[] = WordPressConnectionStats::class;
+        }
+
+        return $widgets;
     }
 
     public function getHeaderWidgetsColumns(): int|array

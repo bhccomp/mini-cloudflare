@@ -37,19 +37,11 @@
             </x-filament::section>
 
             @if ($this->isSimpleMode())
-            <x-filament::section
-                heading="Simple Overview"
-                description="You are seeing a simplified experience focused on health, risk, bandwidth, and recent activity."
-                icon="heroicon-o-sparkles"
-            >
-                <x-slot name="footer">
-                    <x-filament::actions alignment="end">
-                        <x-filament::button wire:click="switchToProMode" color="gray">
-                            Switch to Pro for full controls
-                        </x-filament::button>
-                    </x-filament::actions>
-                </x-slot>
-            </x-filament::section>
+                <x-filament.app.simple-security-snapshot
+                    :items="$this->simpleSecuritySnapshot()"
+                    :recommendation="$this->simpleSecurityRecommendation()"
+                    :show-pro-button="true"
+                />
             @else
             <x-filament.app.settings.card
                 title="Protection Control Stack"

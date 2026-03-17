@@ -71,8 +71,26 @@ class UiModeTest extends TestCase
         $this->actingAs($user)
             ->get('/app/firewall?site_id='.$site->id)
             ->assertOk()
-            ->assertSee('Switch to Pro mode')
+            ->assertSee('Simple Security Snapshot')
+            ->assertSee('Threat Level')
+            ->assertSee('Hover or tap the ? icons')
+            ->assertSee('Switch to Pro for deeper detail')
             ->assertDontSee('Top Countries');
+
+        $this->get('/app/overview?site_id='.$site->id)
+            ->assertOk()
+            ->assertSee('Simple Security Snapshot')
+            ->assertSee('Threat Level')
+            ->assertSee('Total Requests')
+            ->assertSee('Blocked')
+            ->assertSee('Hover or tap the ? icons');
+
+        $this->get('/app/status-hub?site_id='.$site->id)
+            ->assertOk()
+            ->assertSee('Simple Site Overview')
+            ->assertSee('Protection')
+            ->assertSee('Availability')
+            ->assertSee('WordPress');
 
         app(UiModeManager::class)->setMode($user->fresh(), UiModeManager::PRO);
 
@@ -80,5 +98,9 @@ class UiModeTest extends TestCase
             ->assertOk()
             ->assertDontSee('Simple Firewall View')
             ->assertDontSee('Switch to Pro mode');
+
+        $this->get('/app/overview?site_id='.$site->id)
+            ->assertOk()
+            ->assertDontSee('Simple Security Snapshot');
     }
 }

@@ -165,6 +165,46 @@
   - Scramble should remain the primary API-docs surface for now
   - keep future `/api` endpoints cleanly validated and JSON-consistent so Scramble can document them with minimal extra work
 
+## Dashboard UI Modes + Service Overview (Latest)
+- Simple Mode is now being made intentionally different from Pro Mode instead of only hiding a few widgets.
+- Current Simple Mode direction:
+  - Firewall simple view now leads with a plain-language `Simple Security Snapshot`
+  - the snapshot shows beginner-friendly high-level signals:
+    - Threat Level
+    - Total Requests
+    - Blocked
+    - Suspicious
+    - Last Sync
+  - each field now has a visible helper tooltip (`?`) with plain-language explanations
+  - the old dense top widget strip is removed in Simple Mode on the main overview/security surfaces so the simplified summary is the first thing users see
+- Status Hub simple view no longer reuses the firewall-only snapshot.
+  - it now has its own `Simple Site Overview`
+  - current cards cover:
+    - Protection
+    - Availability
+    - Billing
+    - SSL
+    - CDN
+    - Cache
+    - WordPress
+  - this is aimed at non-technical customers who need a plain-language cross-service summary
+- Helper tooltip implementation:
+  - shared Blade component at `resources/views/components/filament/app/help-tooltip.blade.php`
+  - tooltip width and icon sizing were adjusted and required a frontend rebuild with `pnpm build`
+- Shared simple-mode summary components:
+  - `resources/views/components/filament/app/simple-security-snapshot.blade.php`
+  - `resources/views/components/filament/app/simple-service-overview.blade.php`
+- Pro Mode follow-up:
+  - Overview and Status Hub now also include a broader set of non-security widgets in Pro mode
+  - added Pro widgets:
+    - `EdgeServiceStatusStats`
+    - `AvailabilityStatusStats`
+    - existing `WordPressConnectionStats` when the plugin is connected
+  - goal: Pro mode should show both protection depth and service/operations visibility, not only security charts
+- Testing note:
+  - `tests/Feature/UiModeTest.php` was updated to cover the new Simple Mode behavior
+  - `AppProtectionNavigationTest` currently still contains an unrelated expectation mismatch from the billing/checkout redirect flow (`status-hub` vs Stripe checkout redirect)
+
 ## GitHub Push Environment Note
 - In this environment, GitHub operations for the Laravel app repo may fail with `Could not resolve host: github.com` when run through the restricted command path.
 - If a Laravel repo `git push` or `git ls-remote` fails that way, retry it with unrestricted/escalated execution rather than assuming the repo remote or credentials are broken.

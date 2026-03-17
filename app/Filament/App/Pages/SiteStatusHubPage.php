@@ -3,20 +3,24 @@
 namespace App\Filament\App\Pages;
 
 use App\Filament\App\Widgets\BandwidthUsageStats;
+use App\Filament\App\Widgets\AvailabilityStatusStats;
 use App\Filament\App\Widgets\CacheDistributionChart;
+use App\Filament\App\Widgets\EdgeServiceStatusStats;
 use App\Filament\App\Widgets\SecurityPostureTrendChart;
 use App\Filament\App\Widgets\RegionalThreatLevelChart;
 use App\Filament\App\Widgets\RegionalTrafficShareChart;
-use App\Filament\App\Widgets\SiteSignalsStats;
+use App\Filament\App\Widgets\WordPress\WordPressConnectionStats;
 use App\Filament\App\Resources\SiteResource;
 use App\Jobs\CheckAcmDnsValidationJob;
 use App\Models\OrganizationSubscription;
 use App\Models\Plan;
 use App\Models\Site;
+use App\Models\SiteAvailabilityCheck;
 use App\Services\Billing\SiteBillingStateService;
 use App\Services\Billing\SiteUsageMeteringService;
 use App\Services\Billing\SubscriptionSiteAssignmentService;
 use App\Services\OrganizationAccessService;
+use App\Services\WordPress\PluginSiteService;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Illuminate\Http\Request;
@@ -92,19 +96,24 @@ class SiteStatusHubPage extends BaseProtectionPage
         }
 
         if ($this->isSimpleMode()) {
-            return [
-                SiteSignalsStats::class,
-                BandwidthUsageStats::class,
-            ];
+            return [];
         }
 
-        return [
+        $widgets = [
+            EdgeServiceStatusStats::class,
+            AvailabilityStatusStats::class,
             BandwidthUsageStats::class,
             RegionalTrafficShareChart::class,
             CacheDistributionChart::class,
             RegionalThreatLevelChart::class,
             SecurityPostureTrendChart::class,
         ];
+
+        if ($this->site?->pluginConnection) {
+            $widgets[] = WordPressConnectionStats::class;
+        }
+
+        return $widgets;
     }
 
     public function getHeaderWidgetsColumns(): int|array
@@ -414,5 +423,146 @@ class SiteStatusHubPage extends BaseProtectionPage
         }
 
         return app(SiteBillingStateService::class)->summaryForSite($this->site);
+    }
+
+    /**
+     * @return array<int, array{label:string,value:string,support:string,help:string,color:string}>
+     */
+    public function simpleServiceOverview(): array
+    {
+        if (! $this->site) {
+            return [];
+        }
+
+        $routing = $this->edgeRoutingStatus();
+        $wordpress = app(PluginSiteService::class);
+        $health = $this->site->pluginConnection ? $wordpress->wordpressHealthSummaryForSite($this->site) : [];
+        $scan = $this->site->pluginConnection ? $wordpress->wordpressScanSummaryForSite($this->site) : [];
+        $latestAvailability = $this->site->availabilityChecks()->latest('checked_at')->first();
+
+        $protectionValue = match ($routing['status'] ?? 'unavailable') {
+            'protected' => 'Protected',
+            'partial' => 'Partially Protected',
+            'drift' => 'Needs Attention',
+            default => $this->isSiteLive() ? 'Live' : 'Still onboarding',
+        };
+        $protectionColor = match ($routing['status'] ?? 'unavailable') {
+            'protected' => 'success',
+            'partial' => 'warning',
+            'drift' => 'danger',
+            default => 'gray',
+        };
+
+        $availabilityValue = 'Not checked yet';
+        $availabilitySupport = 'FirePhage has not run an availability check for this site yet.';
+        $availabilityColor = 'gray';
+
+        if ($latestAvailability instanceof SiteAvailabilityCheck) {
+            $availabilityValue = $latestAvailability->status === 'up' ? 'Up' : 'Down';
+            $availabilitySupport = $latestAvailability->status === 'up'
+                ? 'Latest monitor check succeeded'.($latestAvailability->latency_ms ? ' in '.$latestAvailability->latency_ms.' ms.' : '.')
+                : 'Latest monitor check reported a problem'.($latestAvailability->error_message ? ': '.$latestAvailability->error_message : '.');
+            $availabilityColor = $latestAvailability->status === 'up' ? 'success' : 'danger';
+        }
+
+        $wordpressValue = 'Not connected';
+        $wordpressSupport = 'Connect the plugin to start collecting WordPress health and malware scan data.';
+        $wordpressColor = 'gray';
+
+        if ($this->site->pluginConnection) {
+            $warnings = (int) ($health['warning'] ?? 0);
+            $critical = (int) ($health['critical'] ?? 0);
+            $suspicious = (int) ($scan['suspicious_files'] ?? 0);
+            $wordpressValue = $critical > 0 || $suspicious > 0
+                ? 'Needs review'
+                : 'Connected';
+            $wordpressSupport = $critical > 0 || $suspicious > 0
+                ? trim("{$critical} critical issue(s), {$warnings} warning(s), {$suspicious} suspicious file(s) reported.")
+                : 'Plugin is connected and recent health reports look stable.';
+            $wordpressColor = $critical > 0 || $suspicious > 0 ? 'warning' : 'success';
+        }
+
+        return [
+            [
+                'label' => 'Protection',
+                'value' => $protectionValue,
+                'support' => (string) ($routing['message'] ?? 'Traffic routing and protection status for this site.'),
+                'help' => 'This tells you whether traffic is actually flowing through FirePhage protection right now, not just whether the site was set up once.',
+                'color' => $protectionColor,
+            ],
+            [
+                'label' => 'Availability',
+                'value' => $availabilityValue,
+                'support' => $availabilitySupport,
+                'help' => 'Availability checks confirm whether the site is reachable from the outside. This is the closest simple uptime signal in the dashboard.',
+                'color' => $availabilityColor,
+            ],
+            [
+                'label' => 'Billing',
+                'value' => $this->siteBillingStatusLabel(),
+                'support' => $this->siteBillingDescription(),
+                'help' => 'Billing status controls whether paid protection and related features are active for this site.',
+                'color' => $this->siteBillingStatusColor(),
+            ],
+            [
+                'label' => 'SSL',
+                'value' => $this->certificateStatus(),
+                'support' => 'Certificate status for encrypted visitor traffic.',
+                'help' => 'SSL shows whether the site has a valid certificate in place or is still waiting on validation or issuance.',
+                'color' => str_contains(strtolower($this->certificateStatus()), 'active') || str_contains(strtolower($this->certificateStatus()), 'issued') ? 'success' : 'warning',
+            ],
+            [
+                'label' => 'CDN',
+                'value' => $this->distributionHealth(),
+                'support' => 'Edge delivery status for the site.',
+                'help' => 'CDN status tells you whether FirePhage edge delivery is deployed and healthy enough to serve traffic properly.',
+                'color' => $this->distributionHealth() === 'Healthy' ? 'success' : 'warning',
+            ],
+            [
+                'label' => 'Cache',
+                'value' => ucfirst($this->cacheMode()),
+                'support' => 'Current hit ratio: '.$this->metricCacheHitRatio(),
+                'help' => 'Cache mode affects how aggressively FirePhage serves repeat requests from the edge instead of your origin server.',
+                'color' => $this->cacheMode() === 'aggressive' ? 'success' : 'primary',
+            ],
+            [
+                'label' => 'WordPress',
+                'value' => $wordpressValue,
+                'support' => $wordpressSupport,
+                'help' => 'This summarizes whether the WordPress plugin is connected and whether recent health or malware reports need attention.',
+                'color' => $wordpressColor,
+            ],
+        ];
+    }
+
+    /**
+     * @return array{title:string,body:string,color:string}
+     */
+    public function simpleServiceOverviewRecommendation(): array
+    {
+        $items = collect($this->simpleServiceOverview());
+        $issues = $items->filter(fn (array $item): bool => in_array($item['color'], ['danger', 'warning'], true))->count();
+
+        if ($issues >= 3) {
+            return [
+                'title' => 'What to focus on first',
+                'body' => 'A few services need attention. Start with protection routing, billing status, and WordPress health so the site is both covered and monitored correctly.',
+                'color' => 'warning',
+            ];
+        }
+
+        if ($issues >= 1) {
+            return [
+                'title' => 'What to check next',
+                'body' => 'Most of the site looks healthy. Review the highlighted cards below to resolve the remaining setup or monitoring gaps.',
+                'color' => 'primary',
+            ];
+        }
+
+        return [
+            'title' => 'What this means',
+            'body' => 'Core services look healthy. This simple view keeps the main status signals visible without requiring you to open each technical page.',
+            'color' => 'success',
+        ];
     }
 }

@@ -8,7 +8,6 @@ use App\Filament\App\Widgets\Firewall\FirewallRequestMapWidget;
 use App\Filament\App\Widgets\Firewall\FirewallThreatSummaryStats;
 use App\Filament\App\Widgets\Firewall\FirewallTopCountriesTable;
 use App\Filament\App\Widgets\Firewall\FirewallTopIpsTable;
-use App\Filament\App\Widgets\SimpleActivityFeedTable;
 use App\Models\Site;
 use App\Services\Analytics\AnalyticsSyncManager;
 use App\Services\Bunny\BunnyLogsService;
@@ -76,10 +75,7 @@ class FirewallPage extends BaseProtectionPage
         }
 
         if ($this->isSimpleMode()) {
-            return [
-                FirewallThreatSummaryStats::class,
-                SimpleActivityFeedTable::class,
-            ];
+            return [];
         }
 
         return [
