@@ -261,6 +261,49 @@ class PluginSiteService
     }
 
     /**
+     * @return array<string, mixed>
+     */
+    public function statusSummary(PluginSiteConnection $connection): array
+    {
+        $site = $connection->site;
+        $site->loadMissing('organization.subscriptions.plan');
+        $access = $this->billingAccessSummaryForSite($site);
+
+        return [
+            'connected' => true,
+            'site' => [
+                'id' => (string) $site->id,
+                'domain' => (string) ($site->apex_domain ?: $site->name),
+                'provider' => (string) $site->provider,
+                'status' => (string) $site->status,
+                'onboarding_status' => (string) $site->onboarding_status,
+            ],
+            'plugin' => [
+                'status' => (string) $connection->status,
+                'home_url' => (string) $connection->home_url,
+                'site_url' => (string) $connection->site_url,
+                'admin_email' => (string) $connection->admin_email,
+                'plugin_version' => (string) $connection->plugin_version,
+                'last_connected_at' => optional($connection->last_connected_at)->toIso8601String(),
+                'last_seen_at' => optional($connection->last_seen_at)->toIso8601String(),
+                'last_reported_at' => optional($connection->last_reported_at)->toIso8601String(),
+            ],
+            'billing' => [
+                'pro_enabled' => (bool) $access['pro_enabled'],
+                'status' => (string) $access['status'],
+                'plan_name' => (string) ($access['plan_name'] ?? ''),
+                'message' => (string) $access['message'],
+            ],
+            'capabilities' => [
+                'report_upload' => true,
+                'firewall_summary' => (bool) $access['pro_enabled'],
+                'performance_summary' => (bool) $access['pro_enabled'],
+                'live_wordpress_telemetry' => (bool) $access['pro_enabled'],
+            ],
+        ];
+    }
+
+    /**
      * @return array<int, array<string, mixed>>
      */
     public function recentFirewallEventsForSite(Site $site, int $limit = 10): array

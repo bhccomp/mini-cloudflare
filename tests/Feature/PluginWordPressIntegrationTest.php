@@ -136,6 +136,42 @@ class PluginWordPressIntegrationTest extends TestCase
         $this->assertSame('wp-content/plugins/example/bad.php', $findings[0]['file']);
     }
 
+    public function test_connected_site_can_fetch_plugin_status_summary(): void
+    {
+        [$site] = $this->makeConnectedSite();
+
+        $plan = Plan::query()->create([
+            'code' => 'starter-status-test',
+            'name' => 'Starter',
+            'headline' => 'Starter',
+            'description' => 'Starter plan',
+            'monthly_price_cents' => 2900,
+            'yearly_price_cents' => 29000,
+            'included_websites' => 1,
+            'currency' => 'usd',
+            'is_active' => true,
+        ]);
+
+        $subscription = OrganizationSubscription::query()->create([
+            'organization_id' => $site->organization_id,
+            'site_id' => $site->id,
+            'plan_id' => $plan->id,
+            'status' => 'active',
+            'meta' => ['interval' => 'month'],
+        ]);
+        $subscription->sites()->attach($site->id);
+
+        $this->withToken('plugin-token')
+            ->getJson('/api/plugin/status?site_id='.$site->id)
+            ->assertOk()
+            ->assertJsonPath('connected', true)
+            ->assertJsonPath('site.id', (string) $site->id)
+            ->assertJsonPath('plugin.status', 'connected')
+            ->assertJsonPath('billing.pro_enabled', true)
+            ->assertJsonPath('billing.plan_name', 'Starter')
+            ->assertJsonPath('capabilities.report_upload', true);
+    }
+
     /**
      * @return array{0: Site, 1: PluginSiteConnection}
      */

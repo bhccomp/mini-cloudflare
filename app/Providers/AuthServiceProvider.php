@@ -21,5 +21,6 @@ class AuthServiceProvider extends ServiceProvider
         $this->registerPolicies();
 
         Gate::before(static fn ($user) => $user->is_super_admin ? true : null);
+        Gate::define('viewApiDocs', static fn ($user) => (bool) $user->is_super_admin);
     }
 }

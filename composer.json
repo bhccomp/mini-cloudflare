@@ -8,6 +8,7 @@
     "require": {
         "php": "^8.2",
         "aws/aws-sdk-php": "^3.370",
+        "dedoc/scramble": "^0.13.15",
         "filament/filament": "^5.2",
         "jeffgreco13/filament-breezy": "^3.2",
         "laravel/framework": "^12.0",

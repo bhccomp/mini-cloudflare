@@ -115,6 +115,26 @@
   - this app is not relying on Tailwind typography or a full SEO package for metadata management
   - if marketing pages need SEO changes, update the shared SEO component and page-level structured data directly
 
+## Future Public API Reminder
+- Current API coverage is primarily product-internal and plugin-facing:
+  - WordPress plugin connection
+  - free signature token flow
+  - checksum/signature feeds
+  - plugin report + telemetry summary endpoints
+- Future reminder:
+  - consider a true customer-facing/public API later for programmatic account and site management once the core dashboard/onboarding product is stable
+- Likely future public API candidates:
+  - API token management
+  - list/create/update sites
+  - site onboarding/provisioning status
+  - firewall summary and recent events
+  - usage / billing / overage status
+  - plugin token rotation / disconnect flows
+  - agency-oriented multi-site automation endpoints
+- Product note:
+  - do not expose the entire platform as a public API by default
+  - add customer-facing APIs selectively when there is a clear automation use case and support model
+
 ## GitHub Push Environment Note
 - In this environment, GitHub operations for the Laravel app repo may fail with `Could not resolve host: github.com` when run through the restricted command path.
 - If a Laravel repo `git push` or `git ls-remote` fails that way, retry it with unrestricted/escalated execution rather than assuming the repo remote or credentials are broken.
