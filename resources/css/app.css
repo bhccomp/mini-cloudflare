@@ -11,6 +11,202 @@
 }
 
 @layer components {
+    /* FirePhage app light mode palettes.
+       Default: Slate + Ice Blue
+       Alt: html[data-firephage-light-palette='mist-navy'] */
+    html:not(.dark) {
+        --fp-light-shell: #e8eef6;
+        --fp-light-surface: #f8fbff;
+        --fp-light-subtle-surface: #eef4fb;
+        --fp-light-border: rgba(15, 23, 42, 0.18);
+        --fp-light-strong-border: rgba(30, 41, 59, 0.22);
+        --fp-light-heading: rgb(15 23 42);
+        --fp-light-body: rgb(51 65 85);
+        --fp-light-input: #f3f7fc;
+        --fp-light-success-bg: #dcfce7;
+        --fp-light-success-border: #86efac;
+        --fp-light-success-text: #14532d;
+        --fp-light-warning-bg: #fef3c7;
+        --fp-light-warning-border: #fcd34d;
+        --fp-light-warning-text: #78350f;
+        --fp-light-danger-bg: #ffe4e6;
+        --fp-light-danger-border: #fda4af;
+        --fp-light-danger-text: #881337;
+        --fp-light-info-bg: #dbeafe;
+        --fp-light-info-border: #93c5fd;
+        --fp-light-info-text: #1e3a8a;
+    }
+
+    html:not(.dark)[data-firephage-light-palette='mist-navy'] {
+        --fp-light-shell: #edf1f7;
+        --fp-light-surface: #f9fbfe;
+        --fp-light-subtle-surface: #f1f5fb;
+        --fp-light-border: rgba(30, 41, 59, 0.16);
+        --fp-light-strong-border: rgba(15, 23, 42, 0.24);
+        --fp-light-heading: rgb(15 23 42);
+        --fp-light-body: rgb(71 85 105);
+        --fp-light-input: #f4f7fb;
+        --fp-light-success-bg: #e7f8ee;
+        --fp-light-success-border: #8ed8a8;
+        --fp-light-success-text: #14532d;
+        --fp-light-warning-bg: #fff1d6;
+        --fp-light-warning-border: #f5c86b;
+        --fp-light-warning-text: #7c3a0a;
+        --fp-light-danger-bg: #ffe8eb;
+        --fp-light-danger-border: #f3a3ad;
+        --fp-light-danger-text: #8a1838;
+        --fp-light-info-bg: #e3ebff;
+        --fp-light-info-border: #9fb7ff;
+        --fp-light-info-text: #1e3a8a;
+    }
+
+    /* FirePhage app light mode palette. Keep all light-mode-only overrides here so
+       the entire treatment can be reverted as one block if needed. */
+    html:not(.dark) .fi-panel-app.fi-body {
+        background: var(--fp-light-shell);
+    }
+
+    html:not(.dark) .fi-panel-app .fi-main {
+        color: var(--fp-light-heading);
+    }
+
+    html:not(.dark) .fi-panel-app .fi-topbar,
+    html:not(.dark) .fi-panel-app .fi-sidebar,
+    html:not(.dark) .fi-panel-app .fi-section,
+    html:not(.dark) .fi-panel-app .fi-ta-ctn,
+    html:not(.dark) .fi-panel-app .fi-fo-field-wrp,
+    html:not(.dark) .fi-panel-app .fi-in-entry-wrp,
+    html:not(.dark) .fi-panel-app .fi-wi-widget > .fi-section,
+    html:not(.dark) .fi-panel-app .fi-page-sub-navigation-sidebar,
+    html:not(.dark) .fi-panel-app .fi-page-sub-navigation-tabs {
+        border-color: var(--fp-light-border);
+    }
+
+    html:not(.dark) .fi-panel-app .fi-topbar,
+    html:not(.dark) .fi-panel-app .fi-sidebar,
+    html:not(.dark) .fi-panel-app .fi-page-sub-navigation-sidebar,
+    html:not(.dark) .fi-panel-app .fi-page-sub-navigation-tabs {
+        background-color: var(--fp-light-shell);
+    }
+
+    html:not(.dark) .fi-panel-app .fi-section,
+    html:not(.dark) .fi-panel-app .fi-ta-ctn,
+    html:not(.dark) .fi-panel-app .fi-fo-field-wrp,
+    html:not(.dark) .fi-panel-app .fi-in-entry-wrp,
+    html:not(.dark) .fi-panel-app .fi-wi-widget > .fi-section {
+        background-color: var(--fp-light-surface);
+    }
+
+    html:not(.dark) .fi-panel-app .fi-section .fi-section.fi-secondary,
+    html:not(.dark) .fi-panel-app .fi-section .fi-section.fi-compact.fi-secondary,
+    html:not(.dark) .fi-panel-app .fi-section .fi-wi-widget > .fi-section.fi-secondary,
+    html:not(.dark) .fi-panel-app .fi-section .fi-ta-ctn,
+    html:not(.dark) .fi-panel-app .fi-section .fi-ta-content-ctn {
+        background-color: var(--fp-light-subtle-surface);
+        border-color: var(--fp-light-strong-border);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+    }
+
+    html:not(.dark) .fi-panel-app .fi-section .fi-section.fi-secondary .fi-section-header-heading,
+    html:not(.dark) .fi-panel-app .fi-section .fi-section.fi-secondary .fi-section-header-description,
+    html:not(.dark) .fi-panel-app .fi-section .fi-section.fi-secondary .fi-section-content,
+    html:not(.dark) .fi-panel-app .fi-section .fi-section.fi-secondary .fi-ta-cell,
+    html:not(.dark) .fi-panel-app .fi-section .fi-section.fi-secondary .fi-ta-header-cell-label {
+        color: var(--fp-light-heading);
+    }
+
+    html:not(.dark) .fi-panel-app .fi-topbar,
+    html:not(.dark) .fi-panel-app .fi-sidebar {
+        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.04);
+    }
+
+    html:not(.dark) .fi-panel-app .fi-section,
+    html:not(.dark) .fi-panel-app .fi-ta-ctn,
+    html:not(.dark) .fi-panel-app .fi-wi-widget > .fi-section {
+        box-shadow: 0 10px 26px rgba(15, 23, 42, 0.045);
+    }
+
+    html:not(.dark) .fi-panel-app .fi-sidebar-group-label,
+    html:not(.dark) .fi-panel-app .fi-sidebar-item-label,
+    html:not(.dark) .fi-panel-app .fi-topbar-item-label,
+    html:not(.dark) .fi-panel-app .fi-page-header-heading,
+    html:not(.dark) .fi-panel-app .fi-section-header-heading,
+    html:not(.dark) .fi-panel-app .fi-ta-text,
+    html:not(.dark) .fi-panel-app .fi-input-wrp {
+        color: var(--fp-light-heading);
+    }
+
+    html:not(.dark) .fi-panel-app .fi-section-header-description,
+    html:not(.dark) .fi-panel-app .fi-page-header-description,
+    html:not(.dark) .fi-panel-app .fi-sidebar-item-description,
+    html:not(.dark) .fi-panel-app .fi-fo-field-wrp-helper-text,
+    html:not(.dark) .fi-panel-app .fi-ta-header-cell-label,
+    html:not(.dark) .fi-panel-app .fi-ta-cell {
+        color: var(--fp-light-body);
+    }
+
+    html:not(.dark) .fi-panel-app .fi-badge,
+    html:not(.dark) .fi-panel-app [class*='fi-color-'] .fi-badge,
+    html:not(.dark) .fi-panel-app .fi-badge-color-gray {
+        border-color: rgba(30, 41, 59, 0.14);
+    }
+
+    html:not(.dark) .fi-panel-app .bg-success-50,
+    html:not(.dark) .fi-panel-app .fi-color-success.fi-bg-color-50,
+    html:not(.dark) .fi-panel-app .fi-color-success.fi-bg-color-100 {
+        background-color: var(--fp-light-success-bg) !important;
+        color: var(--fp-light-success-text) !important;
+    }
+
+    html:not(.dark) .fi-panel-app .bg-warning-50,
+    html:not(.dark) .fi-panel-app .fi-color-warning.fi-bg-color-50,
+    html:not(.dark) .fi-panel-app .fi-color-warning.fi-bg-color-100 {
+        background-color: var(--fp-light-warning-bg) !important;
+        color: var(--fp-light-warning-text) !important;
+    }
+
+    html:not(.dark) .fi-panel-app .bg-danger-50,
+    html:not(.dark) .fi-panel-app .fi-color-danger.fi-bg-color-50,
+    html:not(.dark) .fi-panel-app .fi-color-danger.fi-bg-color-100 {
+        background-color: var(--fp-light-danger-bg) !important;
+        color: var(--fp-light-danger-text) !important;
+    }
+
+    html:not(.dark) .fi-panel-app .bg-primary-50,
+    html:not(.dark) .fi-panel-app .bg-info-50,
+    html:not(.dark) .fi-panel-app .fi-color-primary.fi-bg-color-50,
+    html:not(.dark) .fi-panel-app .fi-color-info.fi-bg-color-50 {
+        background-color: var(--fp-light-info-bg) !important;
+        color: var(--fp-light-info-text) !important;
+    }
+
+    html:not(.dark) .fi-panel-app .border-success-200,
+    html:not(.dark) .fi-panel-app .border-success-300 {
+        border-color: var(--fp-light-success-border) !important;
+    }
+
+    html:not(.dark) .fi-panel-app .border-warning-200,
+    html:not(.dark) .fi-panel-app .border-warning-300 {
+        border-color: var(--fp-light-warning-border) !important;
+    }
+
+    html:not(.dark) .fi-panel-app .border-danger-200,
+    html:not(.dark) .fi-panel-app .border-danger-300 {
+        border-color: var(--fp-light-danger-border) !important;
+    }
+
+    html:not(.dark) .fi-panel-app .border-primary-200,
+    html:not(.dark) .fi-panel-app .border-info-200 {
+        border-color: var(--fp-light-info-border) !important;
+    }
+
+    html:not(.dark) .fi-panel-app input,
+    html:not(.dark) .fi-panel-app select,
+    html:not(.dark) .fi-panel-app textarea {
+        background-color: var(--fp-light-input);
+        border-color: rgba(15, 23, 42, 0.24);
+    }
+
     .blog-article-content {
         color: rgb(203 213 225);
         font-size: 1rem;

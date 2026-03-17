@@ -205,6 +205,30 @@
   - `tests/Feature/UiModeTest.php` was updated to cover the new Simple Mode behavior
   - `AppProtectionNavigationTest` currently still contains an unrelated expectation mismatch from the billing/checkout redirect flow (`status-hub` vs Stripe checkout redirect)
 
+## Dashboard Light Mode Palette (Latest)
+- Dark mode should remain untouched unless explicitly requested.
+- Current design work is focused only on the Filament app light mode.
+- The original white-on-white Filament light mode was proving too flat for FirePhage because many nested cards, status widgets, and helper panels visually blended into their parent containers.
+- Current light-mode direction:
+  - a soft tinted shell instead of plain white
+  - slightly tinted main cards instead of pure white
+  - nested secondary sections / mini-widgets use a distinct lighter-blue surface so they separate from the white parent cards
+  - semantic status panels and badges use stronger pale success / warning / danger / info backgrounds so labels like `Needs Attention`, `Up`, `Not Set Up`, and `Active` are readable in light mode
+- Implementation note:
+  - this is intentionally isolated in one light-mode-only CSS block in:
+    - `resources/css/app.css`
+  - the block is meant to be easy to revert as one unit if needed
+- Current light palette presets in code:
+  - default: `Slate + Ice Blue`
+  - alternative: `Mist + Navy`
+- Current comparison setup:
+  - live app host keeps the default light palette
+  - `demo.firephage.com` now applies the alternate `Mist + Navy` palette via `resources/views/filament/app/components/panel-assets.blade.php`
+  - this makes it possible to compare two light-mode directions side by side without affecting dark mode
+- Operational note:
+  - palette changes in `resources/css/app.css` require a frontend rebuild with `pnpm --store-dir=/home/deploy/.local/share/pnpm/store/v10 build`
+  - after CSS changes, also refresh Laravel optimized views/config with `php artisan optimize`
+
 ## Demo Dashboard Host (Latest)
 - There is now a dedicated demo-host mode for `demo.firephage.com`.
 - Intended host behavior:

@@ -12,10 +12,10 @@
     <div class="space-y-5">
         <div @class([
             'rounded-2xl border px-4 py-3 text-sm',
-            'border-primary-500/30 bg-primary-500/10 text-primary-100' => $recommendation['color'] === 'primary',
-            'border-danger-500/30 bg-danger-500/10 text-danger-100' => $recommendation['color'] === 'danger',
-            'border-warning-500/30 bg-warning-500/10 text-warning-100' => $recommendation['color'] === 'warning',
-            'border-success-500/30 bg-success-500/10 text-success-100' => $recommendation['color'] === 'success',
+            'border-primary-200 bg-primary-50 text-primary-950 dark:border-primary-500/30 dark:bg-primary-500/10 dark:text-primary-100' => $recommendation['color'] === 'primary',
+            'border-danger-200 bg-danger-50 text-danger-950 dark:border-danger-500/30 dark:bg-danger-500/10 dark:text-danger-100' => $recommendation['color'] === 'danger',
+            'border-warning-200 bg-warning-50 text-warning-950 dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-warning-100' => $recommendation['color'] === 'warning',
+            'border-success-200 bg-success-50 text-success-950 dark:border-success-500/30 dark:bg-success-500/10 dark:text-success-100' => $recommendation['color'] === 'success',
             'border-gray-300 bg-gray-50 text-gray-700 dark:border-gray-800 dark:bg-gray-900/80 dark:text-gray-200' => ! in_array($recommendation['color'], ['primary', 'danger', 'warning', 'success'], true),
         ])>
             <p class="font-semibold">{{ $recommendation['title'] }}</p>

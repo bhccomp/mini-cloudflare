@@ -26,7 +26,7 @@
 
                 <div class="space-y-2 text-sm">
                     @if (! data_get($this->siteBillingState(), 'can_progress_protection', false))
-                        <div class="rounded-xl border border-warning-500/30 bg-warning-500/10 px-4 py-3 text-sm text-warning-100">
+                        <div class="rounded-xl border border-warning-200 bg-warning-50 px-4 py-3 text-sm text-warning-950 dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-warning-100">
                             {{ data_get($this->siteBillingState(), 'message') }}
                         </div>
                     @endif
