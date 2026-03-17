@@ -4,6 +4,7 @@ namespace App\Services\Bunny;
 
 use App\Models\EdgeRequestLog;
 use App\Models\Site;
+use App\Services\DemoModeService;
 use Carbon\Carbon;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
@@ -18,6 +19,10 @@ class BunnyLogsService
      */
     public function recentLogs(Site $site, int $limit = 200): array
     {
+        if (app(DemoModeService::class)->shouldUseDemoData($site)) {
+            return $this->recentLocalLogs($site, $limit);
+        }
+
         $zoneId = (int) ($site->provider_resource_id ?: data_get($site->provider_meta, 'zone_id', 0));
         if ($zoneId <= 0) {
             return [];
@@ -69,6 +74,10 @@ class BunnyLogsService
 
     public function syncToLocalStore(Site $site, int $limit = 500): int
     {
+        if (app(DemoModeService::class)->shouldUseDemoData($site)) {
+            return 0;
+        }
+
         $rows = $this->recentLogs($site, $limit);
 
         if ($rows === []) {
@@ -108,6 +117,34 @@ class BunnyLogsService
         EdgeRequestLog::query()->insert($payload);
 
         return count($payload);
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    protected function recentLocalLogs(Site $site, int $limit): array
+    {
+        return EdgeRequestLog::query()
+            ->where('site_id', $site->id)
+            ->latest('event_at')
+            ->limit($limit)
+            ->get()
+            ->map(function (EdgeRequestLog $log): array {
+                return [
+                    'timestamp' => $log->event_at,
+                    'action' => strtoupper((string) ($log->action ?? 'ALLOW')),
+                    'ip' => (string) ($log->ip ?? '-'),
+                    'country' => strtoupper((string) ($log->country ?? '??')),
+                    'method' => strtoupper((string) ($log->method ?? 'GET')),
+                    'uri' => (string) ($log->path ?? '/'),
+                    'rule' => (string) ($log->rule ?? 'demo'),
+                    'status_code' => (int) ($log->status_code ?? 200),
+                    'bytes' => (int) data_get($log->meta, 'bytes', 0),
+                    'user_agent' => (string) ($log->user_agent ?? ''),
+                    'host' => (string) ($log->host ?? $site->apex_domain),
+                ];
+            })
+            ->all();
     }
 
     /**

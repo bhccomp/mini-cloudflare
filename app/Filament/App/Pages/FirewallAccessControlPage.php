@@ -180,9 +180,14 @@ class FirewallAccessControlPage extends BaseProtectionPage implements HasForms
         return 1;
     }
 
+
     public function createRules(): void
     {
         if (! $this->site) {
+            return;
+        }
+
+        if (! $this->ensureNotDemoReadOnly('WAF rule changes')) {
             return;
         }
 
@@ -294,6 +299,10 @@ class FirewallAccessControlPage extends BaseProtectionPage implements HasForms
             return;
         }
 
+        if (! $this->ensureNotDemoReadOnly('Deploy staged WAF rules')) {
+            return;
+        }
+
         $count = app(FirewallAccessControlService::class)->deployStagedRules($this->site, (int) auth()->id());
         $this->dispatch('firewall-access-rules-updated');
 
@@ -306,6 +315,10 @@ class FirewallAccessControlPage extends BaseProtectionPage implements HasForms
     public function expireRulesNow(): void
     {
         if (! $this->site) {
+            return;
+        }
+
+        if (! $this->ensureNotDemoReadOnly('Expire WAF rules')) {
             return;
         }
 

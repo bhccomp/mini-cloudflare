@@ -5,6 +5,7 @@ namespace App\Services\Bunny;
 use App\Models\EdgeRequestLog;
 use App\Models\Site;
 use App\Models\SiteAnalyticsMetric;
+use App\Services\DemoModeService;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 
@@ -14,6 +15,10 @@ class BunnyAnalyticsService
 
     public function syncSiteMetrics(Site $site): ?SiteAnalyticsMetric
     {
+        if (app(DemoModeService::class)->shouldUseDemoData($site)) {
+            return $site->analyticsMetric?->fresh() ?? $site->analyticsMetric;
+        }
+
         $zoneId = (int) ($site->provider_resource_id ?: data_get($site->provider_meta, 'zone_id', 0));
         if ($zoneId <= 0) {
             return null;

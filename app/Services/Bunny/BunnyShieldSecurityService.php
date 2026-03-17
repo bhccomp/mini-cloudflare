@@ -18,6 +18,23 @@ class BunnyShieldSecurityService
      */
     public function currentSettings(Site $site): array
     {
+        if ($site->isDemoSeeded()) {
+            $saved = (array) data_get($site->provider_meta, 'shield_settings', []);
+
+            return [
+                'shield_zone_id' => 'demo-shield-zone',
+                'waf_sensitivity' => $this->normalizeSensitivity((string) ($saved['waf_sensitivity'] ?? 'medium')),
+                'ddos_sensitivity' => $this->normalizeSensitivity((string) ($saved['ddos_sensitivity'] ?? 'medium')),
+                'bot_sensitivity' => $this->normalizeSensitivity((string) ($saved['bot_sensitivity'] ?? 'medium')),
+                'challenge_window_minutes' => (int) ($saved['challenge_window_minutes'] ?? 30),
+                'waf_enabled' => (bool) ($saved['waf_enabled'] ?? true),
+                'premium_plan' => true,
+                'plan_type' => 1,
+                'whitelabel_response_pages' => true,
+                'raw' => ['demo_seeded' => true],
+            ];
+        }
+
         $shieldZoneId = $this->accessLists->ensureShieldZone($site);
         $response = $this->api->client()->get("/shield/shield-zone/{$shieldZoneId}");
 
@@ -64,6 +81,24 @@ class BunnyShieldSecurityService
      */
     public function updateSettings(Site $site, array $state): array
     {
+        if ($site->isDemoSeeded()) {
+            $meta = is_array($site->provider_meta) ? $site->provider_meta : [];
+            $meta['shield_settings'] = [
+                'waf_sensitivity' => $this->normalizeSensitivity((string) ($state['waf_sensitivity'] ?? 'medium')),
+                'ddos_sensitivity' => $this->normalizeSensitivity((string) ($state['ddos_sensitivity'] ?? 'medium')),
+                'bot_sensitivity' => $this->normalizeSensitivity((string) ($state['bot_sensitivity'] ?? 'medium')),
+                'challenge_window_minutes' => max(5, (int) ($state['challenge_window_minutes'] ?? 30)),
+                'waf_enabled' => true,
+                'updated_at' => now()->toIso8601String(),
+            ];
+            $site->forceFill(['provider_meta' => $meta])->save();
+
+            return [
+                'shield_zone_id' => 'demo-shield-zone',
+                'updated' => true,
+            ];
+        }
+
         $shieldZoneId = $this->accessLists->ensureShieldZone($site);
         $wafSensitivity = $this->normalizeSensitivity((string) ($state['waf_sensitivity'] ?? 'medium'));
         $ddosSensitivity = $this->normalizeSensitivity((string) ($state['ddos_sensitivity'] ?? 'medium'));
@@ -108,6 +143,14 @@ class BunnyShieldSecurityService
      */
     public function ensureAdvancedPlan(Site $site, ?int $shieldZoneId = null): array
     {
+        if ($site->isDemoSeeded()) {
+            return [
+                'shield_zone_id' => 'demo-shield-zone',
+                'changed' => false,
+                'message' => 'Demo dashboard uses a simulated Shield plan.',
+            ];
+        }
+
         $shieldZoneId ??= $this->accessLists->ensureShieldZone($site);
         $planType = (int) config('edge.bunny.shield_advanced_plan_type', 0);
 
@@ -167,6 +210,26 @@ class BunnyShieldSecurityService
      */
     public function setTroubleshootingMode(Site $site, bool $enabled, ?bool $restoreWafEnabled = null): array
     {
+        if ($site->isDemoSeeded()) {
+            $meta = is_array($site->provider_meta) ? $site->provider_meta : [];
+            $meta['shield_settings'] = array_merge((array) ($meta['shield_settings'] ?? []), [
+                'waf_enabled' => ! $enabled,
+                'troubleshooting_mode' => $enabled,
+                'updated_at' => now()->toIso8601String(),
+            ]);
+            $site->forceFill([
+                'provider_meta' => $meta,
+                'troubleshooting_mode' => $enabled,
+            ])->save();
+
+            return [
+                'shield_zone_id' => 'demo-shield-zone',
+                'changed' => true,
+                'waf_enabled' => ! $enabled,
+                'message' => $enabled ? 'Demo troubleshooting mode enabled.' : 'Demo troubleshooting mode disabled.',
+            ];
+        }
+
         $shieldZoneId = $this->accessLists->ensureShieldZone($site);
         $currentResponse = $this->api->client()->get("/shield/shield-zone/{$shieldZoneId}");
 
@@ -332,6 +395,10 @@ class BunnyShieldSecurityService
      */
     public function listRateLimits(Site $site): array
     {
+        if ($site->isDemoSeeded()) {
+            return (array) data_get($site->provider_meta, 'demo_rate_limits', []);
+        }
+
         $shieldZoneId = $this->accessLists->ensureShieldZone($site);
 
         $responses = [
@@ -359,6 +426,31 @@ class BunnyShieldSecurityService
      */
     public function createRateLimit(Site $site, array $state): array
     {
+        if ($site->isDemoSeeded()) {
+            $rules = collect((array) data_get($site->provider_meta, 'demo_rate_limits', []));
+            $rules->prepend([
+                'id' => 'demo-'.\Illuminate\Support\Str::uuid(),
+                'Name' => (string) ($state['name'] ?? 'Rate limit'),
+                'Description' => (string) ($state['description'] ?? ''),
+                'Enabled' => true,
+                'ActionType' => strtolower((string) ($state['action'] ?? 'block')),
+                'RuleConfiguration' => [
+                    'windowSeconds' => max(1, (int) ($state['window_seconds'] ?? 10)),
+                    'requestLimit' => max(1, (int) ($state['requests'] ?? 100)),
+                    'pathPattern' => trim((string) ($state['path_pattern'] ?? '')),
+                ],
+            ]);
+
+            $meta = is_array($site->provider_meta) ? $site->provider_meta : [];
+            $meta['demo_rate_limits'] = $rules->take(20)->values()->all();
+            $site->forceFill(['provider_meta' => $meta])->save();
+
+            return [
+                'id' => (string) data_get($meta, 'demo_rate_limits.0.id', 'demo-rate-limit'),
+                'response' => ['demo_seeded' => true],
+            ];
+        }
+
         $shieldZoneId = $this->accessLists->ensureShieldZone($site);
         $requests = max(1, (int) ($state['requests'] ?? 100));
         $window = max(1, (int) ($state['window_seconds'] ?? 10));

@@ -5,6 +5,7 @@ namespace App\Services\Billing;
 use App\Models\OrganizationSubscription;
 use App\Models\Plan;
 use App\Models\Site;
+use App\Services\DemoModeService;
 use Carbon\CarbonImmutable;
 use Stripe\StripeClient;
 
@@ -56,6 +57,10 @@ class SiteUsageMeteringService
 
     public function syncCurrentMonthOverageToStripe(Site $site): array
     {
+        if (app(DemoModeService::class)->shouldUseDemoData($site)) {
+            return ['reported' => false, 'reason' => 'demo_mode'];
+        }
+
         $subscription = $this->subscriptionForSite($site);
         $plan = $subscription?->plan;
 

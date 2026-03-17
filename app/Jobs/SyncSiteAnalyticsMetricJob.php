@@ -24,7 +24,7 @@ class SyncSiteAnalyticsMetricJob implements ShouldQueue
     {
         $site = Site::query()->find($this->siteId);
 
-        if (! $site) {
+        if (! $site || $site->isDemoSeeded()) {
             return;
         }
 

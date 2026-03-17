@@ -77,6 +77,10 @@ class FirewallShieldSettingsPage extends BaseProtectionPage implements HasForms
             return;
         }
 
+        if (! $this->ensureNotDemoReadOnly('Shield setting changes')) {
+            return;
+        }
+
         $state = $this->form->getState();
 
         try {
@@ -122,4 +126,5 @@ class FirewallShieldSettingsPage extends BaseProtectionPage implements HasForms
             Notification::make()->title('Unable to load Shield settings.')->body($e->getMessage())->warning()->send();
         }
     }
+
 }

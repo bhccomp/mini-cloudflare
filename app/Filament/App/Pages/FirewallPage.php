@@ -106,6 +106,10 @@ class FirewallPage extends BaseProtectionPage
             return;
         }
 
+        if (! $this->ensureNotDemoReadOnly('Firewall sync')) {
+            return;
+        }
+
         $this->throttle('firewall-sync');
 
         app(FirewallInsightsPresenter::class)->forget($this->site);

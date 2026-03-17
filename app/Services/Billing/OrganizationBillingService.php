@@ -4,6 +4,7 @@ namespace App\Services\Billing;
 
 use App\Models\Organization;
 use App\Models\OrganizationSubscription;
+use App\Services\DemoModeService;
 use App\Services\OrganizationAccessService;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
@@ -39,6 +40,31 @@ class OrganizationBillingService
      */
     public function invoices(?Organization $organization, int $limit = 12): Collection
     {
+        if (app(DemoModeService::class)->shouldUseDemoBilling($organization)) {
+            return collect([
+                [
+                    'id' => 'in_demo_001',
+                    'number' => 'FP-DEMO-001',
+                    'status' => 'paid',
+                    'currency' => 'USD',
+                    'total' => 9900,
+                    'hosted_invoice_url' => '',
+                    'invoice_pdf' => '',
+                    'created_at' => now()->subDays(12),
+                ],
+                [
+                    'id' => 'in_demo_002',
+                    'number' => 'FP-DEMO-002',
+                    'status' => 'paid',
+                    'currency' => 'USD',
+                    'total' => 600,
+                    'hosted_invoice_url' => '',
+                    'invoice_pdf' => '',
+                    'created_at' => now()->subDays(2),
+                ],
+            ])->take($limit);
+        }
+
         if (! $organization || ! $this->hasStripeConfigured()) {
             return collect();
         }
@@ -69,6 +95,13 @@ class OrganizationBillingService
 
     public function ensureStripeCustomer(Organization $organization): string
     {
+        if (app(DemoModeService::class)->shouldUseDemoBilling($organization)) {
+            $customerId = 'cus_demo_firephage';
+            $organization->forceFill(['stripe_customer_id' => $customerId])->save();
+
+            return $customerId;
+        }
+
         if (! $this->hasStripeConfigured()) {
             throw new \RuntimeException('Stripe secret is not configured.');
         }
@@ -103,6 +136,10 @@ class OrganizationBillingService
 
     public function createCustomerPortalUrl(Organization $organization, string $returnUrl): string
     {
+        if (app(DemoModeService::class)->shouldUseDemoBilling($organization)) {
+            throw new \RuntimeException('Stripe customer portal is disabled in the demo environment.');
+        }
+
         $customerId = $this->ensureStripeCustomer($organization);
 
         $session = $this->stripe()->billingPortal->sessions->create([

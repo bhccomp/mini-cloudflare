@@ -14,6 +14,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
+Route::domain(config('demo.host'))->group(function (): void {
+    Route::get('/', fn () => redirect('/app'));
+});
+
 Route::view('/', 'marketing.home-variant-1')
     ->middleware(RedirectPublicHomeToEarlyAccess::class)
     ->name('home');

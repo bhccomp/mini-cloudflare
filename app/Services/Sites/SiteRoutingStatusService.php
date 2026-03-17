@@ -13,6 +13,16 @@ class SiteRoutingStatusService
      */
     public function statusForSite(Site $site, bool $fresh = false): array
     {
+        if ($site->isDemoSeeded()) {
+            $demoStatus = data_get($site->required_dns_records, 'demo_routing_status');
+
+            if (is_array($demoStatus)) {
+                $demoStatus['checked_at'] = now();
+
+                return $demoStatus;
+            }
+        }
+
         $key = $this->cacheKey($site);
 
         if ($fresh) {

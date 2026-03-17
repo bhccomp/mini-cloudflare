@@ -2,7 +2,10 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Auth\AppLogin;
 use App\Filament\App\Pages\FirewallPage;
+use App\Http\Middleware\RestrictDemoDashboardPages;
+use App\Http\Middleware\RollbackDemoDatabaseChanges;
 use App\Http\Middleware\RedirectUnauthenticatedAppToLogin;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -30,7 +33,7 @@ class UserPanelProvider extends PanelProvider
             ->default()
             ->id('app')
             ->path('app')
-            ->login()
+            ->login(AppLogin::class)
             ->colors([
                 'primary' => Color::Blue,
             ])
@@ -44,10 +47,10 @@ class UserPanelProvider extends PanelProvider
                 FirewallPage::class,
             ])
             ->navigationGroups([
-                NavigationGroup::make()->label('General')->collapsed(),
-                NavigationGroup::make()->label('Security & Protection')->collapsed(),
-                NavigationGroup::make()->label('Performance')->collapsed(),
-                NavigationGroup::make()->label('Monitoring')->collapsed(),
+                NavigationGroup::make()->label('General')->collapsed(false),
+                NavigationGroup::make()->label('Security & Protection')->collapsed(false),
+                NavigationGroup::make()->label('Performance')->collapsed(false),
+                NavigationGroup::make()->label('Monitoring')->collapsed(false),
                 NavigationGroup::make()->label('Account')->collapsed(),
                 NavigationGroup::make()->label('Alerts')->collapsed(),
             ])
@@ -80,11 +83,13 @@ class UserPanelProvider extends PanelProvider
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
                 StartSession::class,
+                RollbackDemoDatabaseChanges::class,
                 RedirectUnauthenticatedAppToLogin::class,
                 AuthenticateSession::class,
                 ShareErrorsFromSession::class,
                 VerifyCsrfToken::class,
                 SubstituteBindings::class,
+                RestrictDemoDashboardPages::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
             ])

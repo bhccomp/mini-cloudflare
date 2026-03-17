@@ -63,6 +63,10 @@ class AvailabilityMonitorPage extends BaseProtectionPage
             return;
         }
 
+        if (! $this->ensureNotDemoReadOnly('Availability checks')) {
+            return;
+        }
+
         $check = app(AvailabilityMonitorService::class)->runCheck($this->site);
         $this->dispatch('refresh');
 
@@ -77,6 +81,10 @@ class AvailabilityMonitorPage extends BaseProtectionPage
         $organization = auth()->user()?->currentOrganization;
 
         if (! $organization) {
+            return;
+        }
+
+        if (! $this->ensureNotDemoReadOnly('Availability checks')) {
             return;
         }
 

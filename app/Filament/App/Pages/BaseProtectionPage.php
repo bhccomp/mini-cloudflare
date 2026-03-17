@@ -14,6 +14,7 @@ use App\Jobs\ToggleUnderAttackModeJob;
 use App\Models\AuditLog;
 use App\Models\Site;
 use App\Services\Billing\SiteBillingStateService;
+use App\Services\DemoModeService;
 use App\Services\Edge\EdgeProviderManager;
 use App\Services\Firewall\FirewallInsightsPresenter;
 use App\Services\SiteContext;
@@ -88,6 +89,26 @@ abstract class BaseProtectionPage extends Page
     public function showProModePrompt(): bool
     {
         return $this->isSimpleMode() && $this->site !== null;
+    }
+
+    public function isDemoReadOnly(): bool
+    {
+        return app(DemoModeService::class)->isReadOnlyDemoSite($this->site);
+    }
+
+    protected function ensureNotDemoReadOnly(string $action = 'This action'): bool
+    {
+        if (! $this->isDemoReadOnly()) {
+            return true;
+        }
+
+        Notification::make()
+            ->title('Demo environment is read-only.')
+            ->body($action.' is disabled on demo.firephage.com. This dashboard is for review only.')
+            ->warning()
+            ->send();
+
+        return false;
     }
 
     /**
@@ -249,6 +270,10 @@ abstract class BaseProtectionPage extends Page
             return;
         }
 
+        if (! $this->ensureNotDemoReadOnly('Provisioning')) {
+            return;
+        }
+
         if (! $this->ensureBillingReadyForProtectionAction('Provisioning')) {
             return;
         }
@@ -285,6 +310,10 @@ abstract class BaseProtectionPage extends Page
             return;
         }
 
+        if (! $this->ensureNotDemoReadOnly('DNS validation')) {
+            return;
+        }
+
         if (! $this->ensureBillingReadyForProtectionAction('DNS validation')) {
             return;
         }
@@ -307,6 +336,10 @@ abstract class BaseProtectionPage extends Page
     public function checkCutover(): void
     {
         if (! $this->site) {
+            return;
+        }
+
+        if (! $this->ensureNotDemoReadOnly('Cutover checks')) {
             return;
         }
 
@@ -335,6 +368,10 @@ abstract class BaseProtectionPage extends Page
             return;
         }
 
+        if (! $this->ensureNotDemoReadOnly('Cache purge')) {
+            return;
+        }
+
         InvalidateCloudFrontCacheJob::dispatch($this->site->id, ['/*'], auth()->id());
         $this->notify('Cache purge queued');
     }
@@ -345,6 +382,10 @@ abstract class BaseProtectionPage extends Page
             return;
         }
 
+        if (! $this->ensureNotDemoReadOnly('Under Attack mode')) {
+            return;
+        }
+
         ToggleUnderAttackModeJob::dispatch($this->site->id, ! $this->site->under_attack, auth()->id());
         $this->notify('Firewall mode update queued');
     }
@@ -352,6 +393,10 @@ abstract class BaseProtectionPage extends Page
     public function toggleDevelopmentMode(): void
     {
         if (! $this->site) {
+            return;
+        }
+
+        if (! $this->ensureNotDemoReadOnly('Development mode')) {
             return;
         }
 
@@ -374,6 +419,10 @@ abstract class BaseProtectionPage extends Page
     public function toggleTroubleshootingMode(): void
     {
         if (! $this->site) {
+            return;
+        }
+
+        if (! $this->ensureNotDemoReadOnly('Troubleshooting mode')) {
             return;
         }
 
@@ -470,6 +519,10 @@ abstract class BaseProtectionPage extends Page
             return;
         }
 
+        if (! $this->ensureNotDemoReadOnly('HTTPS enforcement')) {
+            return;
+        }
+
         $current = (bool) data_get($this->site->required_dns_records, 'control_panel.https_enforced', true);
         ApplySiteControlSettingJob::dispatch($this->site->id, 'https_enforced', ! $current, auth()->id());
         $this->notify('HTTPS enforcement update queued');
@@ -481,6 +534,10 @@ abstract class BaseProtectionPage extends Page
             return;
         }
 
+        if (! $this->ensureNotDemoReadOnly('Cache mode')) {
+            return;
+        }
+
         $mode = $this->cacheMode() === 'aggressive' ? 'standard' : 'aggressive';
         ApplySiteControlSettingJob::dispatch($this->site->id, 'cache_mode', $mode, auth()->id());
         $this->notify('Cache mode update queued');
@@ -489,6 +546,10 @@ abstract class BaseProtectionPage extends Page
     public function toggleOriginProtection(): void
     {
         if (! $this->site) {
+            return;
+        }
+
+        if (! $this->ensureNotDemoReadOnly('Origin protection')) {
             return;
         }
 

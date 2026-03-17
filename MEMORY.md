@@ -205,6 +205,38 @@
   - `tests/Feature/UiModeTest.php` was updated to cover the new Simple Mode behavior
   - `AppProtectionNavigationTest` currently still contains an unrelated expectation mismatch from the billing/checkout redirect flow (`status-hub` vs Stripe checkout redirect)
 
+## Demo Dashboard Host (Latest)
+- There is now a dedicated demo-host mode for `demo.firephage.com`.
+- Intended host behavior:
+  - demo host should be dashboard-only
+  - non-dashboard demo-host routes should redirect toward `/app`
+  - public marketing pages are not the intended experience on the demo host
+- Demo login flow:
+  - current direction is a real Filament app login screen on the demo host, not a separate marketing/demo login route
+  - demo credentials are prefilled by a custom Filament login page:
+    - `App\Filament\Auth\AppLogin`
+  - successful login uses a custom login response:
+    - `App\Filament\Auth\DemoLoginResponse`
+  - the target after login is the seeded demo site experience (Status Hub/site context), not a generic blank app landing
+  - demo login currently includes a simple app-side captcha for bot friction
+  - if stronger bot protection is needed later, replace that with Cloudflare Turnstile once keys are available
+- Demo data + safety model:
+  - seeded by:
+    - `php artisan demo:seed-dashboard`
+  - scheduled refresh now exists via `routes/console.php`
+  - current refresh cadence is configured in `config/demo.php` and defaults to every 6 hours
+  - current cleanup command:
+    - `php artisan demo:cleanup-dashboard`
+  - intended retention is to keep demo telemetry fresh and remove stale demo-seeded data older than 14 days
+- Demo read-only / isolation direction:
+  - demo dashboard requests are now wrapped in a rollback middleware so attempted DB writes do not persist
+  - unsafe demo routes like profile/settings/billing/create/edit flows are redirected away via demo route restrictions
+  - core provider-backed reads for demo sites now prefer seeded local data instead of hitting live provider APIs where possible
+  - background analytics sync should skip demo-seeded sites
+- Important operational note:
+  - if the demo dashboard looks broken with repeated `405` errors, check demo-host route restrictions against the actual hashed Livewire route prefix (`livewire-*`) rather than only `/livewire/*`
+  - demo-host middleware must allow the hashed Livewire update/upload routes or the dashboard will partially render and then break in the browser console
+
 ## GitHub Push Environment Note
 - In this environment, GitHub operations for the Laravel app repo may fail with `Could not resolve host: github.com` when run through the restricted command path.
 - If a Laravel repo `git push` or `git ls-remote` fails that way, retry it with unrestricted/escalated execution rather than assuming the repo remote or credentials are broken.

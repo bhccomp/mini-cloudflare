@@ -38,6 +38,14 @@ class AvailabilityMonitorService
 
     public function runCheck(Site $site): SiteAvailabilityCheck
     {
+        if (app(DemoModeService::class)->isDemoSite($site)) {
+            $existing = $site->availabilityChecks()->latest('checked_at')->first();
+
+            if ($existing) {
+                return $existing;
+            }
+        }
+
         $startedAt = microtime(true);
         $target = 'https://'.$site->apex_domain.'/';
 
@@ -90,6 +98,10 @@ class AvailabilityMonitorService
             ->chunkById(100, function (Collection $sites) use (&$count): void {
                 foreach ($sites as $site) {
                     if (! $site instanceof Site) {
+                        continue;
+                    }
+
+                    if (app(DemoModeService::class)->isDemoSite($site)) {
                         continue;
                     }
 

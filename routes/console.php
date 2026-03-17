@@ -18,6 +18,10 @@ Artisan::command('metrics:sync-sites', function () {
 
     Site::query()
         ->whereNotNull('cloudfront_distribution_id')
+        ->where(function ($query): void {
+            $query->whereNull('provider_meta->demo_seeded')
+                ->orWhere('provider_meta->demo_seeded', false);
+        })
         ->whereIn('status', [
             Site::STATUS_DEPLOYING,
             Site::STATUS_READY_FOR_CUTOVER,
@@ -61,4 +65,12 @@ Artisan::command('availability:run-due', function (AvailabilityMonitorService $m
 
 Schedule::command('availability:run-due')
     ->everyMinute()
+    ->withoutOverlapping();
+
+Schedule::command('demo:seed-dashboard')
+    ->cron((string) config('demo.refresh_cron', '0 */6 * * *'))
+    ->withoutOverlapping();
+
+Schedule::command('demo:cleanup-dashboard')
+    ->cron((string) config('demo.cleanup_cron', '30 3 * * *'))
     ->withoutOverlapping();

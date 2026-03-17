@@ -105,6 +105,10 @@ class FirewallRateLimitingPage extends BaseProtectionPage implements HasForms
             return;
         }
 
+        if (! $this->ensureNotDemoReadOnly('Rate limit changes')) {
+            return;
+        }
+
         try {
             app(BunnyShieldSecurityService::class)->createRateLimit($this->site, $this->form->getState());
             $this->reloadState();
@@ -140,4 +144,5 @@ class FirewallRateLimitingPage extends BaseProtectionPage implements HasForms
             Notification::make()->title('Unable to load rate limit rules.')->body($e->getMessage())->warning()->send();
         }
     }
+
 }
