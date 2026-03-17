@@ -30,6 +30,15 @@
   - premium dark/cyan marketing direction aligned with the existing homepage
   - focused on launch pricing, human-friendly dashboard clarity, and free assisted onboarding
   - recent iteration priority has been layout quality, spacing rhythm, and calmer section composition rather than adding new content
+- Marketing/legal pages follow-up:
+  - public legal pages now exist for:
+    - `/terms`
+    - `/privacy`
+    - `/refund-policy`
+    - `/acceptable-use`
+  - all legal pages use a shared premium dark/cyan marketing layout rather than plain scaffolding
+  - both marketing footer variants now link to all legal pages plus contact
+  - homepage hero spacing was tightened slightly under the trust strip (`Already protecting 40+ WordPress websites ...`) so the next section sits closer
 
 ## GitHub Push Environment Note
 - In this environment, GitHub operations for the Laravel app repo may fail with `Could not resolve host: github.com` when run through the restricted command path.

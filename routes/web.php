@@ -18,6 +18,10 @@ Route::get('/early-access', [EarlyAccessController::class, 'create'])->name('ear
 Route::post('/early-access', [EarlyAccessController::class, 'store'])->name('early-access.store');
 Route::view('/blue-alternative', 'marketing.home')->name('home.blue');
 Route::view('/contact', 'marketing.contact')->name('contact');
+Route::view('/terms', 'marketing.terms')->name('terms');
+Route::view('/privacy', 'marketing.privacy')->name('privacy');
+Route::view('/refund-policy', 'marketing.refund-policy')->name('refund-policy');
+Route::view('/acceptable-use', 'marketing.acceptable-use')->name('acceptable-use');
 Route::view('/logos', 'marketing.logos')->name('logos');
 Route::post('/stripe/webhook', StripeWebhookController::class)->name('stripe.webhook');
 Route::middleware('guest')->group(function (): void {
