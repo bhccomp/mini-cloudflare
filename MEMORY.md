@@ -329,6 +329,54 @@
   - if the demo dashboard looks broken with repeated `405` errors, check demo-host route restrictions against the actual hashed Livewire route prefix (`livewire-*`) rather than only `/livewire/*`
   - demo-host middleware must allow the hashed Livewire update/upload routes or the dashboard will partially render and then break in the browser console
 
+## Support / Ticketing (Latest)
+- Installed `daacreators/creators-ticketing` as the current in-app support system.
+- Current admin-side setup:
+  - package config published to `config/creators-ticketing.php`
+  - plugin registered in `app/Providers/Filament/AdminPanelProvider.php`
+  - visibility is based on `is_super_admin` instead of hard-coded admin emails
+  - package tables were migrated
+  - default ticket statuses were inserted manually because the package seeder failed on the current Postgres setup
+- Current customer-side setup:
+  - logged-in users now have a support page at `/app/support`
+  - page class:
+    - `app/Filament/App/Pages/SupportPage.php`
+  - page view:
+    - `resources/views/filament/app/pages/support-page.blade.php`
+  - it mounts the package’s own Livewire ticket UI:
+    - new ticket submission
+    - My Tickets list
+    - single-ticket conversation view
+- Current notification flow:
+  - admin/internal:
+    - new ticket created
+    - customer public reply
+  - customer:
+    - ticket created confirmation
+    - admin/agent reply notification
+- Notification routing notes:
+  - current app-side routing logic lives in:
+    - `app/Services/Support/TicketingNotificationService.php`
+  - new ticket notifications are deduped because the package currently fires `TicketCreated` twice
+  - admin recipient priority:
+    - assigned user first when relevant
+    - then department users with ticket permissions
+    - then super admins as fallback
+  - internal notes should not notify customers
+- Current app-side support notification files:
+  - `app/Notifications/TicketCreatedAdminNotification.php`
+  - `app/Notifications/TicketCustomerReplyAdminNotification.php`
+  - `app/Notifications/TicketCreatedCustomerNotification.php`
+  - `app/Notifications/TicketAgentReplyCustomerNotification.php`
+  - email views under `resources/views/emails/`
+- Important package caveat:
+  - `daacreators/creators-ticketing` currently calls `chmod()` in its service provider boot path
+  - on this server that caused 500s because the operation is not permitted under current filesystem ownership
+  - the local server was stabilized with a vendor patch in:
+    - `vendor/daacreators/creators-ticketing/src/TicketingServiceProvider.php`
+  - that vendor patch is local-only and not represented in Git
+  - if this package is installed on another environment, expect the same crash unless that `chmod()` behavior is patched or the package is replaced/forked
+
 ## GitHub Push Environment Note
 - In this environment, GitHub operations for the Laravel app repo may fail with `Could not resolve host: github.com` when run through the restricted command path.
 - If a Laravel repo `git push` or `git ls-remote` fails that way, retry it with unrestricted/escalated execution rather than assuming the repo remote or credentials are broken.

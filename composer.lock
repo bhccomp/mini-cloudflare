@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "e6a09835604e70cc9fb2bb15281ab010",
+    "content-hash": "ed4447ed257c0138bc1dda7548799db1",
     "packages": [
         {
             "name": "anourvalar/eloquent-serialize",
@@ -715,6 +715,56 @@
                 }
             ],
             "time": "2024-07-16T11:13:48+00:00"
+        },
+        {
+            "name": "daacreators/creators-ticketing",
+            "version": "v1.2.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/jabirmayar/creators-ticketing.git",
+                "reference": "40118783e9d0d6dfdd56ef3624190786993a3471"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/jabirmayar/creators-ticketing/zipball/40118783e9d0d6dfdd56ef3624190786993a3471",
+                "reference": "40118783e9d0d6dfdd56ef3624190786993a3471",
+                "shasum": ""
+            },
+            "require": {
+                "filament/filament": "^4.1|^5.1",
+                "illuminate/contracts": "^11.28|^12.0",
+                "php": "^8.2"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "daacreators\\CreatorsTicketing\\TicketingServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "daacreators\\CreatorsTicketing\\": "src/",
+                    "daacreators\\CreatorsTicketing\\Database\\Seeders\\": "database/seeders/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Jabir Khan",
+                    "email": "hello@jabirkhan.com"
+                }
+            ],
+            "description": "A robust and dynamic ticketing system for Filament",
+            "support": {
+                "issues": "https://github.com/jabirmayar/creators-ticketing/issues",
+                "source": "https://github.com/jabirmayar/creators-ticketing/tree/v1.2.0"
+            },
+            "time": "2026-02-07T10:53:26+00:00"
         },
         {
             "name": "danharrin/date-format-converter",
