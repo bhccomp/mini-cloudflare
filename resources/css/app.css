@@ -12,52 +12,125 @@
 
 @layer components {
     /* FirePhage app light mode palettes.
-       Default: Slate + Ice Blue
-       Alt: html[data-firephage-light-palette='mist-navy'] */
+       Default: frost-ice-infra
+       Alts:
+       - slate-electric-cyan
+       - warm-infra-stone */
     html:not(.dark) {
-        --fp-light-shell: #e8eef6;
-        --fp-light-surface: #f8fbff;
-        --fp-light-subtle-surface: #eef4fb;
-        --fp-light-border: rgba(15, 23, 42, 0.18);
-        --fp-light-strong-border: rgba(30, 41, 59, 0.22);
-        --fp-light-heading: rgb(15 23 42);
-        --fp-light-body: rgb(51 65 85);
-        --fp-light-input: #f3f7fc;
-        --fp-light-success-bg: #dcfce7;
-        --fp-light-success-border: #86efac;
-        --fp-light-success-text: #14532d;
-        --fp-light-warning-bg: #fef3c7;
+        --fp-light-shell: #f2f6fa;
+        --fp-light-sidebar: #eef4fb;
+        --fp-light-topbar: rgba(255, 255, 255, 0.88);
+        --fp-light-surface: #ffffff;
+        --fp-light-subtle-surface: #f2f7fc;
+        --fp-light-card: #ffffff;
+        --fp-light-card-hover: #fbfdff;
+        --fp-light-border: #e6ebf2;
+        --fp-light-strong-border: #d8e2ee;
+        --fp-light-heading: #0f172a;
+        --fp-light-body: #64748b;
+        --fp-light-input: #f8fbff;
+        --fp-light-hover: #edf4ff;
+        --fp-light-active-bg: #e8f1ff;
+        --fp-light-active-border: rgba(37, 99, 235, 0.18);
+        --fp-light-active-text: #2563eb;
+        --fp-light-link: #2563eb;
+        --fp-light-link-hover: #1d4ed8;
+        --fp-light-shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.06);
+        --fp-light-shadow-md: 0 12px 28px rgba(0, 0, 0, 0.12);
+        --fp-light-shadow-panel: 0 4px 10px rgba(0, 0, 0, 0.06), 0 20px 40px rgba(15, 23, 42, 0.06);
+        --fp-light-success-bg: rgba(22, 163, 74, 0.1);
+        --fp-light-success-border: #bbf7d0;
+        --fp-light-success-text: #166534;
+        --fp-light-warning-bg: rgba(245, 158, 11, 0.14);
         --fp-light-warning-border: #fcd34d;
-        --fp-light-warning-text: #78350f;
-        --fp-light-danger-bg: #ffe4e6;
-        --fp-light-danger-border: #fda4af;
-        --fp-light-danger-text: #881337;
-        --fp-light-info-bg: #dbeafe;
-        --fp-light-info-border: #93c5fd;
-        --fp-light-info-text: #1e3a8a;
+        --fp-light-warning-text: #92400e;
+        --fp-light-danger-bg: rgba(239, 68, 68, 0.12);
+        --fp-light-danger-border: #fecdd3;
+        --fp-light-danger-text: #9f1239;
+        --fp-light-info-bg: #ecfeff;
+        --fp-light-info-border: #a5f3fc;
+        --fp-light-info-text: #155e75;
+        --fp-light-operational-bg: #eff6ff;
+        --fp-light-operational-border: #bfdbfe;
+        --fp-light-operational-text: #1d4ed8;
     }
 
-    html:not(.dark)[data-firephage-light-palette='mist-navy'] {
-        --fp-light-shell: #edf1f7;
-        --fp-light-surface: #f9fbfe;
-        --fp-light-subtle-surface: #f1f5fb;
-        --fp-light-border: rgba(30, 41, 59, 0.16);
-        --fp-light-strong-border: rgba(15, 23, 42, 0.24);
-        --fp-light-heading: rgb(15 23 42);
-        --fp-light-body: rgb(71 85 105);
-        --fp-light-input: #f4f7fb;
-        --fp-light-success-bg: #e7f8ee;
-        --fp-light-success-border: #8ed8a8;
-        --fp-light-success-text: #14532d;
-        --fp-light-warning-bg: #fff1d6;
-        --fp-light-warning-border: #f5c86b;
-        --fp-light-warning-text: #7c3a0a;
-        --fp-light-danger-bg: #ffe8eb;
-        --fp-light-danger-border: #f3a3ad;
-        --fp-light-danger-text: #8a1838;
-        --fp-light-info-bg: #e3ebff;
-        --fp-light-info-border: #9fb7ff;
-        --fp-light-info-text: #1e3a8a;
+    html:not(.dark)[data-firephage-light-palette='slate-electric-cyan'] {
+        --fp-light-shell: #f4f6f8;
+        --fp-light-sidebar: #edf3f7;
+        --fp-light-topbar: rgba(255, 255, 255, 0.9);
+        --fp-light-surface: #ffffff;
+        --fp-light-subtle-surface: #f2f8fb;
+        --fp-light-card: #ffffff;
+        --fp-light-card-hover: #fbfdff;
+        --fp-light-border: #e5e7eb;
+        --fp-light-strong-border: #d5dde6;
+        --fp-light-heading: #0b1220;
+        --fp-light-body: #6b7280;
+        --fp-light-input: #f7fbfd;
+        --fp-light-hover: #ebf8ff;
+        --fp-light-active-bg: #e0f2fe;
+        --fp-light-active-border: rgba(14, 165, 233, 0.2);
+        --fp-light-active-text: #0ea5e9;
+        --fp-light-link: #06b6d4;
+        --fp-light-link-hover: #0891b2;
+        --fp-light-shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.06);
+        --fp-light-shadow-md: 0 12px 28px rgba(0, 0, 0, 0.12);
+        --fp-light-shadow-panel: 0 2px 8px rgba(0, 0, 0, 0.06), 0 18px 36px rgba(11, 18, 32, 0.05);
+        --fp-light-success-bg: rgba(22, 163, 74, 0.08);
+        --fp-light-success-border: #a7f3d0;
+        --fp-light-success-text: #166534;
+        --fp-light-warning-bg: rgba(245, 158, 11, 0.12);
+        --fp-light-warning-border: #fbbf24;
+        --fp-light-warning-text: #92400e;
+        --fp-light-danger-bg: rgba(239, 68, 68, 0.1);
+        --fp-light-danger-border: #f9a8d4;
+        --fp-light-danger-text: #9d174d;
+        --fp-light-info-bg: #ecfeff;
+        --fp-light-info-border: #67e8f9;
+        --fp-light-info-text: #0f766e;
+        --fp-light-operational-bg: #eef2ff;
+        --fp-light-operational-border: #c7d2fe;
+        --fp-light-operational-text: #4338ca;
+    }
+
+    html:not(.dark)[data-firephage-light-palette='warm-infra-stone'] {
+        --fp-light-shell: #f5f2ec;
+        --fp-light-sidebar: #eee8de;
+        --fp-light-topbar: rgba(255, 255, 255, 0.9);
+        --fp-light-surface: #ffffff;
+        --fp-light-subtle-surface: #faf6ef;
+        --fp-light-card: #ffffff;
+        --fp-light-card-hover: #fefcf8;
+        --fp-light-border: #e7e1d7;
+        --fp-light-strong-border: #dad0c2;
+        --fp-light-heading: #1f2937;
+        --fp-light-body: #6b7280;
+        --fp-light-input: #fcfaf6;
+        --fp-light-hover: #f6f0e6;
+        --fp-light-active-bg: #e6f7f8;
+        --fp-light-active-border: rgba(20, 184, 166, 0.18);
+        --fp-light-active-text: #0f766e;
+        --fp-light-link: #0ea5e9;
+        --fp-light-link-hover: #0284c7;
+        --fp-light-shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.06);
+        --fp-light-shadow-md: 0 12px 28px rgba(0, 0, 0, 0.12);
+        --fp-light-shadow-panel: 0 2px 8px rgba(0, 0, 0, 0.06), 0 18px 36px rgba(31, 41, 55, 0.05);
+        --fp-light-success-bg: rgba(22, 163, 74, 0.08);
+        --fp-light-success-border: #bbf7d0;
+        --fp-light-success-text: #166534;
+        --fp-light-warning-bg: rgba(245, 158, 11, 0.12);
+        --fp-light-warning-border: #f6cf7a;
+        --fp-light-warning-text: #92400e;
+        --fp-light-danger-bg: rgba(239, 68, 68, 0.1);
+        --fp-light-danger-border: #f5c2c7;
+        --fp-light-danger-text: #9f1239;
+        --fp-light-info-bg: #edfdfb;
+        --fp-light-info-border: #99f6e4;
+        --fp-light-info-text: #115e59;
+        --fp-light-operational-bg: #f0f9ff;
+        --fp-light-operational-border: #bae6fd;
+        --fp-light-operational-text: #0369a1;
     }
 
     /* FirePhage app light mode palette. Keep all light-mode-only overrides here so
@@ -70,6 +143,14 @@
         color: var(--fp-light-heading);
     }
 
+    html:not(.dark) .fi-panel-app a {
+        color: var(--fp-light-link);
+    }
+
+    html:not(.dark) .fi-panel-app a:hover {
+        color: var(--fp-light-link-hover);
+    }
+
     html:not(.dark) .fi-panel-app .fi-topbar,
     html:not(.dark) .fi-panel-app .fi-sidebar,
     html:not(.dark) .fi-panel-app .fi-section,
@@ -79,14 +160,14 @@
     html:not(.dark) .fi-panel-app .fi-wi-widget > .fi-section,
     html:not(.dark) .fi-panel-app .fi-page-sub-navigation-sidebar,
     html:not(.dark) .fi-panel-app .fi-page-sub-navigation-tabs {
-        border-color: var(--fp-light-border);
+        border-color: rgba(15, 23, 42, 0.06);
     }
 
     html:not(.dark) .fi-panel-app .fi-topbar,
     html:not(.dark) .fi-panel-app .fi-sidebar,
     html:not(.dark) .fi-panel-app .fi-page-sub-navigation-sidebar,
     html:not(.dark) .fi-panel-app .fi-page-sub-navigation-tabs {
-        background-color: var(--fp-light-shell);
+        background-color: var(--fp-light-sidebar);
     }
 
     html:not(.dark) .fi-panel-app .fi-section,
@@ -95,6 +176,7 @@
     html:not(.dark) .fi-panel-app .fi-in-entry-wrp,
     html:not(.dark) .fi-panel-app .fi-wi-widget > .fi-section {
         background-color: var(--fp-light-surface);
+        border-color: rgba(15, 23, 42, 0.06);
     }
 
     html:not(.dark) .fi-panel-app .fi-section .fi-section.fi-secondary,
@@ -102,9 +184,9 @@
     html:not(.dark) .fi-panel-app .fi-section .fi-wi-widget > .fi-section.fi-secondary,
     html:not(.dark) .fi-panel-app .fi-section .fi-ta-ctn,
     html:not(.dark) .fi-panel-app .fi-section .fi-ta-content-ctn {
-        background-color: var(--fp-light-subtle-surface);
-        border-color: var(--fp-light-strong-border);
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+        background-color: var(--fp-light-card);
+        border-color: transparent;
+        box-shadow: var(--fp-light-shadow-sm);
     }
 
     html:not(.dark) .fi-panel-app .fi-section .fi-section.fi-secondary .fi-section-header-heading,
@@ -117,13 +199,139 @@
 
     html:not(.dark) .fi-panel-app .fi-topbar,
     html:not(.dark) .fi-panel-app .fi-sidebar {
-        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.04);
+        box-shadow: var(--fp-light-shadow-sm);
     }
 
     html:not(.dark) .fi-panel-app .fi-section,
     html:not(.dark) .fi-panel-app .fi-ta-ctn,
     html:not(.dark) .fi-panel-app .fi-wi-widget > .fi-section {
-        box-shadow: 0 10px 26px rgba(15, 23, 42, 0.045);
+        box-shadow: var(--fp-light-shadow-panel);
+    }
+
+    html:not(.dark) .fi-panel-app .fi-sidebar {
+        border-inline-end: 1px solid var(--fp-light-border);
+    }
+
+    html:not(.dark) .fi-panel-app .fi-topbar {
+        background-color: var(--fp-light-topbar);
+        backdrop-filter: blur(14px);
+        border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+        box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7), var(--fp-light-shadow-sm);
+    }
+
+    html:not(.dark) .fi-panel-app .fi-sidebar-item-btn,
+    html:not(.dark) .fi-panel-app .fi-sidebar-group-dropdown-trigger-btn,
+    html:not(.dark) .fi-panel-app .fi-topbar-item-btn,
+    html:not(.dark) .fi-panel-app .fi-tabs-item {
+        color: var(--fp-light-body);
+    }
+
+    html:not(.dark) .fi-panel-app .fi-sidebar-item.fi-sidebar-item-has-url > .fi-sidebar-item-btn:hover,
+    html:not(.dark) .fi-panel-app .fi-sidebar-item.fi-sidebar-item-has-url > .fi-sidebar-item-btn:focus-visible,
+    html:not(.dark) .fi-panel-app .fi-sidebar-group-dropdown-trigger-btn:hover,
+    html:not(.dark) .fi-panel-app .fi-sidebar-group-dropdown-trigger-btn:focus-visible,
+    html:not(.dark) .fi-panel-app .fi-topbar-item-btn:hover,
+    html:not(.dark) .fi-panel-app .fi-topbar-item-btn:focus-visible,
+    html:not(.dark) .fi-panel-app .fi-tabs-item:hover,
+    html:not(.dark) .fi-panel-app .fi-tabs-item:focus-visible {
+        background-color: var(--fp-light-hover);
+    }
+
+    html:not(.dark) .fi-panel-app .fi-sidebar-item.fi-active > .fi-sidebar-item-btn,
+    html:not(.dark) .fi-panel-app .fi-topbar-item.fi-active .fi-topbar-item-btn,
+    html:not(.dark) .fi-panel-app .fi-tabs-item.fi-active {
+        background-color: var(--fp-light-active-bg);
+        box-shadow: inset 0 0 0 1px var(--fp-light-active-border), 0 12px 26px color-mix(in srgb, var(--fp-light-active-text) 12%, transparent);
+    }
+
+    html:not(.dark) .fi-panel-app .fi-sidebar-item.fi-active > .fi-sidebar-item-btn,
+    html:not(.dark) .fi-panel-app .fi-topbar-item.fi-active .fi-topbar-item-btn {
+        font-weight: 700;
+    }
+
+    html:not(.dark) .fi-panel-app .fi-sidebar-item.fi-active > .fi-sidebar-item-btn {
+        position: relative;
+    }
+
+    html:not(.dark) .fi-panel-app .fi-sidebar-item.fi-active > .fi-sidebar-item-btn::before {
+        content: '';
+        position: absolute;
+        left: 0.45rem;
+        top: 0.35rem;
+        bottom: 0.35rem;
+        width: 4px;
+        border-radius: 999px;
+        background: var(--fp-light-active-text);
+        opacity: 0.95;
+    }
+
+    html:not(.dark) .fi-panel-app .fi-sidebar-item.fi-active > .fi-sidebar-item-btn > .fi-icon,
+    html:not(.dark) .fi-panel-app .fi-sidebar-item.fi-active > .fi-sidebar-item-btn > .fi-sidebar-item-label,
+    html:not(.dark) .fi-panel-app .fi-topbar-item.fi-active .fi-topbar-item-btn > .fi-icon,
+    html:not(.dark) .fi-panel-app .fi-topbar-item.fi-active .fi-topbar-item-label,
+    html:not(.dark) .fi-panel-app .fi-tabs-item.fi-active .fi-tabs-item-label,
+    html:not(.dark) .fi-panel-app .fi-tabs-item.fi-active .fi-icon {
+        color: var(--fp-light-active-text);
+    }
+
+    html:not(.dark) .fi-panel-app .fi-sidebar-item-grouped-border-part,
+    html:not(.dark) .fi-panel-app .fi-sidebar-item-grouped-border-part-not-first,
+    html:not(.dark) .fi-panel-app .fi-sidebar-item-grouped-border-part-not-last {
+        background-color: color-mix(in srgb, var(--fp-light-body) 22%, transparent);
+    }
+
+    html:not(.dark) .fi-panel-app .fi-sidebar-item.fi-active > .fi-sidebar-item-btn .fi-sidebar-item-grouped-border-part {
+        background-color: var(--fp-light-active-text);
+    }
+
+    html:not(.dark) .fi-panel-app .fi-tabs:not(.fi-contained) {
+        background-color: var(--fp-light-surface);
+        border: 1px solid var(--fp-light-border);
+        box-shadow: var(--fp-light-shadow-sm);
+    }
+
+    html:not(.dark) .fi-panel-app .fi-tabs.fi-contained {
+        border-bottom-color: var(--fp-light-border);
+    }
+
+    html:not(.dark) .fi-panel-app .fi-btn {
+        box-shadow: var(--fp-light-shadow-sm);
+    }
+
+    html:not(.dark) .fi-panel-app .fi-btn:not(.fi-outlined):not(.fi-color) {
+        background-color: var(--fp-light-surface);
+    }
+
+    html:not(.dark) .fi-panel-app .fi-btn.fi-color {
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 6px 14px color-mix(in srgb, var(--fp-light-active-text) 12%, transparent);
+    }
+
+    html:not(.dark) .fi-panel-app .fi-btn.fi-color:not(.fi-disabled):not([disabled]):hover {
+        box-shadow: 0 12px 24px color-mix(in srgb, var(--fp-light-active-text) 18%, transparent);
+        transform: translateY(-1px);
+        filter: brightness(0.97);
+    }
+
+    html:not(.dark) .fi-panel-app .fi-btn:not(.fi-disabled):not([disabled]),
+    html:not(.dark) .fi-panel-app .fi-section .fi-section.fi-secondary,
+    html:not(.dark) .fi-panel-app .fi-wi-widget > .fi-section.fi-secondary,
+    html:not(.dark) .fi-panel-app .fi-ta-ctn,
+    html:not(.dark) .fi-panel-app .fi-section,
+    html:not(.dark) .fi-panel-app .fi-in-entry-wrp,
+    html:not(.dark) .fi-panel-app .fi-fo-field-wrp {
+        transition: background-color 160ms ease, box-shadow 160ms ease, transform 160ms ease, border-color 160ms ease;
+    }
+
+    html:not(.dark) .fi-panel-app .fi-section .fi-section.fi-secondary:hover,
+    html:not(.dark) .fi-panel-app .fi-wi-widget > .fi-section.fi-secondary:hover,
+    html:not(.dark) .fi-panel-app .fi-ta-ctn:hover {
+        background-color: var(--fp-light-card-hover);
+        box-shadow: var(--fp-light-shadow-md);
+        transform: translateY(-3px);
+    }
+
+    html:not(.dark) .fi-panel-app .fi-btn.fi-outlined {
+        border-color: var(--fp-light-border);
     }
 
     html:not(.dark) .fi-panel-app .fi-sidebar-group-label,
@@ -200,11 +408,553 @@
         border-color: var(--fp-light-info-border) !important;
     }
 
+    html:not(.dark) .fi-panel-app .bg-primary-100,
+    html:not(.dark) .fi-panel-app .bg-info-100,
+    html:not(.dark) .fi-panel-app .fi-color-primary.fi-bg-color-100,
+    html:not(.dark) .fi-panel-app .fi-color-info.fi-bg-color-100 {
+        background-color: var(--fp-light-operational-bg) !important;
+        color: var(--fp-light-operational-text) !important;
+    }
+
+    html:not(.dark) .fi-panel-app .border-primary-300,
+    html:not(.dark) .fi-panel-app .border-info-300 {
+        border-color: var(--fp-light-operational-border) !important;
+    }
+
     html:not(.dark) .fi-panel-app input,
     html:not(.dark) .fi-panel-app select,
     html:not(.dark) .fi-panel-app textarea {
         background-color: var(--fp-light-input);
-        border-color: rgba(15, 23, 42, 0.24);
+        border-color: var(--fp-light-strong-border);
+    }
+
+    html:not(.dark) .fi-panel-app input:focus,
+    html:not(.dark) .fi-panel-app select:focus,
+    html:not(.dark) .fi-panel-app textarea:focus,
+    html:not(.dark) .fi-panel-app .fi-input-wrp:focus-within {
+        border-color: color-mix(in srgb, var(--fp-light-active-text) 34%, transparent);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--fp-light-active-text) 10%, transparent);
+    }
+
+    html:not(.dark) .fi-panel-app .fp-recommendation-box {
+        background: color-mix(in srgb, var(--fp-light-active-bg) 78%, white);
+        border-color: color-mix(in srgb, var(--fp-light-active-text) 24%, transparent);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 6px 18px color-mix(in srgb, var(--fp-light-active-text) 10%, transparent);
+    }
+
+    html:not(.dark) .fi-panel-app .fp-recommendation-box p:first-child {
+        color: var(--fp-light-heading);
+        font-weight: 700;
+    }
+
+    html:not(.dark) .fi-panel-app .fp-recommendation-box p + p {
+        margin-top: 0.5rem;
+        color: var(--fp-light-body);
+        line-height: 1.65;
+    }
+
+    html:not(.dark) .fi-panel-app .fp-status-card {
+        position: relative;
+        overflow: hidden;
+        background: var(--fp-light-card);
+        box-shadow: var(--fp-light-shadow-sm);
+        border: 1px solid color-mix(in srgb, var(--fp-light-heading) 6%, transparent);
+    }
+
+    html:not(.dark) .fi-panel-app .fp-status-card::before {
+        content: '';
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 4px;
+        border-radius: 999px;
+        background: var(--fp-light-operational-text);
+        opacity: 0.9;
+    }
+
+    html:not(.dark) .fi-panel-app .fp-status-card:hover {
+        background: var(--fp-light-card-hover);
+        box-shadow: var(--fp-light-shadow-md);
+        transform: translateY(-3px);
+    }
+
+    html:not(.dark) .fi-panel-app .fp-status-card-success {
+        background: color-mix(in srgb, var(--fp-light-success-bg) 100%, white);
+    }
+
+    html:not(.dark) .fi-panel-app .fp-status-card-success::before {
+        background: var(--fp-light-success-text);
+    }
+
+    html:not(.dark) .fi-panel-app .fp-status-card-warning {
+        background: color-mix(in srgb, var(--fp-light-warning-bg) 100%, white);
+    }
+
+    html:not(.dark) .fi-panel-app .fp-status-card-warning::before {
+        background: var(--fp-light-warning-text);
+    }
+
+    html:not(.dark) .fi-panel-app .fp-status-card-danger {
+        background: color-mix(in srgb, var(--fp-light-danger-bg) 100%, white);
+    }
+
+    html:not(.dark) .fi-panel-app .fp-status-card-danger::before {
+        background: var(--fp-light-danger-text);
+    }
+
+    html:not(.dark) .fi-panel-app .fp-status-card-primary {
+        background: color-mix(in srgb, var(--fp-light-operational-bg) 82%, white);
+    }
+
+    html:not(.dark) .fi-panel-app .fp-status-card-primary::before {
+        background: var(--fp-light-operational-text);
+    }
+
+    html:not(.dark) .fi-panel-app .fp-status-card-gray {
+        background: color-mix(in srgb, var(--fp-light-subtle-surface) 68%, white);
+    }
+
+    html:not(.dark) .fi-panel-app .fp-status-card-gray::before {
+        background: color-mix(in srgb, var(--fp-light-heading) 60%, transparent);
+    }
+
+    html:not(.dark) .fi-panel-app .fp-status-card .text-sm.font-medium {
+        color: var(--fp-light-heading);
+        font-weight: 700;
+        margin-bottom: 0.45rem;
+    }
+
+    html:not(.dark) .fi-panel-app .fp-status-card p.text-sm {
+        color: var(--fp-light-body);
+        line-height: 1.75;
+        margin-top: 0.55rem;
+    }
+
+    html:not(.dark) .fi-panel-app .fp-status-card:first-child {
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08), 0 16px 34px color-mix(in srgb, var(--fp-light-active-text) 10%, transparent);
+        transform: translateY(-1px);
+    }
+
+    html:not(.dark) .fi-panel-app .fp-status-card-featured {
+        background: linear-gradient(180deg, color-mix(in srgb, var(--fp-light-operational-bg) 88%, white), white 100%);
+        border-color: color-mix(in srgb, var(--fp-light-operational-text) 20%, transparent);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 24px 44px color-mix(in srgb, var(--fp-light-operational-text) 14%, transparent);
+        transform: translateY(-1px) scale(1.01);
+    }
+
+    html:not(.dark) .fi-panel-app .fp-status-card-featured::before {
+        width: 5px;
+        background: var(--fp-light-operational-text);
+    }
+
+    html:not(.dark) .fi-panel-app .fp-status-card-attention {
+        background: linear-gradient(180deg, color-mix(in srgb, var(--fp-light-warning-bg) 92%, white), white 100%);
+        border-color: color-mix(in srgb, var(--fp-light-warning-text) 18%, transparent);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 18px 34px color-mix(in srgb, var(--fp-light-warning-text) 10%, transparent);
+    }
+
+    html:not(.dark) .fi-panel-app .fp-status-card-attention::before {
+        width: 5px;
+        background: var(--fp-light-warning-text);
+    }
+
+    html:not(.dark) .fi-panel-app .fp-status-pill {
+        border: 1px solid transparent;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+    }
+
+    html:not(.dark) .fi-panel-app .fp-status-pill-success {
+        background: color-mix(in srgb, var(--fp-light-success-bg) 100%, white);
+        border-color: color-mix(in srgb, var(--fp-light-success-text) 16%, transparent);
+        color: var(--fp-light-success-text);
+    }
+
+    html:not(.dark) .fi-panel-app .fp-status-pill-warning {
+        background: color-mix(in srgb, var(--fp-light-warning-bg) 100%, white);
+        border-color: color-mix(in srgb, var(--fp-light-warning-text) 16%, transparent);
+        color: var(--fp-light-warning-text);
+    }
+
+    html:not(.dark) .fi-panel-app .fp-status-pill-danger {
+        background: color-mix(in srgb, var(--fp-light-danger-bg) 100%, white);
+        border-color: color-mix(in srgb, var(--fp-light-danger-text) 16%, transparent);
+        color: var(--fp-light-danger-text);
+    }
+
+    html:not(.dark) .fi-panel-app .fp-status-pill-primary {
+        background: color-mix(in srgb, var(--fp-light-operational-bg) 100%, white);
+        border-color: color-mix(in srgb, var(--fp-light-operational-text) 16%, transparent);
+        color: var(--fp-light-operational-text);
+    }
+
+    html:not(.dark) .fi-panel-app .fp-status-pill-gray {
+        background: color-mix(in srgb, var(--fp-light-subtle-surface) 100%, white);
+        border-color: rgba(15, 23, 42, 0.08);
+        color: var(--fp-light-heading);
+    }
+
+    html:not(.dark) .fi-panel-app .fp-status-card-muted {
+        background: color-mix(in srgb, var(--fp-light-subtle-surface) 52%, white);
+        box-shadow: 0 1px 4px rgba(15, 23, 42, 0.05);
+    }
+
+    html:not(.dark) .fi-panel-app .fp-status-card-muted::before {
+        opacity: 0.55;
+    }
+
+    html:not(.dark) .fi-panel-app .fp-status-card-muted .fp-status-pill {
+        opacity: 0.9;
+    }
+
+    .dark .fi-panel-app .fp-recommendation-box {
+        background: #111827;
+        border-color: rgba(96, 165, 250, 0.12);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 1px 2px rgba(0, 0, 0, 0.28), 0 10px 22px rgba(0, 0, 0, 0.18);
+    }
+
+    .dark .fi-panel-app .fp-recommendation-box p:first-child {
+        color: #f9fafb;
+        font-weight: 700;
+    }
+
+    .dark .fi-panel-app .fp-recommendation-box p + p {
+        color: #94a3b8;
+        line-height: 1.7;
+    }
+
+    .dark .fi-panel-app .fp-status-card {
+        position: relative;
+        overflow: hidden;
+        background: #131a26;
+        border-color: rgba(148, 163, 184, 0.14) !important;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 2px 6px rgba(0, 0, 0, 0.3), 0 14px 28px rgba(0, 0, 0, 0.2);
+        transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .dark .fi-panel-app .fp-status-card::before {
+        content: '';
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 4px;
+        border-radius: 999px;
+        background: #94a3b8;
+    }
+
+    .dark .fi-panel-app .fp-status-card:hover {
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.32);
+        transform: translateY(-2px);
+    }
+
+    .dark .fi-panel-app .fp-status-card-success {
+        background: #131a26;
+    }
+
+    .dark .fi-panel-app .fp-status-card-success::before {
+        background: #22c55e;
+    }
+
+    .dark .fi-panel-app .fp-status-card-warning {
+        background: #131a26;
+    }
+
+    .dark .fi-panel-app .fp-status-card-warning::before {
+        background: #fbbf24;
+    }
+
+    .dark .fi-panel-app .fp-status-card-danger {
+        background: #131a26;
+    }
+
+    .dark .fi-panel-app .fp-status-card-danger::before {
+        background: #f87171;
+    }
+
+    .dark .fi-panel-app .fp-status-card-primary {
+        background: #131a26;
+    }
+
+    .dark .fi-panel-app .fp-status-card-primary::before {
+        background: #60a5fa;
+    }
+
+    .dark .fi-panel-app .fp-status-card-gray {
+        background: #131a26;
+    }
+
+    .dark .fi-panel-app .fp-status-card-gray::before {
+        background: #94a3b8;
+    }
+
+    .dark .fi-panel-app .fp-status-card-featured {
+        background: #182131;
+        border-color: rgba(96, 165, 250, 0.1) !important;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035), 0 3px 8px rgba(0, 0, 0, 0.32), 0 18px 38px rgba(0, 0, 0, 0.24);
+    }
+
+    .dark .fi-panel-app .fp-status-card-featured::before {
+        width: 5px;
+        background: #60a5fa;
+    }
+
+    .dark .fi-panel-app .fp-status-card-attention {
+        background: #1c1f25;
+        border-color: rgba(251, 191, 36, 0.12) !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 16px 34px rgba(0, 0, 0, 0.2);
+    }
+
+    .dark .fi-panel-app .fp-status-card-attention::before {
+        width: 5px;
+        background: #fbbf24;
+    }
+
+    .dark .fi-panel-app .fp-status-card-muted {
+        background: #101722;
+        border-color: rgba(71, 85, 105, 0.18) !important;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22), 0 6px 14px rgba(0, 0, 0, 0.16);
+    }
+
+    .dark .fi-panel-app .fp-status-card-muted::before {
+        opacity: 0.55;
+    }
+
+    .dark .fi-panel-app .fp-status-card .text-sm.font-medium {
+        color: #a1a1aa;
+        font-weight: 700;
+        margin-bottom: 0.35rem;
+    }
+
+    .dark .fi-panel-app .fp-status-card p.text-sm {
+        color: #94a3b8;
+        line-height: 1.7;
+        margin-top: 0.45rem;
+    }
+
+    .dark .fi-panel-app .fp-status-pill {
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
+    .dark .fi-panel-app .fp-status-pill-success {
+        background: rgba(22, 163, 74, 0.18);
+        color: #86efac;
+        border-color: rgba(22, 163, 74, 0.24);
+    }
+
+    .dark .fi-panel-app .fp-status-pill-warning {
+        background: rgba(245, 158, 11, 0.2);
+        color: #fcd34d;
+        border-color: rgba(245, 158, 11, 0.28);
+    }
+
+    .dark .fi-panel-app .fp-status-card-warning .text-warning-600,
+    .dark .fi-panel-app .fp-status-card-warning .dark\:text-warning-400,
+    .dark .fi-panel-app .fp-status-card-attention .text-warning-600,
+    .dark .fi-panel-app .fp-status-card-attention .dark\:text-warning-400 {
+        color: #fcd34d !important;
+    }
+
+    .dark .fi-panel-app .fp-status-card-attention p.text-sm {
+        color: #fef3c7;
+    }
+
+    .dark .fi-panel-app .fp-status-pill-danger {
+        background: rgba(239, 68, 68, 0.2);
+        color: #fca5a5;
+        border-color: rgba(239, 68, 68, 0.28);
+    }
+
+    .dark .fi-panel-app .fp-status-pill-primary {
+        background: rgba(59, 130, 246, 0.18);
+        color: #93c5fd;
+        border-color: rgba(59, 130, 246, 0.26);
+    }
+
+    .dark .fi-panel-app .fp-status-pill-gray {
+        background: rgba(148, 163, 184, 0.12);
+        color: #a1a1aa;
+        border-color: rgba(148, 163, 184, 0.18);
+    }
+
+    .dark .fi-panel-app .fp-pro-card,
+    .dark .fi-panel-app .fp-pro-section,
+    .dark .fi-panel-app .fp-pro-metric {
+        border-color: rgba(255, 255, 255, 0.08) !important;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.28), 0 10px 22px rgba(0, 0, 0, 0.22);
+        transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .dark .fi-panel-app .fp-pro-card {
+        background: #111827;
+    }
+
+    .dark .fi-panel-app .fp-pro-section {
+        background: #151c29;
+    }
+
+    .dark .fi-panel-app .fp-pro-metric {
+        background: #1a2231;
+        border-color: rgba(148, 163, 184, 0.12) !important;
+    }
+
+    .dark .fi-panel-app .fp-pro-card:hover,
+    .dark .fi-panel-app .fp-pro-section:hover,
+    .dark .fi-panel-app .fp-pro-metric:hover {
+        box-shadow: 0 14px 30px rgba(0, 0, 0, 0.34), 0 0 0 1px rgba(56, 189, 248, 0.08);
+        transform: translateY(-1px);
+    }
+
+    .dark .fi-panel-app .fp-pro-card .fi-section-header-heading,
+    .dark .fi-panel-app .fp-pro-section .fi-section-header-heading,
+    .dark .fi-panel-app .fp-pro-metric-value,
+    .dark .fi-panel-app .fp-pro-metric-value * {
+        color: #f9fafb;
+    }
+
+    .dark .fi-panel-app .fp-pro-card .fi-section-header-description,
+    .dark .fi-panel-app .fp-pro-section .fi-section-header-description,
+    .dark .fi-panel-app .fp-pro-metric .fi-badge-label,
+    .dark .fi-panel-app .fp-pro-metric-body {
+        color: #9ca3af;
+    }
+
+    .dark .fi-panel-app .fp-pro-metric-label {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: rgba(255, 255, 255, 0.08);
+    }
+
+    .dark .fi-panel-app .fp-pro-metric-value {
+        font-weight: 700;
+        font-size: 1.08rem;
+        line-height: 1.45;
+        letter-spacing: -0.01em;
+    }
+
+    .dark .fi-panel-app .fp-pro-card .fi-section-content > *,
+    .dark .fi-panel-app .fp-pro-section .fi-section-content > * {
+        color: #94a3b8;
+    }
+
+    .dark .fi-panel-app .fp-protection-shell .fi-section-content,
+    .dark .fi-panel-app .fp-protection-shell .fi-section-content p,
+    .dark .fi-panel-app .fp-protection-shell .fi-section-content li,
+    .dark .fi-panel-app .fp-protection-shell .fi-section-content div.text-sm,
+    .dark .fi-panel-app .fp-protection-shell .fi-section-content p.text-sm {
+        color: #94a3b8 !important;
+    }
+
+    .dark .fi-panel-app .fp-protection-shell .fi-section-content strong,
+    .dark .fi-panel-app .fp-protection-shell .fi-section-content b,
+    .dark .fi-panel-app .fp-protection-shell .fi-section-header-heading,
+    .dark .fi-panel-app .fp-protection-shell .fi-section-header-heading *,
+    .dark .fi-panel-app .fp-protection-shell .fi-section-content a {
+        color: #f9fafb !important;
+    }
+
+    .dark .fi-panel-app .fp-protection-shell .fi-section-header-description {
+        color: #9ca3af !important;
+    }
+
+    .dark .fi-panel-app .fp-protection-shell .dark\:text-gray-300,
+    .dark .fi-panel-app .fp-protection-shell .dark\:text-gray-200,
+    .dark .fi-panel-app .fp-protection-shell .dark\:text-warning-100,
+    .dark .fi-panel-app .fp-protection-shell .dark\:text-primary-100,
+    .dark .fi-panel-app .fp-protection-shell .dark\:text-success-100,
+    .dark .fi-panel-app .fp-protection-shell .dark\:text-danger-100 {
+        color: inherit !important;
+    }
+
+    .dark .fi-panel-app .fp-protection-shell .text-gray-600,
+    .dark .fi-panel-app .fp-protection-shell .text-gray-700,
+    .dark .fi-panel-app .fp-protection-shell .text-gray-900 {
+        color: inherit !important;
+    }
+
+    .dark .fi-panel-app .fp-status-card .text-sm.font-medium {
+        color: #9ca3af !important;
+    }
+
+    .dark .fi-panel-app .fp-status-card p.text-sm {
+        color: #94a3b8 !important;
+    }
+
+    .dark .fi-panel-app .fp-status-card .text-\[1\.85rem\] {
+        color: #f9fafb;
+    }
+
+    .dark .fi-panel-app .fp-status-card-success .text-\[1\.85rem\],
+    .dark .fi-panel-app .fp-status-card-success .dark\:text-success-400 {
+        color: #86efac !important;
+    }
+
+    .dark .fi-panel-app .fp-status-card-warning .text-\[1\.85rem\],
+    .dark .fi-panel-app .fp-status-card-warning .dark\:text-warning-400,
+    .dark .fi-panel-app .fp-status-card-attention .text-\[1\.85rem\],
+    .dark .fi-panel-app .fp-status-card-attention .dark\:text-warning-400 {
+        color: #fcd34d !important;
+    }
+
+    .dark .fi-panel-app .fp-status-card-danger .text-\[1\.85rem\],
+    .dark .fi-panel-app .fp-status-card-danger .dark\:text-danger-400 {
+        color: #fca5a5 !important;
+    }
+
+    .dark .fi-panel-app .fp-status-card-primary .text-\[1\.85rem\],
+    .dark .fi-panel-app .fp-status-card-primary .dark\:text-primary-400,
+    .dark .fi-panel-app .fp-status-card-featured .text-\[1\.85rem\] {
+        color: #93c5fd !important;
+    }
+
+    .dark .fi-panel-app .fp-status-card-gray .text-\[1\.85rem\] {
+        color: #f9fafb !important;
+    }
+
+    .dark .fi-panel-app .fp-pro-card .fi-icon,
+    .dark .fi-panel-app .fp-pro-section .fi-icon {
+        color: rgba(125, 211, 252, 0.9);
+    }
+
+    .dark .fi-panel-app .fp-pro-status-pill {
+        border-color: rgba(255, 255, 255, 0.08);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
+    .dark .fi-panel-app .fp-pro-card .fi-color-success.fp-pro-status-pill,
+    .dark .fi-panel-app .fp-pro-section .fi-color-success.fp-pro-status-pill,
+    .dark .fi-panel-app .fp-pro-metric .fi-color-success.fp-pro-status-pill {
+        background: rgba(22, 163, 74, 0.16);
+        color: #86efac;
+        border-color: rgba(22, 163, 74, 0.24);
+    }
+
+    .dark .fi-panel-app .fp-pro-card .fi-color-warning.fp-pro-status-pill,
+    .dark .fi-panel-app .fp-pro-section .fi-color-warning.fp-pro-status-pill,
+    .dark .fi-panel-app .fp-pro-metric .fi-color-warning.fp-pro-status-pill {
+        background: rgba(245, 158, 11, 0.18);
+        color: #fbbf24;
+        border-color: rgba(245, 158, 11, 0.28);
+    }
+
+    .dark .fi-panel-app .fp-pro-card .fi-color-danger.fp-pro-status-pill,
+    .dark .fi-panel-app .fp-pro-section .fi-color-danger.fp-pro-status-pill,
+    .dark .fi-panel-app .fp-pro-metric .fi-color-danger.fp-pro-status-pill {
+        background: rgba(239, 68, 68, 0.18);
+        color: #fca5a5;
+        border-color: rgba(239, 68, 68, 0.28);
+    }
+
+    .dark .fi-panel-app .fp-pro-card .fi-color-primary.fp-pro-status-pill,
+    .dark .fi-panel-app .fp-pro-section .fi-color-primary.fp-pro-status-pill,
+    .dark .fi-panel-app .fp-pro-metric .fi-color-primary.fp-pro-status-pill {
+        background: rgba(59, 130, 246, 0.16);
+        color: #93c5fd;
+        border-color: rgba(59, 130, 246, 0.24);
+    }
+
+    .dark .fi-panel-app .fp-pro-card .fi-color-gray.fp-pro-status-pill,
+    .dark .fi-panel-app .fp-pro-section .fi-color-gray.fp-pro-status-pill,
+    .dark .fi-panel-app .fp-pro-metric .fi-color-gray.fp-pro-status-pill {
+        background: rgba(148, 163, 184, 0.12);
+        color: #a1a1aa;
+        border-color: rgba(148, 163, 184, 0.18);
     }
 
     .blog-article-content {

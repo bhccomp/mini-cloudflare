@@ -6,7 +6,13 @@
     'icon' => null,
 ])
 
-<x-filament::section :heading="$title" :description="$description" :icon="$icon" :divided="true">
+<x-filament::section
+    class="fp-pro-card"
+    :heading="$title"
+    :description="$description"
+    :icon="$icon"
+    :divided="true"
+>
     @if ($status)
         <x-slot name="afterHeader">
             <x-filament.app.settings.status-pill :color="$statusColor">

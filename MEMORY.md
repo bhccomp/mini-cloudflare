@@ -206,28 +206,77 @@
   - `AppProtectionNavigationTest` currently still contains an unrelated expectation mismatch from the billing/checkout redirect flow (`status-hub` vs Stripe checkout redirect)
 
 ## Dashboard Light Mode Palette (Latest)
-- Dark mode should remain untouched unless explicitly requested.
-- Current design work is focused only on the Filament app light mode.
-- The original white-on-white Filament light mode was proving too flat for FirePhage because many nested cards, status widgets, and helper panels visually blended into their parent containers.
+- Current app-shell palette work is isolated to light mode unless a dark-mode task is explicitly requested.
+- The white-on-white Filament default was too flat for FirePhage because nested cards, status widgets, and helper panels visually collapsed into one surface.
 - Current light-mode direction:
-  - a soft tinted shell instead of plain white
-  - slightly tinted main cards instead of pure white
-  - nested secondary sections / mini-widgets use a distinct lighter-blue surface so they separate from the white parent cards
-  - semantic status panels and badges use stronger pale success / warning / danger / info backgrounds so labels like `Needs Attention`, `Up`, `Not Set Up`, and `Active` are readable in light mode
-- Implementation note:
-  - this is intentionally isolated in one light-mode-only CSS block in:
-    - `resources/css/app.css`
-  - the block is meant to be easy to revert as one unit if needed
+  - soft tinted shell instead of flat white
+  - clearer three-level surface system:
+    - page background
+    - main panels
+    - nested cards/modules
+  - semantic status panels and badges use restrained pale success / warning / danger / info surfaces
+  - subtle depth comes from premium shadows rather than heavy borders
 - Current light palette presets in code:
-  - default: `Slate + Ice Blue`
-  - alternative: `Mist + Navy`
-- Current comparison setup:
-  - live app host keeps the default light palette
-  - `demo.firephage.com` now applies the alternate `Mist + Navy` palette via `resources/views/filament/app/components/panel-assets.blade.php`
-  - this makes it possible to compare two light-mode directions side by side without affecting dark mode
-- Operational note:
-  - palette changes in `resources/css/app.css` require a frontend rebuild with `pnpm --store-dir=/home/deploy/.local/share/pnpm/store/v10 build`
-  - after CSS changes, also refresh Laravel optimized views/config with `php artisan optimize`
+  - `frost-ice-infra`
+  - `slate-electric-cyan`
+  - `warm-infra-stone`
+- Current product decision:
+  - `frost-ice-infra` is the strongest light candidate and the one being polished toward production quality
+  - `slate-electric-cyan` and `warm-infra-stone` remain available on the demo host for comparison, but should not split ongoing polish effort unless requested
+- Demo comparison URLs:
+  - `https://demo.firephage.com/app/status-hub?palette=frost-ice-infra`
+  - `https://demo.firephage.com/app/status-hub?palette=slate-electric-cyan`
+  - `https://demo.firephage.com/app/status-hub?palette=warm-infra-stone`
+- Light-mode implementation notes:
+  - all palette tokens and app-shell styling live in `resources/css/app.css`
+  - demo palette selection is wired through `resources/views/filament/app/components/panel-assets.blade.php`
+  - palette changes require a frontend rebuild with:
+    - `pnpm --store-dir=/home/deploy/.local/share/pnpm/store/v10 build`
+    - `php artisan optimize`
+
+## Dashboard Visual Polish (Latest)
+- Simple Mode and Pro Mode should be treated as distinct product experiences, not the same UI with fewer widgets.
+- Current Simple Mode status:
+  - main overview surfaces use the beginner-friendly summary components:
+    - `simple-security-snapshot.blade.php`
+    - `simple-service-overview.blade.php`
+  - helper tooltips are implemented via:
+    - `resources/views/components/filament/app/help-tooltip.blade.php`
+  - dark Simple Mode direction is now:
+    - neutral dark card surfaces
+    - no decorative colored gradients on cards
+    - color only as meaning:
+      - left rail
+      - status pill
+      - restrained warning treatment for WordPress attention state
+  - current Simple dark hierarchy target:
+    - title/value strongest
+    - supporting description medium
+    - label weakest
+- Current Pro Mode status:
+  - Pro dark should feel analytical and denser than Simple dark
+  - Pro-specific dark treatment is applied through the custom settings components:
+    - `resources/views/components/filament/app/settings/card.blade.php`
+    - `resources/views/components/filament/app/settings/section.blade.php`
+    - `resources/views/components/filament/app/settings/key-value-grid.blade.php`
+    - `resources/views/components/filament/app/settings/status-pill.blade.php`
+  - current goal:
+    - sharper contrast
+    - clearer metric/value emphasis
+    - better section/card separation
+    - stronger semantic status pills in dark mode
+- Important recent dark-mode note:
+  - several dark text/readability fixes were needed because Filament/Tailwind utility classes were overriding the intended hierarchy
+  - if dark card copy looks faded again, check for utility classes like:
+    - `dark:text-gray-300`
+    - `dark:text-gray-200`
+    - `dark:text-warning-100`
+  - current dark-mode text hierarchy is enforced from `resources/css/app.css`, including explicit overrides inside:
+    - `.fp-protection-shell`
+- Testing / rebuild note:
+  - most dashboard UI-mode regressions are currently validated with:
+    - `php artisan test tests/Feature/UiModeTest.php`
+  - after any CSS change affecting the app shell or dashboards, rebuild frontend assets and rerun `php artisan optimize`
 
 ## Demo Dashboard Host (Latest)
 - There is now a dedicated demo-host mode for `demo.firephage.com`.

@@ -11,7 +11,7 @@
 >
     <div class="space-y-5">
         <div @class([
-            'rounded-2xl border px-4 py-3 text-sm',
+            'fp-recommendation-box rounded-2xl border px-5 py-4 text-sm',
             'border-danger-200 bg-danger-50 text-danger-950 dark:border-danger-500/30 dark:bg-danger-500/10 dark:text-danger-100' => $recommendation['color'] === 'danger',
             'border-warning-200 bg-warning-50 text-warning-950 dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-warning-100' => $recommendation['color'] === 'warning',
             'border-success-200 bg-success-50 text-success-950 dark:border-success-500/30 dark:bg-success-500/10 dark:text-success-100' => $recommendation['color'] === 'success',
@@ -23,15 +23,35 @@
 
         <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             @foreach ($items as $item)
-                <x-filament::section compact secondary>
+                <x-filament::section compact secondary @class([
+                    'fp-status-card',
+                    'fp-status-card-featured' => $loop->first,
+                    'fp-status-card-danger' => $item['color'] === 'danger',
+                    'fp-status-card-warning' => $item['color'] === 'warning',
+                    'fp-status-card-success' => $item['color'] === 'success',
+                    'fp-status-card-primary' => $item['color'] === 'primary',
+                    'fp-status-card-gray' => $item['color'] === 'gray',
+                ])>
                     <div class="space-y-3">
                         <div class="flex items-start justify-between gap-3">
                             <div class="space-y-1">
-                                <div class="text-sm font-medium text-gray-700 dark:text-gray-200">
-                                    {{ $item['label'] }}
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <div class="text-sm font-medium text-gray-700 dark:text-gray-200">
+                                        {{ $item['label'] }}
+                                    </div>
+                                    <span @class([
+                                        'fp-status-pill inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-wide uppercase',
+                                        'fp-status-pill-danger' => $item['color'] === 'danger',
+                                        'fp-status-pill-warning' => $item['color'] === 'warning',
+                                        'fp-status-pill-success' => $item['color'] === 'success',
+                                        'fp-status-pill-primary' => $item['color'] === 'primary',
+                                        'fp-status-pill-gray' => $item['color'] === 'gray',
+                                    ])>
+                                        {{ $item['value'] }}
+                                    </span>
                                 </div>
                                 <div @class([
-                                    'text-2xl font-semibold tracking-tight',
+                                    'text-[1.85rem] font-bold tracking-tight',
                                     'text-danger-600 dark:text-danger-400' => $item['color'] === 'danger',
                                     'text-warning-600 dark:text-warning-400' => $item['color'] === 'warning',
                                     'text-success-600 dark:text-success-400' => $item['color'] === 'success',
