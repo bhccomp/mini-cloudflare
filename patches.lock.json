@@ -1,0 +1,17 @@
+{
+    "_hash": "1c9dd77b74fdff9a8f100814b280bec5d229a1f4b71e12567573603128dd8164",
+    "patches": {
+        "daacreators/creators-ticketing": [
+            {
+                "package": "daacreators/creators-ticketing",
+                "description": "Avoid chmod crash when attachment directory permissions cannot be changed",
+                "url": "patches/creators-ticketing-avoid-chmod-crash.patch",
+                "sha256": "d1be06792b218bc1424703177067dc26ae3edf3b9e96a947b7e10550137d3224",
+                "depth": 1,
+                "extra": {
+                    "provenance": "root"
+                }
+            }
+        ]
+    }
+}

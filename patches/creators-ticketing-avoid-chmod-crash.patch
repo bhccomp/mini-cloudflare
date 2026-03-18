@@ -1,0 +1,16 @@
+diff --git a/src/TicketingServiceProvider.php b/src/TicketingServiceProvider.php
+index 89b1310..2d6f923 100644
+--- a/src/TicketingServiceProvider.php
++++ b/src/TicketingServiceProvider.php
+@@ -69,7 +69,9 @@ protected function ensureStorageDirectoryExists(): void
+         if (!file_exists($directory)) {
+             mkdir($directory, 0755, true);
+         }
+ 
+-        chmod($directory, 0755);
++        if (is_dir($directory) && ! is_writable($directory)) {
++            @chmod($directory, 0755);
++        }
+     }
+ 
+     protected function registerLivewireComponent(): void

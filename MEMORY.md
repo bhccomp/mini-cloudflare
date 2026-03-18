@@ -372,10 +372,17 @@
 - Important package caveat:
   - `daacreators/creators-ticketing` currently calls `chmod()` in its service provider boot path
   - on this server that caused 500s because the operation is not permitted under current filesystem ownership
-  - the local server was stabilized with a vendor patch in:
-    - `vendor/daacreators/creators-ticketing/src/TicketingServiceProvider.php`
-  - that vendor patch is local-only and not represented in Git
-  - if this package is installed on another environment, expect the same crash unless that `chmod()` behavior is patched or the package is replaced/forked
+  - the fix is now tracked in Git via Composer patches, not only as an ad hoc vendor edit
+  - current tracked patch setup:
+    - package: `cweagans/composer-patches`
+    - patch file:
+      - `patches/creators-ticketing-avoid-chmod-crash.patch`
+    - patch lock:
+      - `patches.lock.json`
+  - Composer config now reapplies the workaround automatically during install/update for:
+    - `daacreators/creators-ticketing`
+  - practical note:
+    - if ticketing starts throwing 500s again after dependency changes, first verify the patch is still listed in `composer.json` and applied in the vendor copy before assuming the support feature itself is broken
 
 ## GitHub Push Environment Note
 - In this environment, GitHub operations for the Laravel app repo may fail with `Could not resolve host: github.com` when run through the restricted command path.
