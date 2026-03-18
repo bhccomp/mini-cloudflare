@@ -223,6 +223,8 @@
 - Current product decision:
   - `frost-ice-infra` is the strongest light candidate and the one being polished toward production quality
   - `slate-electric-cyan` and `warm-infra-stone` remain available on the demo host for comparison, but should not split ongoing polish effort unless requested
+  - `frost-ice-infra` is now the default light palette when no `?palette=` parameter is present
+  - alternate light palettes should now be treated as explicit comparison overrides only
 - Demo comparison URLs:
   - `https://demo.firephage.com/app/status-hub?palette=frost-ice-infra`
   - `https://demo.firephage.com/app/status-hub?palette=slate-electric-cyan`
@@ -230,6 +232,10 @@
 - Light-mode implementation notes:
   - all palette tokens and app-shell styling live in `resources/css/app.css`
   - demo palette selection is wired through `resources/views/filament/app/components/panel-assets.blade.php`
+  - grouped `StatsOverviewWidget` wrappers in light mode should sit on the page layer, not render as white panels
+    - only the inner stat tiles should feel elevated
+    - if widgets like `Bandwidth Usage`, `Edge Services`, `Availability Monitoring`, `Regional Traffic Share`, or `Cache Delivery Split` look like white outer panels again, check overrides for:
+      - `.fi-wi-stats-overview .fi-section.fi-section-not-contained`
   - palette changes require a frontend rebuild with:
     - `pnpm --store-dir=/home/deploy/.local/share/pnpm/store/v10 build`
     - `php artisan optimize`
@@ -253,6 +259,14 @@
     - title/value strongest
     - supporting description medium
     - label weakest
+  - current Simple light hierarchy target:
+    - title/value strongest
+    - supporting description clearly darker than default Filament/Tailwind utility grays
+    - label weakest
+  - if Simple light supporting text looks washed out again, check for utility classes like:
+    - `text-gray-600`
+    - `text-gray-700`
+    - and verify they are overridden inside the Simple summary card selectors rather than only through generic app-shell text rules
 - Current Pro Mode status:
   - Pro dark should feel analytical and denser than Simple dark
   - Pro-specific dark treatment is applied through the custom settings components:
@@ -265,6 +279,11 @@
     - clearer metric/value emphasis
     - better section/card separation
     - stronger semantic status pills in dark mode
+  - light Pro mode also now has its own surface layering:
+    - page shell / outer grouped widget wrapper
+    - panel-level section surface
+    - elevated inner metric/stat tiles
+  - avoid white outer wrappers behind grouped stat tiles in light mode
 - Important recent dark-mode note:
   - several dark text/readability fixes were needed because Filament/Tailwind utility classes were overriding the intended hierarchy
   - if dark card copy looks faded again, check for utility classes like:

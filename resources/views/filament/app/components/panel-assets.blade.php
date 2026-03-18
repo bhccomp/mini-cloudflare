@@ -15,13 +15,7 @@
             const allowed = ['frost-ice-infra', 'slate-electric-cyan', 'warm-infra-stone'];
             const params = new URLSearchParams(window.location.search);
             const requested = aliases[params.get('palette')] ?? params.get('palette');
-
-            if (allowed.includes(requested)) {
-                localStorage.setItem('firephage-demo-light-palette', requested);
-            }
-
-            const stored = localStorage.getItem('firephage-demo-light-palette');
-            const active = aliases[stored] ?? stored ?? 'frost-ice-infra';
+            const active = allowed.includes(requested) ? requested : 'frost-ice-infra';
 
             if (allowed.includes(active)) {
                 document.documentElement.setAttribute('data-firephage-light-palette', active);

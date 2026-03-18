@@ -28,6 +28,7 @@
         --fp-light-strong-border: #d8e2ee;
         --fp-light-heading: #0f172a;
         --fp-light-body: #64748b;
+        --fp-light-body-strong: #475569;
         --fp-light-input: #f8fbff;
         --fp-light-hover: #edf4ff;
         --fp-light-active-bg: #e8f1ff;
@@ -67,6 +68,7 @@
         --fp-light-strong-border: #d5dde6;
         --fp-light-heading: #0b1220;
         --fp-light-body: #6b7280;
+        --fp-light-body-strong: #4b5563;
         --fp-light-input: #f7fbfd;
         --fp-light-hover: #ebf8ff;
         --fp-light-active-bg: #e0f2fe;
@@ -106,6 +108,7 @@
         --fp-light-strong-border: #dad0c2;
         --fp-light-heading: #1f2937;
         --fp-light-body: #6b7280;
+        --fp-light-body-strong: #4b5563;
         --fp-light-input: #fcfaf6;
         --fp-light-hover: #f6f0e6;
         --fp-light-active-bg: #e6f7f8;
@@ -449,7 +452,7 @@
 
     html:not(.dark) .fi-panel-app .fp-recommendation-box p + p {
         margin-top: 0.5rem;
-        color: var(--fp-light-body);
+        color: var(--fp-light-body-strong) !important;
         line-height: 1.65;
     }
 
@@ -523,10 +526,17 @@
         margin-bottom: 0.45rem;
     }
 
-    html:not(.dark) .fi-panel-app .fp-status-card p.text-sm {
-        color: var(--fp-light-body);
+    html:not(.dark) .fi-panel-app .fp-status-card p.text-sm,
+    html:not(.dark) .fi-panel-app .fp-status-card .text-gray-600,
+    html:not(.dark) .fi-panel-app .fp-status-card .text-gray-700 {
+        color: var(--fp-light-body-strong) !important;
         line-height: 1.75;
         margin-top: 0.55rem;
+    }
+
+    html:not(.dark) .fi-panel-app .fp-status-card .text-sm.font-medium,
+    html:not(.dark) .fi-panel-app .fp-status-card .text-gray-700.dark\:text-gray-200 {
+        color: #64748b !important;
     }
 
     html:not(.dark) .fi-panel-app .fp-status-card:first-child {
@@ -603,6 +613,149 @@
 
     html:not(.dark) .fi-panel-app .fp-status-card-muted .fp-status-pill {
         opacity: 0.9;
+    }
+
+    html:not(.dark) .fi-panel-app .fp-pro-card,
+    html:not(.dark) .fi-panel-app .fp-pro-section,
+    html:not(.dark) .fi-panel-app .fp-pro-metric {
+        border: 1px solid color-mix(in srgb, var(--fp-light-heading) 5%, transparent);
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 10px 24px rgba(15, 23, 42, 0.05);
+        transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    html:not(.dark) .fi-panel-app .fp-pro-card {
+        background: var(--fp-light-surface);
+    }
+
+    html:not(.dark) .fi-panel-app .fp-pro-section {
+        background: color-mix(in srgb, var(--fp-light-subtle-surface) 42%, white);
+        border-color: color-mix(in srgb, var(--fp-light-heading) 6%, transparent);
+    }
+
+    html:not(.dark) .fi-panel-app .fp-pro-metric {
+        background: var(--fp-light-card);
+        border-color: color-mix(in srgb, var(--fp-light-heading) 7%, transparent);
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 6px 16px rgba(15, 23, 42, 0.05);
+    }
+
+    html:not(.dark) .fi-panel-app .fp-pro-card:hover,
+    html:not(.dark) .fi-panel-app .fp-pro-section:hover,
+    html:not(.dark) .fi-panel-app .fp-pro-metric:hover {
+        box-shadow: 0 4px 10px rgba(15, 23, 42, 0.06), 0 16px 34px rgba(15, 23, 42, 0.08);
+        transform: translateY(-2px);
+    }
+
+    html:not(.dark) .fi-panel-app .fp-pro-card .fi-section-header-heading,
+    html:not(.dark) .fi-panel-app .fp-pro-section .fi-section-header-heading,
+    html:not(.dark) .fi-panel-app .fp-pro-metric-value,
+    html:not(.dark) .fi-panel-app .fp-pro-metric-value * {
+        color: #0f172a;
+    }
+
+    html:not(.dark) .fi-panel-app .fp-pro-card .fi-section-header-description,
+    html:not(.dark) .fi-panel-app .fp-pro-section .fi-section-header-description,
+    html:not(.dark) .fi-panel-app .fp-pro-metric-body {
+        color: #64748b;
+    }
+
+    html:not(.dark) .fi-panel-app .fp-pro-metric .fi-badge-label,
+    html:not(.dark) .fi-panel-app .fp-pro-card .fi-section-content > *,
+    html:not(.dark) .fi-panel-app .fp-pro-section .fi-section-content > * {
+        color: #94a3b8;
+    }
+
+    html:not(.dark) .fi-panel-app .fp-pro-metric-label {
+        background: color-mix(in srgb, var(--fp-light-subtle-surface) 68%, white);
+        border-color: color-mix(in srgb, var(--fp-light-heading) 8%, transparent);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    }
+
+    html:not(.dark) .fi-panel-app .fp-pro-metric-value {
+        font-weight: 700;
+        font-size: 1.08rem;
+        line-height: 1.45;
+        letter-spacing: -0.01em;
+    }
+
+    html:not(.dark) .fi-panel-app .fp-pro-card .fi-icon,
+    html:not(.dark) .fi-panel-app .fp-pro-section .fi-icon {
+        color: var(--fp-light-operational-text);
+    }
+
+    html:not(.dark) .fi-panel-app .fp-pro-status-pill {
+        border-width: 1px;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+    }
+
+    html:not(.dark) .fi-panel-app .fp-pro-status-pill.fi-color-success,
+    html:not(.dark) .fi-panel-app .fp-pro-metric .fi-color-success.fp-pro-status-pill {
+        background: color-mix(in srgb, var(--fp-light-success-bg) 100%, white);
+        border-color: color-mix(in srgb, var(--fp-light-success-text) 20%, transparent);
+        color: var(--fp-light-success-text);
+    }
+
+    html:not(.dark) .fi-panel-app .fp-pro-status-pill.fi-color-warning,
+    html:not(.dark) .fi-panel-app .fp-pro-metric .fi-color-warning.fp-pro-status-pill {
+        background: color-mix(in srgb, var(--fp-light-warning-bg) 100%, white);
+        border-color: color-mix(in srgb, var(--fp-light-warning-text) 20%, transparent);
+        color: var(--fp-light-warning-text);
+    }
+
+    html:not(.dark) .fi-panel-app .fp-pro-status-pill.fi-color-danger,
+    html:not(.dark) .fi-panel-app .fp-pro-metric .fi-color-danger.fp-pro-status-pill {
+        background: color-mix(in srgb, var(--fp-light-danger-bg) 100%, white);
+        border-color: color-mix(in srgb, var(--fp-light-danger-text) 20%, transparent);
+        color: var(--fp-light-danger-text);
+    }
+
+    html:not(.dark) .fi-panel-app .fp-pro-status-pill.fi-color-primary,
+    html:not(.dark) .fi-panel-app .fp-pro-metric .fi-color-primary.fp-pro-status-pill,
+    html:not(.dark) .fi-panel-app .fp-pro-status-pill.fi-color-info,
+    html:not(.dark) .fi-panel-app .fp-pro-metric .fi-color-info.fp-pro-status-pill {
+        background: color-mix(in srgb, var(--fp-light-operational-bg) 100%, white);
+        border-color: color-mix(in srgb, var(--fp-light-operational-text) 20%, transparent);
+        color: var(--fp-light-operational-text);
+    }
+
+    html:not(.dark) .fi-panel-app .fp-pro-status-pill.fi-color-gray,
+    html:not(.dark) .fi-panel-app .fp-pro-metric .fi-color-gray.fp-pro-status-pill {
+        background: color-mix(in srgb, var(--fp-light-subtle-surface) 100%, white);
+        border-color: color-mix(in srgb, var(--fp-light-heading) 8%, transparent);
+        color: var(--fp-light-heading);
+    }
+
+    html:not(.dark) .fi-panel-app .fi-wi-stats-overview .fi-section.fi-section-not-contained {
+        background: transparent;
+        border-color: transparent;
+        box-shadow: none;
+    }
+
+    html:not(.dark) .fi-panel-app .fi-wi-stats-overview .fi-section.fi-section-not-contained .fi-section-header,
+    html:not(.dark) .fi-panel-app .fi-wi-stats-overview .fi-section.fi-section-not-contained .fi-section-content-ctn {
+        background: transparent;
+    }
+
+    html:not(.dark) .fi-panel-app .fi-wi-stats-overview-stat {
+        background: var(--fp-light-card);
+        border: 1px solid color-mix(in srgb, var(--fp-light-heading) 6%, transparent);
+        border-radius: 1rem;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 18px rgba(15, 23, 42, 0.06);
+        transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    html:not(.dark) .fi-panel-app .fi-wi-stats-overview-stat:hover {
+        background: var(--fp-light-card-hover);
+        box-shadow: 0 4px 10px rgba(15, 23, 42, 0.06), 0 16px 28px rgba(15, 23, 42, 0.08);
+        transform: translateY(-2px);
+    }
+
+    html:not(.dark) .fi-panel-app .fi-wi-stats-overview-stat-label,
+    html:not(.dark) .fi-panel-app .fi-wi-stats-overview-stat-description {
+        color: #64748b;
+    }
+
+    html:not(.dark) .fi-panel-app .fi-wi-stats-overview-stat-value {
+        color: #0f172a;
     }
 
     .dark .fi-panel-app .fp-recommendation-box {
