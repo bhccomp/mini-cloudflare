@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\App\AcceptOrganizationInvitationController;
 use App\Http\Controllers\App\SiteCheckoutController;
 use App\Http\Controllers\BlogController;
+use App\Http\Controllers\ContactController;
 use App\Http\Controllers\SeoController;
 use App\Http\Controllers\ServicePageController;
 use App\Http\Controllers\StripeWebhookController;
@@ -30,7 +31,8 @@ Route::get('/services', [ServicePageController::class, 'index'])->name('services
 Route::get('/services/{service}', [ServicePageController::class, 'show'])->name('services.show');
 Route::get('/blog', [BlogController::class, 'index'])->name('blog.index');
 Route::get('/blog/{post:slug}', [BlogController::class, 'show'])->name('blog.show');
-Route::view('/contact', 'marketing.contact')->name('contact');
+Route::get('/contact', [ContactController::class, 'create'])->name('contact');
+Route::post('/contact', [ContactController::class, 'store'])->name('contact.store');
 Route::view('/terms', 'marketing.terms')->name('terms');
 Route::view('/privacy', 'marketing.privacy')->name('privacy');
 Route::view('/refund-policy', 'marketing.refund-policy')->name('refund-policy');

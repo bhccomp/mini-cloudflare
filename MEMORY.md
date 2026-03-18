@@ -331,6 +331,26 @@
 
 ## Support / Ticketing (Latest)
 - Installed `daacreators/creators-ticketing` as the current in-app support system.
+- Public contact flow follow-up:
+  - `/contact` is no longer a static email-only placeholder
+  - it is now a controller-backed public marketing page with a stored contact form
+  - submissions are saved in `contact_submissions`
+  - super admins receive email notifications for new public contact submissions
+  - the sender receives a confirmation email
+  - admin review is available in Filament via:
+    - `app/Filament/Admin/Resources/ContactSubmissionResource.php`
+  - current public contact flow files:
+    - `app/Http/Controllers/ContactController.php`
+    - `app/Http/Requests/ContactSubmissionRequest.php`
+    - `app/Models/ContactSubmission.php`
+    - `resources/views/marketing/contact.blade.php`
+  - spam protection:
+    - basic honeypot + minimum-fill-time checks are active by default
+    - Cloudflare Turnstile is supported if these env vars are configured:
+      - `TURNSTILE_SITE_KEY`
+      - `TURNSTILE_SECRET_KEY`
+    - Turnstile verification logic lives in:
+      - `app/Services/Support/ContactCaptchaService.php`
 - Current admin-side setup:
   - package config published to `config/creators-ticketing.php`
   - plugin registered in `app/Providers/Filament/AdminPanelProvider.php`

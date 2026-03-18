@@ -42,4 +42,9 @@ return [
         'price_pro_monthly' => env('STRIPE_PRICE_PRO_MONTHLY'),
         'price_business_monthly' => env('STRIPE_PRICE_BUSINESS_MONTHLY'),
     ],
+
+    'turnstile' => [
+        'site_key' => env('TURNSTILE_SITE_KEY'),
+        'secret_key' => env('TURNSTILE_SECRET_KEY'),
+    ],
 ];
