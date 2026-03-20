@@ -23,20 +23,47 @@ class SeedDemoDashboardCommand extends Command
 
     public function handle(): int
     {
-        DB::transaction(function (): void {
+        $demoOrganizationSlug = trim((string) config('demo.organization.slug'));
+        $demoOrganizationName = trim((string) config('demo.organization.name'));
+        $demoAccountEmail = trim((string) config('demo.account.email'));
+        $demoAccountName = trim((string) config('demo.account.name'));
+        $demoSiteDomain = trim((string) config('demo.site.apex_domain'));
+        $demoSiteDisplayName = trim((string) config('demo.site.display_name'));
+
+        if (
+            $demoOrganizationSlug === ''
+            || $demoOrganizationName === ''
+            || $demoAccountEmail === ''
+            || $demoAccountName === ''
+            || $demoSiteDomain === ''
+            || $demoSiteDisplayName === ''
+        ) {
+            $this->error('Demo seeding aborted because one or more required demo identity values are blank.');
+
+            return self::FAILURE;
+        }
+
+        DB::transaction(function () use (
+            $demoOrganizationSlug,
+            $demoOrganizationName,
+            $demoAccountEmail,
+            $demoAccountName,
+            $demoSiteDomain,
+            $demoSiteDisplayName,
+        ): void {
             $organization = Organization::query()->updateOrCreate(
-                ['slug' => (string) config('demo.organization.slug')],
+                ['slug' => $demoOrganizationSlug],
                 [
-                    'name' => (string) config('demo.organization.name'),
-                    'billing_email' => (string) config('demo.account.email'),
+                    'name' => $demoOrganizationName,
+                    'billing_email' => $demoAccountEmail,
                     'settings' => ['demo_mode' => true],
                 ],
             );
 
             $user = User::query()->updateOrCreate(
-                ['email' => (string) config('demo.account.email')],
+                ['email' => $demoAccountEmail],
                 [
-                    'name' => (string) config('demo.account.name'),
+                    'name' => $demoAccountName,
                     'password' => (string) config('demo.account.password'),
                     'is_super_admin' => false,
                     'current_organization_id' => $organization->id,
@@ -65,10 +92,10 @@ class SeedDemoDashboardCommand extends Command
             );
 
             $site = Site::query()->updateOrCreate(
-                ['organization_id' => $organization->id, 'apex_domain' => (string) config('demo.site.apex_domain')],
+                ['organization_id' => $organization->id, 'apex_domain' => $demoSiteDomain],
                 [
-                    'name' => (string) config('demo.site.display_name'),
-                    'display_name' => (string) config('demo.site.display_name'),
+                    'name' => $demoSiteDisplayName,
+                    'display_name' => $demoSiteDisplayName,
                     'provider' => Site::PROVIDER_BUNNY,
                     'status' => Site::STATUS_ACTIVE,
                     'onboarding_status' => Site::ONBOARDING_LIVE,
@@ -77,7 +104,7 @@ class SeedDemoDashboardCommand extends Command
                     'origin_host' => 'origin.demo.firephage.test',
                     'origin_ip' => '203.0.113.10',
                     'www_enabled' => true,
-                    'www_domain' => 'www.'.(string) config('demo.site.apex_domain'),
+                    'www_domain' => 'www.'.$demoSiteDomain,
                     'cloudfront_distribution_id' => 'demo-edge-distribution',
                     'cloudfront_domain_name' => 'demo.firephage.edge.example',
                     'acm_certificate_arn' => 'demo-certificate',
@@ -133,10 +160,10 @@ class SeedDemoDashboardCommand extends Command
                             ],
                         ],
                     ],
-                    'required_dns_records' => [
+                        'required_dns_records' => [
                         'traffic' => [
-                            ['host' => (string) config('demo.site.apex_domain'), 'type' => 'ALIAS', 'value' => 'demo.firephage.edge.example'],
-                            ['host' => 'www.'.(string) config('demo.site.apex_domain'), 'type' => 'CNAME', 'value' => 'demo.firephage.edge.example'],
+                            ['host' => $demoSiteDomain, 'type' => 'ALIAS', 'value' => 'demo.firephage.edge.example'],
+                            ['host' => 'www.'.$demoSiteDomain, 'type' => 'CNAME', 'value' => 'demo.firephage.edge.example'],
                         ],
                         'control_panel' => [
                             'https_enforced' => true,
@@ -151,8 +178,8 @@ class SeedDemoDashboardCommand extends Command
                             'expected_target' => 'demo.firephage.edge.example',
                             'checked_at' => now()->toIso8601String(),
                             'domains' => [
-                                ['domain' => (string) config('demo.site.apex_domain'), 'points_to_edge' => true, 'resolved' => ['cname' => ['demo.firephage.edge.example'], 'a' => [], 'aaaa' => []]],
-                                ['domain' => 'www.'.(string) config('demo.site.apex_domain'), 'points_to_edge' => true, 'resolved' => ['cname' => ['demo.firephage.edge.example'], 'a' => [], 'aaaa' => []]],
+                                ['domain' => $demoSiteDomain, 'points_to_edge' => true, 'resolved' => ['cname' => ['demo.firephage.edge.example'], 'a' => [], 'aaaa' => []]],
+                                ['domain' => 'www.'.$demoSiteDomain, 'points_to_edge' => true, 'resolved' => ['cname' => ['demo.firephage.edge.example'], 'a' => [], 'aaaa' => []]],
                             ],
                         ],
                     ],
@@ -248,8 +275,8 @@ class SeedDemoDashboardCommand extends Command
                 [
                     'site_token_hash' => hash('sha256', 'demo-plugin-token'),
                     'status' => 'connected',
-                    'home_url' => 'https://'.(string) config('demo.site.apex_domain'),
-                    'site_url' => 'https://'.(string) config('demo.site.apex_domain'),
+                    'home_url' => 'https://'.$demoSiteDomain,
+                    'site_url' => 'https://'.$demoSiteDomain,
                     'admin_email' => 'ops@firephage.demo',
                     'plugin_version' => '1.4.0',
                     'last_connected_at' => now()->subHours(4),
@@ -258,8 +285,8 @@ class SeedDemoDashboardCommand extends Command
                     'last_report_payload' => [
                         'generated_at' => now()->subMinutes(4)->toIso8601String(),
                         'site' => [
-                            'home_url' => 'https://'.(string) config('demo.site.apex_domain'),
-                            'site_url' => 'https://'.(string) config('demo.site.apex_domain'),
+                            'home_url' => 'https://'.$demoSiteDomain,
+                            'site_url' => 'https://'.$demoSiteDomain,
                             'wp_version' => '6.8.1',
                             'php_version' => '8.3',
                             'plugin_version' => '1.4.0',

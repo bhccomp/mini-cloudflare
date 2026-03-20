@@ -2,6 +2,13 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Admin\Widgets\AdminOverviewStats;
+use App\Filament\Admin\Widgets\RecentBlogPostsTable;
+use App\Filament\Admin\Widgets\RecentContactSubmissionsTable;
+use App\Filament\Admin\Widgets\RecentEarlyAccessLeadsTable;
+use App\Filament\Admin\Widgets\RecentTicketsTable;
+use App\Filament\Admin\Widgets\RecentUsersTable;
+use App\Filament\Admin\Widgets\RecentWordPressSubscribersTable;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -10,7 +17,6 @@ use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
-use Filament\Widgets\AccountWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -40,7 +46,13 @@ class AdminPanelProvider extends PanelProvider
                 Dashboard::class,
             ])
             ->widgets([
-                AccountWidget::class,
+                AdminOverviewStats::class,
+                RecentTicketsTable::class,
+                RecentContactSubmissionsTable::class,
+                RecentEarlyAccessLeadsTable::class,
+                RecentWordPressSubscribersTable::class,
+                RecentBlogPostsTable::class,
+                RecentUsersTable::class,
             ])
             ->plugin(TicketingPlugin::make())
             ->middleware([

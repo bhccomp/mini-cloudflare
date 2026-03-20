@@ -258,6 +258,39 @@
   - current Simple dark hierarchy target:
     - title/value strongest
     - supporting description medium
+
+## Admin Dashboard + Demo Seed Cleanup (Latest)
+- The Filament admin dashboard at `/admin` no longer uses the stock empty-state account widget.
+- Current admin dashboard widgets are now Filament-native and registered directly in `AdminPanelProvider`.
+- Current admin dashboard contents:
+  - `AdminOverviewStats`
+  - `RecentTicketsTable`
+  - `RecentContactSubmissionsTable`
+  - `RecentEarlyAccessLeadsTable`
+  - `RecentWordPressSubscribersTable`
+  - `RecentBlogPostsTable`
+  - `RecentUsersTable`
+- Purpose of the current dashboard:
+  - give super admins one immediate overview of support load, growth pipeline, publishing status, subscribers, users, and active sites
+  - avoid custom HTML/CSS dashboard shells; keep everything inside Filament widgets
+- Important implementation note:
+  - dashboard widget header actions must use `Filament\Actions\Action`, not `Filament\Tables\Actions\Action`
+  - using the tables action class in widgets causes Livewire load failures on `/admin`
+- Data cleanup completed:
+  - removed one bad demo-seeded blank trio from production DB:
+    - user `709`
+    - organization `863`
+    - site `645`
+  - these records were clearly demo artifacts, not real customers
+- Seeder hardening completed:
+  - `demo:seed-dashboard` now aborts if any required demo identity values are blank:
+    - demo organization slug
+    - demo organization name
+    - demo account email
+    - demo account name
+    - demo site apex domain
+    - demo site display name
+  - goal: prevent another blank demo org/user/site trio from being created if config resolves incorrectly
     - label weakest
   - current Simple light hierarchy target:
     - title/value strongest
