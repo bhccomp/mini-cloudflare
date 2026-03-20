@@ -2,6 +2,7 @@
 
 namespace App\Services\WordPress;
 
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
@@ -92,6 +93,25 @@ class WordPressReferenceFileService
             ])
             ->retry(2, 250, throw: false)
             ->get($url);
+
+        if (! $response->successful()) {
+            if ($type === 'plugin' && $response->status() === 404 && $slug !== null) {
+                $fallbackUrl = $this->resolvePluginVersionDownloadUrl($slug, $version);
+
+                if ($fallbackUrl !== null) {
+                    $response = Http::timeout(20)
+                        ->withHeaders([
+                            'User-Agent' => 'FirePhage checksum compare/1.0',
+                        ])
+                        ->retry(2, 250, throw: false)
+                        ->get($fallbackUrl);
+                }
+            }
+
+            if (! $response->successful()) {
+                throw new RuntimeException($this->downloadFailureMessage($type, $slug, $version, $response->status()));
+            }
+        }
 
         if (! $response->successful()) {
             throw new RuntimeException('Unable to download the official package from WordPress.org.');
@@ -206,5 +226,73 @@ class WordPressReferenceFileService
         }
 
         return null;
+    }
+
+    private function resolvePluginVersionDownloadUrl(string $slug, string $version): ?string
+    {
+        $response = Http::acceptJson()
+            ->timeout(10)
+            ->withHeaders([
+                'User-Agent' => 'FirePhage checksum compare/1.0',
+            ])
+            ->retry(2, 250, throw: false)
+            ->get('https://api.wordpress.org/plugins/info/1.2/', [
+                'action' => 'plugin_information',
+                'request' => [
+                    'slug' => $slug,
+                    'fields' => [
+                        'versions' => true,
+                    ],
+                ],
+            ]);
+
+        if (! $response->successful()) {
+            return null;
+        }
+
+        $payload = $response->json();
+
+        if (! is_array($payload)) {
+            return null;
+        }
+
+        $versions = Arr::get($payload, 'versions', []);
+
+        if (! is_array($versions)) {
+            return null;
+        }
+
+        $url = $versions[$version] ?? null;
+
+        return is_string($url) && $url !== '' ? $url : null;
+    }
+
+    private function downloadFailureMessage(string $type, ?string $slug, string $version, int $status): string
+    {
+        if ($type === 'plugin' && $slug !== null) {
+            if ($status === 404) {
+                return sprintf('The official WordPress.org plugin package for %s version %s is not available for compare or restore.', $slug, $version);
+            }
+
+            return sprintf('Unable to download the official WordPress.org plugin package for %s version %s.', $slug, $version);
+        }
+
+        if ($type === 'theme' && $slug !== null) {
+            if ($status === 404) {
+                return sprintf('The official WordPress.org theme package for %s version %s is not available for compare or restore.', $slug, $version);
+            }
+
+            return sprintf('Unable to download the official WordPress.org theme package for %s version %s.', $slug, $version);
+        }
+
+        if ($type === 'core') {
+            if ($status === 404) {
+                return sprintf('The official WordPress core package for version %s is not available for compare or restore.', $version);
+            }
+
+            return sprintf('Unable to download the official WordPress core package for version %s.', $version);
+        }
+
+        return 'Unable to download the official package from WordPress.org.';
     }
 }
