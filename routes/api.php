@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\PluginConnectController;
 use App\Http\Controllers\Api\PluginFirewallSummaryController;
 use App\Http\Controllers\Api\PackageChecksumController;
+use App\Http\Controllers\Api\PackageReferenceFileController;
 use App\Http\Controllers\Api\PluginFreeTokenRegistrationController;
 use App\Http\Controllers\Api\PluginFreeTokenStatusController;
 use App\Http\Controllers\Api\PluginFreeTokenVerifyController;
@@ -14,6 +15,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/health', fn () => response()->json(['ok' => true]));
 Route::get('/plugin/checksums', PackageChecksumController::class);
+Route::get('/plugin/reference-file', PackageReferenceFileController::class);
 Route::post('/plugin/free-token/register', PluginFreeTokenRegistrationController::class)->middleware('throttle:10,1');
 Route::get('/plugin/free-token/status', PluginFreeTokenStatusController::class)->middleware('throttle:30,1');
 Route::post('/plugin/free-token/verify', PluginFreeTokenVerifyController::class)->middleware('throttle:30,1');
