@@ -86,7 +86,12 @@ class WordPressReferenceFileService
         }
 
         [$url, $prefix] = $this->packageLocation($type, $slug, $version);
-        $response = Http::timeout(20)->retry(2, 250)->get($url);
+        $response = Http::timeout(20)
+            ->withHeaders([
+                'User-Agent' => 'FirePhage checksum compare/1.0',
+            ])
+            ->retry(2, 250, throw: false)
+            ->get($url);
 
         if (! $response->successful()) {
             throw new RuntimeException('Unable to download the official package from WordPress.org.');
@@ -130,7 +135,7 @@ class WordPressReferenceFileService
     {
         if ($type === 'core') {
             return [
-                sprintf('https://wordpress.org/wordpress-%s.zip', rawurlencode($version)),
+                sprintf('https://downloads.wordpress.org/release/wordpress-%s.zip', rawurlencode($version)),
                 'wordpress/',
             ];
         }
