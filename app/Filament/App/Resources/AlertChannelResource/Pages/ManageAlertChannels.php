@@ -288,16 +288,16 @@ class ManageAlertChannels extends Page implements HasForms
         ];
 
         return sprintf(
-            '<div class="space-y-3 text-sm text-gray-600 dark:text-gray-300">
+            '<div class="space-y-3 text-sm text-black dark:text-white">
                 <p>FirePhage sends a <strong>POST</strong> request with a JSON body when a connected WordPress site reports malware or modified core files.</p>
                 <ul class="list-disc space-y-1 pl-5">
                     <li><strong>Content-Type:</strong> <code>application/json</code></li>
                     <li><strong>Events:</strong> <code>wordpress_malware_detected</code>, <code>wordpress_core_edits_detected</code></li>
                     <li><strong>Signature header:</strong> <code>X-FirePhage-Signature</code> when a signing secret is set</li>
                 </ul>
-                <details class="rounded-lg border border-gray-200 bg-white p-3 dark:border-white/10 dark:bg-white/5">
-                    <summary class="cursor-pointer font-medium text-gray-900 dark:text-white">View sample payload</summary>
-                    <pre class="mt-3 overflow-x-auto rounded-md bg-gray-950/95 p-3 text-xs leading-5 text-gray-100">%s</pre>
+                <details class="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-white/10 dark:bg-gray-900/40">
+                    <summary class="cursor-pointer font-medium text-black dark:text-white">View sample payload</summary>
+                    <pre class="mt-3 overflow-x-auto rounded-md bg-gray-100 p-3 text-xs leading-5 text-gray-900 dark:bg-gray-950/95 dark:text-gray-100">%s</pre>
                 </details>
             </div>',
             e(json_encode($sample, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES))
