@@ -122,6 +122,21 @@ class BunnyCdnProvider implements EdgeProviderInterface
         $edgeScriptStatus = 'inactive';
         $edgeScriptId = null;
         $edgeScriptMessage = 'Origin custom error pages are currently disabled.';
+        $edgeScriptLastError = $edgeScriptMessage;
+
+        if ($this->shouldUseAdvancedShield($site)) {
+            try {
+                $edgeScriptResult = $this->syncEdgeErrorPages($site);
+                $edgeScriptStatus = (string) ($edgeScriptResult['status'] ?? 'active');
+                $edgeScriptId = (int) ($edgeScriptResult['script_id'] ?? 0) ?: null;
+                $edgeScriptMessage = (string) ($edgeScriptResult['message'] ?? 'Branded edge error pages are attached to this Bunny zone.');
+                $edgeScriptLastError = null;
+            } catch (\Throwable $e) {
+                $edgeScriptStatus = 'failed';
+                $edgeScriptMessage = $e->getMessage();
+                $edgeScriptLastError = $edgeScriptMessage;
+            }
+        }
 
         $edgeDomain = $this->zoneEdgeDomain($zoneName);
         $hostnames = [$site->apex_domain];
@@ -167,7 +182,7 @@ class BunnyCdnProvider implements EdgeProviderInterface
                 'shield_plan_message' => $shieldPlanMessage,
                 'edge_error_script_id' => $edgeScriptId,
                 'edge_error_script_status' => $edgeScriptStatus,
-                'edge_error_script_last_error' => $edgeScriptMessage,
+                'edge_error_script_last_error' => $edgeScriptLastError,
                 'edge_domain' => $edgeDomain,
                 'origin_url' => $originUrl,
                 'origin_host_header' => $originHostHeader,
@@ -187,7 +202,9 @@ class BunnyCdnProvider implements EdgeProviderInterface
                 $shieldPlanStatus === 'active' ? 'Bunny Shield advanced plan has been enabled for this site.' : null,
                 $shieldPlanStatus === 'unchanged' ? $shieldPlanMessage : null,
                 $shieldPlanStatus === 'failed' ? 'Bunny Shield advanced plan could not be enabled automatically yet.' : null,
-                'Origin custom error pages are disabled for this site.',
+                $edgeScriptStatus === 'active' ? 'Branded blocked pages are enabled for this site.' : null,
+                $edgeScriptStatus === 'failed' ? 'Branded blocked pages could not be enabled automatically yet.' : null,
+                $edgeScriptStatus === 'inactive' ? 'Origin custom error pages are disabled for this site.' : null,
             ])),
         ];
     }
