@@ -103,10 +103,10 @@ class BunnyLogsService
                     'action' => strtoupper((string) ($row['action'] ?? 'ALLOW')),
                     'rule' => (string) ($row['rule'] ?? 'edge'),
                     'user_agent' => (string) ($row['user_agent'] ?? data_get($row, 'meta.user_agent', '')),
-                    'meta' => [
+                    'meta' => json_encode([
                         'bytes' => (int) ($row['bytes'] ?? 0),
                         'source' => 'bunny',
-                    ],
+                    ], JSON_UNESCAPED_SLASHES),
                     'created_at' => now(),
                     'updated_at' => now(),
                 ];
@@ -196,7 +196,14 @@ class BunnyLogsService
         return [
             'timestamp' => $this->parseTimestampSafely($rawTime),
             'action' => strtoupper($action),
-            'ip' => (string) (Arr::get($row, 'ip') ?? Arr::get($row, 'IP') ?? Arr::get($row, 'remoteIp') ?? '-'),
+            'ip' => (string) (
+                Arr::get($row, 'ip')
+                ?? Arr::get($row, 'IP')
+                ?? Arr::get($row, 'remoteIp')
+                ?? Arr::get($row, 'RemoteIp')
+                ?? Arr::get($row, 'remote_ip')
+                ?? '-'
+            ),
             'country' => strtoupper((string) (Arr::get($row, 'country') ?? Arr::get($row, 'countryCode') ?? Arr::get($row, 'CountryCode') ?? '??')),
             'method' => strtoupper((string) (Arr::get($row, 'method') ?? Arr::get($row, 'Method') ?? 'GET')),
             'uri' => (string) (Arr::get($row, 'url') ?? Arr::get($row, 'Url') ?? Arr::get($row, 'path') ?? '/'),
@@ -312,6 +319,27 @@ class BunnyLogsService
             $json = json_decode($line, true);
 
             return is_array($json) ? $json : null;
+        }
+
+        if (str_contains($line, '|')) {
+            $parts = explode('|', $line);
+
+            if (count($parts) >= 12) {
+                return [
+                    'cacheStatus' => (string) ($parts[0] ?? 'edge'),
+                    'status' => (int) ($parts[1] ?? 200),
+                    'timestamp' => (string) ($parts[2] ?? now()->timestamp),
+                    'bytes' => (int) ($parts[3] ?? 0),
+                    'pullZone' => (string) ($parts[4] ?? ''),
+                    'ip' => (string) ($parts[5] ?? '-'),
+                    'referer' => (string) ($parts[6] ?? ''),
+                    'url' => (string) ($parts[7] ?? '/'),
+                    'edgeLocation' => (string) ($parts[8] ?? ''),
+                    'userAgent' => (string) ($parts[9] ?? ''),
+                    'requestId' => (string) ($parts[10] ?? ''),
+                    'countryCode' => (string) ($parts[11] ?? '??'),
+                ];
+            }
         }
 
         $parts = str_contains($line, "\t")
