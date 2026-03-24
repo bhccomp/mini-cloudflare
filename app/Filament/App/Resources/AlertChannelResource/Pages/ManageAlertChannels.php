@@ -92,27 +92,6 @@ class ManageAlertChannels extends Page implements HasForms
                                     ->maxLength(120)
                                     ->placeholder('FirePhage Alerts'),
                             ]),
-                        Tab::make('Phone')
-                            ->icon('heroicon-o-device-phone-mobile')
-                            ->schema([
-                                Toggle::make('sms.enabled')
-                                    ->label('Enable phone/SMS alerts')
-                                    ->default(false),
-                                Select::make('sms.site_id')
-                                    ->label('Site scope')
-                                    ->options($this->siteOptions)
-                                    ->searchable()
-                                    ->placeholder('All sites (organization-wide)'),
-                                Textarea::make('sms.recipients')
-                                    ->label('Phone numbers')
-                                    ->rows(4)
-                                    ->placeholder("+15551234567\n+381601234567")
-                                    ->helperText('Use E.164 format, one number per line.'),
-                                TextInput::make('sms.provider_hint')
-                                    ->label('Provider note (optional)')
-                                    ->maxLength(120)
-                                    ->placeholder('Twilio / local gateway'),
-                            ]),
                         Tab::make('Webhook')
                             ->icon('heroicon-o-link')
                             ->schema([
@@ -182,18 +161,6 @@ class ManageAlertChannels extends Page implements HasForms
 
         $this->upsertChannel(
             organizationId: $organizationId,
-            type: 'sms',
-            name: 'Phone Alerts',
-            enabled: (bool) data_get($state, 'sms.enabled', false),
-            siteId: data_get($state, 'sms.site_id'),
-            config: [
-                'recipients' => $this->lines((string) data_get($state, 'sms.recipients', '')),
-                'provider_hint' => (string) data_get($state, 'sms.provider_hint', ''),
-            ],
-        );
-
-        $this->upsertChannel(
-            organizationId: $organizationId,
             type: 'webhook',
             name: 'Webhook Alerts',
             enabled: (bool) data_get($state, 'webhook.enabled', false),
@@ -222,7 +189,7 @@ class ManageAlertChannels extends Page implements HasForms
 
         $channels = AlertChannel::query()
             ->where('organization_id', $organizationId)
-            ->whereIn('type', ['slack', 'email', 'sms', 'webhook'])
+            ->whereIn('type', ['slack', 'email', 'webhook'])
             ->orderBy('id')
             ->get()
             ->groupBy('type')
@@ -230,7 +197,7 @@ class ManageAlertChannels extends Page implements HasForms
 
         $defaults = $this->defaultState();
 
-        foreach (['slack', 'email', 'sms', 'webhook'] as $type) {
+        foreach (['slack', 'email', 'webhook'] as $type) {
             $record = $channels->get($type);
             if (! $record) {
                 continue;
@@ -283,12 +250,6 @@ class ManageAlertChannels extends Page implements HasForms
                 'site_id' => null,
                 'recipients' => '',
                 'from_name' => 'FirePhage Alerts',
-            ],
-            'sms' => [
-                'enabled' => false,
-                'site_id' => null,
-                'recipients' => '',
-                'provider_hint' => '',
             ],
             'webhook' => [
                 'enabled' => false,
