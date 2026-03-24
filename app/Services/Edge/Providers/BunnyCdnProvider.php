@@ -5,6 +5,7 @@ namespace App\Services\Edge\Providers;
 use App\Models\Site;
 use App\Models\SystemSetting;
 use App\Services\Bunny\BunnyEdgeErrorPageService;
+use App\Services\Bunny\BunnyGlobalDefaultsService;
 use App\Services\Bunny\BunnyShieldAccessListService;
 use App\Services\Bunny\BunnyShieldSecurityService;
 use App\Services\Billing\OrganizationEntitlementService;
@@ -113,6 +114,8 @@ class BunnyCdnProvider implements EdgeProviderInterface
                     $shieldPlanMessage = 'Bunny Shield is using the basic plan for this site.';
                 }
             }
+
+            app(BunnyGlobalDefaultsService::class)->syncSecurityDefaults($site);
         } catch (\Throwable $e) {
             $shieldMessage = $e->getMessage();
             $shieldPlanStatus = 'failed';

@@ -54,4 +54,24 @@ class RegistrationTest extends TestCase
         $this->assertNotNull($user);
         $this->assertNotNull($user->current_organization_id);
     }
+
+    public function test_registration_ignores_stale_intended_admin_redirect(): void
+    {
+        $this->get(route('register'));
+
+        $this->withSession([
+            'url.intended' => '/admin',
+        ]);
+
+        $response = $this->post(route('register.store'), [
+            '_token' => session()->token(),
+            'name' => 'Jane Founder',
+            'organization_name' => 'Acme Media',
+            'email' => 'jane@example.com',
+            'password' => 'strong-password',
+            'password_confirmation' => 'strong-password',
+        ]);
+
+        $response->assertRedirect('/app');
+    }
 }

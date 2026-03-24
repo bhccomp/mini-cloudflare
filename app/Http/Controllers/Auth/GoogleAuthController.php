@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Notifications\WelcomeUserNotification;
 use App\Services\Auth\WorkspaceAccountCreator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
@@ -34,6 +35,8 @@ class GoogleAuthController extends Controller
             ->orWhere('email', $email)
             ->first();
 
+        $wasCreated = false;
+
         if ($user) {
             $user->forceFill([
                 'google_id' => (string) $googleUser->getId(),
@@ -50,6 +53,11 @@ class GoogleAuthController extends Controller
                 avatarUrl: $googleUser->getAvatar(),
                 markEmailVerified: true,
             );
+            $wasCreated = true;
+        }
+
+        if ($wasCreated) {
+            $user->notify(new WelcomeUserNotification($user->fresh('currentOrganization')));
         }
 
         Auth::login($user);

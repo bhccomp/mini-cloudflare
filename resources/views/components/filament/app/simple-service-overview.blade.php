@@ -13,13 +13,33 @@
         <div @class([
             'fp-recommendation-box rounded-2xl border px-5 py-4 text-sm',
             'border-primary-200 bg-primary-50 text-primary-950 dark:border-primary-500/30 dark:bg-primary-500/10 dark:text-primary-100' => $recommendation['color'] === 'primary',
-            'border-danger-200 bg-danger-50 text-danger-950 dark:border-danger-500/30 dark:bg-danger-500/10 dark:text-danger-100' => $recommendation['color'] === 'danger',
+            'border-gray-300 bg-gray-50 text-gray-700 dark:border-gray-800 dark:bg-gray-900/80 dark:text-gray-200' => $recommendation['color'] === 'danger',
             'border-warning-200 bg-warning-50 text-warning-950 dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-warning-100' => $recommendation['color'] === 'warning',
             'border-success-200 bg-success-50 text-success-950 dark:border-success-500/30 dark:bg-success-500/10 dark:text-success-100' => $recommendation['color'] === 'success',
-            'border-gray-300 bg-gray-50 text-gray-700 dark:border-gray-800 dark:bg-gray-900/80 dark:text-gray-200' => ! in_array($recommendation['color'], ['primary', 'danger', 'warning', 'success'], true),
+            'border-gray-300 bg-gray-50 text-gray-700 dark:border-gray-800 dark:bg-gray-900/80 dark:text-gray-200' => ! in_array($recommendation['color'], ['primary', 'warning', 'success', 'danger'], true),
         ])>
-            <p class="font-semibold">{{ $recommendation['title'] }}</p>
-            <p class="mt-1">{{ $recommendation['body'] }}</p>
+            <div class="flex items-start gap-3">
+                @if ($recommendation['color'] === 'danger')
+                    <x-filament::icon
+                        icon="heroicon-m-exclamation-triangle"
+                        class="mt-0.5 h-5 w-5 shrink-0 text-red-600 dark:text-red-400"
+                    />
+                @elseif ($recommendation['color'] === 'warning')
+                    <x-filament::icon
+                        icon="heroicon-m-exclamation-circle"
+                        class="mt-0.5 h-5 w-5 shrink-0"
+                    />
+                @endif
+
+                <div>
+                    @if ($recommendation['color'] === 'danger')
+                        <p class="font-semibold"><span style="color: rgb(185 28 28) !important;">{{ $recommendation['title'] }}</span></p>
+                    @else
+                        <p class="font-semibold">{{ $recommendation['title'] }}</p>
+                    @endif
+                    <p class="mt-1">{{ $recommendation['body'] }}</p>
+                </div>
+            </div>
         </div>
 
         <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -71,6 +91,19 @@
                         <p class="text-sm leading-6 text-gray-600 dark:text-gray-300">
                             {{ $item['support'] }}
                         </p>
+
+                        @if (! empty($item['action_label']) && ! empty($item['action_url']))
+                            <div class="pt-1">
+                                <x-filament::button
+                                    tag="a"
+                                    color="gray"
+                                    size="sm"
+                                    :href="$item['action_url']"
+                                >
+                                    {{ $item['action_label'] }}
+                                </x-filament::button>
+                            </div>
+                        @endif
                     </div>
                 </x-filament::section>
             @endforeach

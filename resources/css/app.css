@@ -458,7 +458,7 @@
 
     html:not(.dark) .fi-panel-app .fp-status-card {
         position: relative;
-        overflow: hidden;
+        overflow: visible;
         background: var(--fp-light-card);
         box-shadow: var(--fp-light-shadow-sm);
         border: 1px solid color-mix(in srgb, var(--fp-light-heading) 6%, transparent);
@@ -478,6 +478,7 @@
         background: var(--fp-light-card-hover);
         box-shadow: var(--fp-light-shadow-md);
         transform: translateY(-3px);
+        z-index: 30;
     }
 
     html:not(.dark) .fi-panel-app .fp-status-card-success {
@@ -776,7 +777,7 @@
 
     .dark .fi-panel-app .fp-status-card {
         position: relative;
-        overflow: hidden;
+        overflow: visible;
         background: #131a26;
         border-color: rgba(148, 163, 184, 0.14) !important;
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 2px 6px rgba(0, 0, 0, 0.3), 0 14px 28px rgba(0, 0, 0, 0.2);
@@ -795,6 +796,7 @@
     .dark .fi-panel-app .fp-status-card:hover {
         box-shadow: 0 12px 28px rgba(0, 0, 0, 0.32);
         transform: translateY(-2px);
+        z-index: 30;
     }
 
     .dark .fi-panel-app .fp-status-card-success {

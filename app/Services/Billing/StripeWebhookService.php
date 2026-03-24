@@ -39,6 +39,23 @@ class StripeWebhookService
         $this->syncSubscriptionObject($subscription);
     }
 
+    public function syncStripeSubscriptionById(string $subscriptionId): bool
+    {
+        if ($subscriptionId === '' || (string) config('services.stripe.secret') === '') {
+            return false;
+        }
+
+        $subscription = $this->stripe()->subscriptions->retrieve($subscriptionId);
+
+        if (! is_object($subscription)) {
+            return false;
+        }
+
+        $this->syncSubscriptionObject($subscription);
+
+        return true;
+    }
+
     private function constructEvent(string $payload, string $signature): Event
     {
         $secret = (string) config('services.stripe.webhook_secret');

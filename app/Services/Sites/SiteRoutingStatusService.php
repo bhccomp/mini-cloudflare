@@ -54,7 +54,7 @@ class SiteRoutingStatusService
 
             foreach ($domains as $domain) {
                 $resolved = $this->resolveDns($domain);
-                $pointsToEdge = $this->domainPointsToTarget($resolved, $expectedTarget);
+                $pointsToEdge = $this->domainPointsToTarget($site, $domain, $resolved, $expectedTarget);
 
                 if ($pointsToEdge) {
                     $validCount++;
@@ -73,11 +73,13 @@ class SiteRoutingStatusService
                 default => 'drift',
             };
 
-            [$label, $color, $message] = match ($status) {
-                'protected' => ['Protected', 'success', 'Traffic is routed through the edge network.'],
-                'partial' => ['Partially Routed', 'warning', 'Some hostnames are still routed through the edge network, but not all of them.'],
-                default => ['Routing Drift Detected', 'danger', 'This site is no longer routed through the expected edge target.'],
+            [$label, $color] = match ($status) {
+                'protected' => ['Protected', 'success'],
+                'partial' => ['Partially Routed', 'warning'],
+                default => ['Routing Drift Detected', 'danger'],
             };
+
+            $message = $this->statusMessage($status, $rows, $expectedTarget);
 
             return [
                 'status' => $status,
@@ -191,7 +193,7 @@ class SiteRoutingStatusService
     /**
      * @param  array{cname: array<int, string>, a: array<int, string>, aaaa: array<int, string>}  $resolved
      */
-    protected function domainPointsToTarget(array $resolved, string $target): bool
+    protected function domainPointsToTarget(Site $site, string $domain, array $resolved, string $target): bool
     {
         $target = rtrim(strtolower($target), '.');
 
@@ -201,6 +203,15 @@ class SiteRoutingStatusService
 
         if ($cname) {
             return true;
+        }
+
+        if ($site->provider === Site::PROVIDER_BUNNY) {
+            $hostnameStatus = collect((array) data_get($site->provider_meta, 'hostnames', []))
+                ->first(fn (array $row): bool => rtrim(strtolower((string) ($row['hostname'] ?? '')), '.') === rtrim(strtolower($domain), '.'));
+
+            if (($hostnameStatus['ok'] ?? false) === true) {
+                return true;
+            }
         }
 
         $targetIps = array_values(array_unique(array_merge(
@@ -218,5 +229,55 @@ class SiteRoutingStatusService
         }
 
         return count(array_intersect($domainIps, $targetIps)) > 0;
+    }
+
+    /**
+     * @param  array<int, array{domain:string, points_to_edge:bool, resolved:array{cname:array<int,string>,a:array<int,string>,aaaa:array<int,string>}}>  $rows
+     */
+    protected function statusMessage(string $status, array $rows, string $expectedTarget): string
+    {
+        if ($status === 'protected') {
+            return 'Traffic is routed through the FirePhage edge target.';
+        }
+
+        $notRouted = collect($rows)
+            ->filter(fn (array $row): bool => ! $row['points_to_edge'])
+            ->pluck('domain')
+            ->values()
+            ->all();
+
+        $routed = collect($rows)
+            ->filter(fn (array $row): bool => $row['points_to_edge'])
+            ->pluck('domain')
+            ->values()
+            ->all();
+
+        $missingList = $this->formatDomainList($notRouted);
+        $routedList = $this->formatDomainList($routed);
+
+        if ($status === 'partial') {
+            return $missingList === ''
+                ? 'Some DNS records still need to be updated to the FirePhage edge target.'
+                : "DNS is only partially updated. {$missingList} still need to point to {$expectedTarget}, while {$routedList} are already routed correctly.";
+        }
+
+        return $missingList === ''
+            ? "DNS is not pointed to the expected FirePhage edge target yet. Update your traffic records to {$expectedTarget}."
+            : "{$missingList} are still pointed somewhere else. Update them to {$expectedTarget} to finish routing traffic through FirePhage.";
+    }
+
+    /**
+     * @param  array<int, string>  $domains
+     */
+    protected function formatDomainList(array $domains): string
+    {
+        $domains = array_values(array_filter($domains));
+
+        return match (count($domains)) {
+            0 => '',
+            1 => $domains[0],
+            2 => $domains[0].' and '.$domains[1],
+            default => implode(', ', array_slice($domains, 0, -1)).', and '.end($domains),
+        };
     }
 }

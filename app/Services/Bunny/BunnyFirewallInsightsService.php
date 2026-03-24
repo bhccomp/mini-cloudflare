@@ -290,6 +290,19 @@ class BunnyFirewallInsightsService
         if (preg_match('/,\\s*([A-Za-z]{2})$/', $label, $matches) === 1) {
             $code = strtoupper($matches[1]);
 
+            $usStates = [
+                'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
+                'HI', 'IA', 'ID', 'IL', 'IN', 'KS', 'KY', 'LA', 'MA', 'MD',
+                'ME', 'MI', 'MN', 'MO', 'MS', 'MT', 'NC', 'ND', 'NE', 'NH',
+                'NJ', 'NM', 'NV', 'NY', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
+                'SD', 'TN', 'TX', 'UT', 'VA', 'VT', 'WA', 'WI', 'WV', 'WY',
+                'DC',
+            ];
+
+            if (in_array($code, $usStates, true)) {
+                return 'US';
+            }
+
             return match ($code) {
                 'UK' => 'GB',
                 default => $code,

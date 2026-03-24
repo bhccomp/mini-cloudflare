@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Notifications\WelcomeUserNotification;
 use App\Services\Auth\WorkspaceAccountCreator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -35,6 +36,8 @@ class RegisteredUserController extends Controller
             password: (string) $validated['password'],
             organizationName: (string) $validated['organization_name'],
         );
+
+        $user->notify(new WelcomeUserNotification($user->fresh('currentOrganization')));
 
         Auth::login($user);
         $request->session()->regenerate();

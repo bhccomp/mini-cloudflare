@@ -240,6 +240,53 @@ class FirewallAccessControlService
         $rule->delete();
     }
 
+    public function disableRule(SiteFirewallRule $rule, int $actorId): SiteFirewallRule
+    {
+        $site = $rule->site;
+
+        if ($site && $this->supportsManagedRules($site) && $rule->provider_rule_id) {
+            $this->bunny->deleteRule($site, (string) $rule->provider_rule_id);
+        }
+
+        $meta = is_array($rule->meta) ? $rule->meta : [];
+        unset($meta['error']);
+        $meta['disabled_at'] = now()->toIso8601String();
+
+        $rule->update([
+            'provider_rule_id' => null,
+            'status' => SiteFirewallRule::STATUS_REMOVED,
+            'meta' => $meta,
+        ]);
+
+        if ($site) {
+            $this->audit($site, $actorId, 'firewall.rule.disable', 'success', 'Firewall access rule disabled.', [
+                'rule_id' => $rule->id,
+                'rule_type' => $rule->rule_type,
+                'target' => $rule->target,
+                'action' => $rule->action,
+            ]);
+        }
+
+        return $rule->fresh();
+    }
+
+    public function enableRule(SiteFirewallRule $rule, int $actorId): SiteFirewallRule
+    {
+        $meta = is_array($rule->meta) ? $rule->meta : [];
+        unset($meta['error'], $meta['disabled_at']);
+
+        $rule->update([
+            'status' => SiteFirewallRule::STATUS_PENDING,
+            'meta' => $meta,
+        ]);
+
+        if ($rule->mode === SiteFirewallRule::MODE_ENFORCED) {
+            return $this->applyRule($rule->fresh(), $actorId);
+        }
+
+        return $rule->fresh();
+    }
+
     /**
      * @param  array<string, mixed>  $data
      */

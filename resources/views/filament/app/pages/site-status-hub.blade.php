@@ -1,7 +1,44 @@
 <x-filament-panels::page>
     <x-filament.app.settings.layout-styles />
 
-    <div class="fp-protection-shell space-y-6" @if ($this->site && ! $this->isSiteLive() && $this->shouldPollStatus()) wire:poll.15s="pollStatus" @endif>
+    <div
+        class="fp-protection-shell space-y-6"
+        x-data
+        x-on:firephage-copy-to-clipboard.window="
+            const text = $event.detail.text ?? '';
+            const label = $event.detail.label ?? 'Value';
+            const key = $event.detail.key ?? null;
+            const fallbackCopy = () => {
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                textarea.setAttribute('readonly', 'readonly');
+                textarea.style.position = 'absolute';
+                textarea.style.left = '-9999px';
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+            };
+
+            try {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text)
+                        .then(() => window.dispatchEvent(new CustomEvent('firephage-copy-success', { detail: { key, label } })))
+                        .catch(() => {
+                            fallbackCopy();
+                            window.dispatchEvent(new CustomEvent('firephage-copy-success', { detail: { key, label } }));
+                        });
+                } else {
+                    fallbackCopy();
+                    window.dispatchEvent(new CustomEvent('firephage-copy-success', { detail: { key, label } }));
+                }
+            } catch (error) {
+                fallbackCopy();
+                window.dispatchEvent(new CustomEvent('firephage-copy-success', { detail: { key, label } }));
+            }
+        "
+        @if ($this->site && ! $this->isSiteLive() && $this->shouldPollStatus()) wire:poll.15s="pollStatus" @endif
+    >
         @if (! $this->site)
             @include('filament.app.pages.protection.empty-state')
         @else
@@ -13,235 +50,63 @@
                 />
             @endif
 
-            <x-filament::section
-                heading="Site Billing"
-                description="{{ $this->siteBillingDescription() }}"
-                icon="heroicon-o-credit-card"
-            >
-                <x-slot name="afterHeader">
-                    <x-filament::badge :color="$this->siteBillingStatusColor()">
-                        {{ $this->siteBillingStatusLabel() }}
-                    </x-filament::badge>
-                </x-slot>
+            @if (
+                ($this->isBunnyFlow() && $this->site->onboarding_status === \App\Models\Site::ONBOARDING_PROVISIONING_EDGE)
+                || (! $this->isBunnyFlow() && $this->site->status === \App\Models\Site::STATUS_DEPLOYING)
+            )
+                <x-filament::section
+                    heading="FirePhage Is Setting Up Protection"
+                    description="This site is being provisioned now. Keep this page open while FirePhage prepares the edge and DNS target."
+                    icon="heroicon-o-arrow-path"
+                >
+                    <div class="flex items-start gap-4 rounded-xl border border-primary-200 bg-primary-50 px-4 py-4 text-sm text-primary-950 dark:border-primary-500/30 dark:bg-primary-500/10 dark:text-primary-100">
+                        <svg class="fi-icon fi-size-lg mt-0.5 animate-spin" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M12 4V1m0 22v-3m8-8h3M1 12h3m13.657 5.657 2.121 2.121M4.222 4.222l2.121 2.121m11.314-2.121-2.121 2.121M6.343 17.657l-2.121 2.121" stroke="currentColor" stroke-linecap="round" stroke-width="1.75" opacity="0.35"/>
+                            <path d="M12 4V1m5.657 5.343 2.121-2.121M20 12h3m-5.343 5.657 2.121 2.121" stroke="currentColor" stroke-linecap="round" stroke-width="1.75"/>
+                        </svg>
 
-                <div class="space-y-2 text-sm">
-                    @if (! data_get($this->siteBillingState(), 'can_progress_protection', false))
-                        <div class="rounded-xl border border-warning-200 bg-warning-50 px-4 py-3 text-sm text-warning-950 dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-warning-100">
-                            {{ data_get($this->siteBillingState(), 'message') }}
+                        <div class="space-y-2">
+                            <p class="font-medium">Provisioning is in progress.</p>
+                            <p>FirePhage will move you to the next DNS step as soon as the edge target is ready. This page refreshes automatically while setup is running.</p>
                         </div>
-                    @endif
-
-                    <p><strong>Selected plan:</strong> {{ $this->sitePlan()?->name ?? 'No plan selected yet' }}</p>
-                    <p><strong>Covered websites:</strong> {{ number_format((int) data_get($this->siteCapacitySummary(), 'used', 0)) }} / {{ number_format((int) data_get($this->siteCapacitySummary(), 'included', 0)) }}</p>
-                    @if ($this->siteSubscription())
-                        <p><strong>Subscription status:</strong> {{ ucfirst((string) $this->siteSubscription()->status) }}</p>
-                        <p><strong>Renews:</strong> {{ $this->siteSubscription()->renews_at?->toFormattedDateString() ?? 'Not scheduled yet' }}</p>
-                    @else
-                        <p><strong>Subscription status:</strong> Awaiting checkout</p>
-                    @endif
-                    @if ($this->sitePlan()?->included_requests_per_month)
-                        <p><strong>Current month requests:</strong> {{ number_format((int) data_get($this->siteUsageSummary(), 'requests', 0)) }} across {{ number_format((int) data_get($this->siteUsageSummary(), 'covered_sites_count', 1)) }} covered site(s)</p>
-                        <p><strong>Included in plan:</strong> {{ number_format((int) data_get($this->siteUsageSummary(), 'included_requests', 0)) }}</p>
-                        <p><strong>Current overage:</strong> {{ number_format((int) data_get($this->siteUsageSummary(), 'overage_requests', 0)) }} requests</p>
-                        <p><strong>Estimated overage:</strong> ${{ number_format(((int) data_get($this->siteUsageSummary(), 'estimated_overage_cents', 0)) / 100, 2) }}</p>
-                    @endif
-                </div>
-
-                @if ($this->canCheckoutSitePlan())
-                    <x-slot name="footer">
-                        <x-filament::actions alignment="end">
-                            @if ((string) data_get($this->siteBillingState(), 'status') === 'past_due')
-                                <x-filament::button
-                                    tag="a"
-                                    color="gray"
-                                    href="{{ \App\Filament\App\Pages\BillingPage::getUrl() }}"
-                                >
-                                    Open billing
-                                </x-filament::button>
-                            @endif
-                            <x-filament::button
-                                tag="a"
-                                :href="$this->siteCheckoutUrl()"
-                            >
-                                {{ data_get($this->siteBillingState(), 'requires_checkout', false) ? 'Complete checkout' : 'Restart checkout' }}
-                            </x-filament::button>
-                        </x-filament::actions>
-                    </x-slot>
-                @endif
-            </x-filament::section>
-
-            <x-filament::section
-                heading="Troubleshooting Mode"
-                description="Keep DNS on FirePhage/Bunny while disabling Bunny WAF and relaxing edge cache/optimizer behavior for testing."
-                icon="heroicon-o-wrench-screwdriver"
-            >
-                <x-slot name="afterHeader">
-                    <x-filament::badge :color="$this->isTroubleshootingMode() ? 'warning' : 'success'">
-                        {{ $this->isTroubleshootingMode() ? 'Enabled' : 'Disabled' }}
-                    </x-filament::badge>
-                </x-slot>
-
-                <p class="text-sm">
-                    Use this when testing whether edge filtering or caching is affecting an integration. Traffic still flows through Bunny; this is not a full DNS bypass.
-                </p>
-
-                <x-slot name="footer">
-                    <x-filament::actions alignment="end">
-                        <x-filament::button
-                            :color="$this->isTroubleshootingMode() ? 'warning' : 'gray'"
-                            wire:click="toggleTroubleshootingMode"
-                            wire:loading.attr="disabled"
-                            wire:target="toggleTroubleshootingMode"
-                        >
-                            {{ $this->isTroubleshootingMode() ? 'Disable Troubleshooting Mode' : 'Enable Troubleshooting Mode' }}
-                        </x-filament::button>
-                    </x-filament::actions>
-                </x-slot>
-            </x-filament::section>
+                    </div>
+                </x-filament::section>
+            @endif
 
             @if ($this->isSiteLive())
             @else
-            <x-filament::section
-                heading="Site Setup Progress"
-                description="Complete these onboarding steps to activate protection."
-                icon="heroicon-o-queue-list"
-            >
-                <x-slot name="afterHeader">
-                    <x-filament::badge :color="$this->badgeColor()">
-                        {{ $this->shouldShowEdgeRoutingWarning() ? $this->statusLabel() : ($this->isBunnyFlow() ? $this->onboardingLabel() : $this->statusLabel()) }}
-                    </x-filament::badge>
-                </x-slot>
+            @include('filament.app.pages.site-status-hub-onboarding')
+            @endif
 
-                @foreach ($this->steps() as $index => $label)
-                    <p>
-                        <strong>Step {{ $index }}:</strong> {{ $label }}
-                        @if ($this->currentStep() === $index)
-                            <x-filament::badge color="primary">Current</x-filament::badge>
-                        @endif
+            @if ($this->isSiteLive())
+                <x-filament::section
+                    heading="Troubleshooting Mode"
+                    description="Keep DNS on FirePhage/Bunny while disabling Bunny WAF and relaxing edge cache/optimizer behavior for testing."
+                    icon="heroicon-o-wrench-screwdriver"
+                >
+                    <x-slot name="afterHeader">
+                        <x-filament::badge :color="$this->isTroubleshootingMode() ? 'warning' : 'success'">
+                            {{ $this->isTroubleshootingMode() ? 'Enabled' : 'Disabled' }}
+                        </x-filament::badge>
+                    </x-slot>
+
+                    <p class="text-sm">
+                        Use this when testing whether edge filtering or caching is affecting an integration. Traffic still flows through Bunny; this is not a full DNS bypass.
                     </p>
-                @endforeach
 
-                @if ($this->shouldPollStatus())
-                    <p>Auto-refreshing status every 15 seconds.</p>
-                @endif
-            </x-filament::section>
-
-            <x-filament::section heading="Next Best Action" icon="heroicon-o-forward">
-                @if ($this->isBunnyFlow())
-                    @if ($this->site->onboarding_status === \App\Models\Site::ONBOARDING_DRAFT)
-                        <p>Provision edge now to create DNS target records.</p>
-                        <x-filament::button wire:click="requestSsl" wire:loading.attr="disabled" wire:target="requestSsl">Provision edge</x-filament::button>
-                    @elseif ($this->site->onboarding_status === \App\Models\Site::ONBOARDING_PROVISIONING_EDGE)
-                        <p>Provisioning edge resources now. This can take a few minutes.</p>
-                        <x-filament::button color="gray" disabled>Provisioning...</x-filament::button>
-                    @elseif ($this->site->onboarding_status === \App\Models\Site::ONBOARDING_PENDING_DNS_CUTOVER)
-                        <p>Update DNS to the edge target below, then click <strong>Check now</strong>.</p>
-                        <x-filament::button wire:click="checkCutover" wire:loading.attr="disabled" wire:target="checkCutover">Check now</x-filament::button>
-                    @elseif ($this->site->onboarding_status === \App\Models\Site::ONBOARDING_DNS_VERIFIED_SSL_PENDING)
-                        <p>DNS is verified. SSL certificate is still pending issuance.</p>
-                        <x-filament::button wire:click="checkCutover" wire:loading.attr="disabled" wire:target="checkCutover">Check now</x-filament::button>
-                    @else
-                        <p>Provisioning failed. Review error and retry.</p>
-                        <p><strong>Last error:</strong> {{ $this->site->last_error ?: 'No error message was recorded.' }}</p>
-                        <x-filament::button color="warning" wire:click="requestSsl">Retry provisioning</x-filament::button>
-                    @endif
-                @else
-                    @if ($this->site->status === \App\Models\Site::STATUS_DRAFT)
-                        <p>Start provisioning to request a certificate and generate DNS validation records.</p>
-                        <x-filament::button wire:click="requestSsl" wire:loading.attr="disabled" wire:target="requestSsl">Provision</x-filament::button>
-                    @elseif ($this->site->status === \App\Models\Site::STATUS_PENDING_DNS_VALIDATION)
-                        <p>Add the validation CNAME records below, then run a DNS validation check.</p>
-                        <x-filament::button wire:click="checkDnsValidation" wire:loading.attr="disabled" wire:target="checkDnsValidation">Check DNS (validation)</x-filament::button>
-                    @elseif ($this->site->status === \App\Models\Site::STATUS_DEPLOYING)
-                        <p>Deploying edge resources now. This can take several minutes.</p>
-                        <x-filament::button color="gray" disabled>Deploying...</x-filament::button>
-                    @elseif ($this->site->status === \App\Models\Site::STATUS_READY_FOR_CUTOVER)
-                        <p>Edge deployment is complete. Update traffic DNS to the edge target, then verify cutover.</p>
-                        <x-filament::button wire:click="checkCutover" wire:loading.attr="disabled" wire:target="checkCutover">Check cutover</x-filament::button>
-                    @else
-                        <p>Provisioning failed. Review the error and retry.</p>
-                        <p><strong>Last error:</strong> {{ $this->site->last_error ?: 'No error message was recorded.' }}</p>
-                        <x-filament::actions>
-                            <x-filament::button color="warning" wire:click="requestSsl">Retry provisioning</x-filament::button>
-                            <x-filament::button color="gray" wire:click="checkDnsValidation">Retry DNS check</x-filament::button>
+                    <x-slot name="footer">
+                        <x-filament::actions alignment="end">
+                            <x-filament::button
+                                :color="$this->isTroubleshootingMode() ? 'warning' : 'gray'"
+                                wire:click="toggleTroubleshootingMode"
+                                wire:loading.attr="disabled"
+                                wire:target="toggleTroubleshootingMode"
+                            >
+                                {{ $this->isTroubleshootingMode() ? 'Disable Troubleshooting Mode' : 'Enable Troubleshooting Mode' }}
+                            </x-filament::button>
                         </x-filament::actions>
-                    @endif
-                @endif
-            </x-filament::section>
-
-            @if (! $this->isBunnyFlow() && $this->site->status === \App\Models\Site::STATUS_PENDING_DNS_VALIDATION)
-                <x-filament::section heading="DNS Validation Records" icon="heroicon-o-server-stack">
-                    <p>Add these DNS records exactly as shown, then click <strong>Check DNS (validation)</strong>.</p>
-
-                    @foreach ($this->acmValidationRecords() as $record)
-                        <x-filament::section compact secondary>
-                            <p><strong>Type:</strong> {{ data_get($record, 'type', 'CNAME') }}</p>
-                            <p><strong>Name:</strong> {{ data_get($record, 'name') }}</p>
-                            <p><strong>Value:</strong> {{ data_get($record, 'value') }}</p>
-                            <p><strong>TTL:</strong> {{ data_get($record, 'ttl', 'Auto') }}</p>
-                            <x-slot name="footer">
-                                <x-filament::actions>
-                                    <x-filament::button color="gray" size="sm" x-on:click="navigator.clipboard.writeText(@js((string) data_get($record, 'name')))">Copy name</x-filament::button>
-                                    <x-filament::button color="gray" size="sm" x-on:click="navigator.clipboard.writeText(@js((string) data_get($record, 'value')))">Copy value</x-filament::button>
-                                </x-filament::actions>
-                            </x-slot>
-                        </x-filament::section>
-                    @endforeach
+                    </x-slot>
                 </x-filament::section>
-            @endif
-
-            @if ($this->isBunnyFlow() && in_array($this->site->onboarding_status, [\App\Models\Site::ONBOARDING_PENDING_DNS_CUTOVER, \App\Models\Site::ONBOARDING_DNS_VERIFIED_SSL_PENDING], true))
-                <x-filament::section heading="Traffic DNS Target" icon="heroicon-o-globe-alt">
-                    <p>Point DNS to <strong>{{ $this->site->cloudfront_domain_name }}</strong>.</p>
-                    <p>After updating DNS, click <strong>Check now</strong> or wait for auto-check.</p>
-
-                    @foreach ($this->trafficDnsRecords() as $record)
-                        <x-filament::section compact secondary>
-                            <p><strong>Host:</strong> {{ data_get($record, 'name', data_get($record, 'host')) }}</p>
-                            <p><strong>Type:</strong> {{ data_get($record, 'type', 'CNAME') }}</p>
-                            <p><strong>Value:</strong> {{ data_get($record, 'value') }}</p>
-                            <p><strong>TTL:</strong> {{ data_get($record, 'ttl', 'Auto') }}</p>
-                            <p>{{ data_get($record, 'notes', data_get($record, 'note', '')) }}</p>
-                            <x-slot name="footer">
-                                <x-filament::actions>
-                                    <x-filament::button color="gray" size="sm" x-on:click="navigator.clipboard.writeText(@js((string) data_get($record, 'name', data_get($record, 'host'))))">Copy host</x-filament::button>
-                                    <x-filament::button color="gray" size="sm" x-on:click="navigator.clipboard.writeText(@js((string) data_get($record, 'value')))">Copy target</x-filament::button>
-                                </x-filament::actions>
-                            </x-slot>
-                        </x-filament::section>
-                    @endforeach
-                </x-filament::section>
-            @endif
-
-            @if ($this->isBunnyFlow() && $this->site->onboarding_status === \App\Models\Site::ONBOARDING_DNS_VERIFIED_SSL_PENDING)
-                <x-filament::section heading="SSL Status" icon="heroicon-o-lock-closed">
-                    <p>DNS cutover is verified. SSL certificate is still provisioning.</p>
-                    <p>Keep this page open or click <strong>Check now</strong> until status becomes <strong>Live / Protected</strong>.</p>
-                </x-filament::section>
-            @endif
-
-            @if (! $this->isBunnyFlow() && $this->site->status === \App\Models\Site::STATUS_READY_FOR_CUTOVER)
-                <x-filament::section heading="Traffic DNS Target" icon="heroicon-o-globe-alt">
-                    <p>Point traffic DNS to <strong>{{ $this->site->cloudfront_domain_name }}</strong>.</p>
-                    <p>After updating DNS, click <strong>Check cutover</strong>.</p>
-
-                    @foreach ($this->cutoverRecords() as $record)
-                        <x-filament::section compact secondary>
-                            <p><strong>Host:</strong> {{ $record['host'] }}</p>
-                            <p><strong>Type:</strong> {{ $record['type'] }}</p>
-                            <p><strong>Value:</strong> {{ $record['value'] }}</p>
-                            <p><strong>TTL:</strong> {{ $record['ttl'] }}</p>
-                            <p>{{ $record['note'] }}</p>
-                            <x-slot name="footer">
-                                <x-filament::actions>
-                                    <x-filament::button color="gray" size="sm" x-on:click="navigator.clipboard.writeText(@js($record['host']))">Copy host</x-filament::button>
-                                    <x-filament::button color="gray" size="sm" x-on:click="navigator.clipboard.writeText(@js($record['value']))">Copy target</x-filament::button>
-                                </x-filament::actions>
-                            </x-slot>
-                        </x-filament::section>
-                    @endforeach
-                </x-filament::section>
-            @endif
             @endif
         @endif
     </div>

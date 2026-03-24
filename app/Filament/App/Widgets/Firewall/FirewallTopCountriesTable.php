@@ -64,8 +64,9 @@ class FirewallTopCountriesTable extends TableWidget
         }
 
         $flag = $this->countryFlagEmoji($country);
+        $name = $this->countryName($country);
 
-        return trim($flag.' '.$country);
+        return trim($flag.' '.$name.' ('.$country.')');
     }
 
     protected function countryFlagEmoji(string $country): string
@@ -82,5 +83,18 @@ class FirewallTopCountriesTable extends TableWidget
         }
 
         return mb_chr($first, 'UTF-8').mb_chr($second, 'UTF-8');
+    }
+
+    protected function countryName(string $country): string
+    {
+        if (class_exists(\Locale::class) && method_exists(\Locale::class, 'getDisplayRegion')) {
+            $name = \Locale::getDisplayRegion('-'.$country, 'en');
+
+            if (is_string($name) && trim($name) !== '') {
+                return trim($name);
+            }
+        }
+
+        return $country;
     }
 }

@@ -1,5 +1,53 @@
 # MEMORY
 
+## Bunny Global Defaults + WordPress Edge Safeguards (Latest)
+- Added an admin-only hidden defaults surface for Bunny-backed sites:
+  - `/admin/edge-defaults-page`
+  - files:
+    - `app/Filament/Admin/Pages/EdgeDefaultsPage.php`
+    - `resources/views/filament/admin/pages/edge-defaults.blade.php`
+    - `app/Services/Bunny/BunnyGlobalDefaultsService.php`
+- Current hidden defaults are stored inside the existing `bunny` system setting and cover:
+  - `global_security_rate_limits`
+  - `global_cache_exclusions`
+- Hidden WordPress security defaults now exist for:
+  - `/wp-login.php*`
+  - `/xmlrpc.php*`
+  - `/wp-admin/*`
+- New Bunny sites receive those hidden security defaults automatically during provisioning through:
+  - `app/Services/Edge/Providers/BunnyCdnProvider.php`
+- Existing Bunny sites can be backfilled from the admin page action:
+  - `Apply hidden security defaults to existing Bunny sites`
+- Important current limitation:
+  - hidden cache exclusions are configurable and stored centrally, but are not yet pushed to Bunny edge rules automatically
+  - next follow-up is a real Bunny edge-rules integration for those exclusions
+
+## Hidden Rule Collision Guard (Latest)
+- Customer-facing `/app/firewall-rate-limiting` now filters out hidden platform-managed WordPress defaults.
+- Users are no longer allowed to create overlapping rate-limit rules for paths already covered by hidden managed defaults.
+- Current protected managed paths are:
+  - `/wp-login.php*`
+  - `/xmlrpc.php*`
+  - `/wp-admin/*`
+- If a user attempts to create a conflicting rule, FirePhage now blocks it and shows a support-oriented warning instead of allowing overlapping Bunny rules.
+
+## WordPress Admin Behind Bunny (Latest)
+- `nodesfoundry.com` exposed an important operational rule:
+  - Bunny/edge optimization on `wp-admin` can break WordPress core admin scripts (`wp is not defined`, missing Gutenberg packages, disappearing plugin widgets)
+  - enabling Bunny `Dev Mode` immediately restored the missing FirePhage admin widgets, confirming the edge path as the cause
+- Practical expectation going forward:
+  - `wp-admin/*` and `wp-login.php` should bypass cache/HTML/script optimization
+  - if similar admin-side JS failures appear again on Bunny-backed WordPress sites, treat admin-edge optimization as the first suspect
+
+## Firewall Country Formatting + Analytics Caveat (Latest)
+- Firewall country displays were polished on both SaaS and plugin surfaces:
+  - SaaS top-countries table now shows `flag + country name + ISO code`
+  - plugin Traffic Insights top-countries list now shows flags and cleaner labels
+- Bunny analytics fallback parsing was hardened so labels that look like US state abbreviations (for example `WA`) now normalize to `US` instead of appearing as fake country codes.
+- `Top IPs` can still be empty even when request totals and top countries are available:
+  - that means aggregate analytics are present but detailed edge request logs are not currently being returned/stored for that site
+  - this is a data-availability issue, not just a table-rendering issue
+
 ## Local Credentials Convention
 - Sensitive cross-project credentials should be stored in `.local/CREDS.md`.
 - `.local/` is git-ignored and must remain local-only.

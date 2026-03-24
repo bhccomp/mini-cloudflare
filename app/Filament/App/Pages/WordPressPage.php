@@ -91,6 +91,44 @@ class WordPressPage extends BaseProtectionPage
         $this->notify('Plugin connection token generated');
     }
 
+    public function copyToClipboard(string $encodedValue, string $label = 'Value', ?string $key = null): void
+    {
+        $value = base64_decode($encodedValue, true);
+
+        $this->dispatch(
+            'firephage-copy-to-clipboard',
+            text: is_string($value) ? $value : '',
+            label: $label,
+            key: $key,
+        );
+    }
+
+    public function shouldPollForPluginConnection(): bool
+    {
+        return $this->site !== null
+            && ! $this->isPluginConnected()
+            && filled($this->pluginConnectionToken)
+            && filled($this->pluginConnectionTokenExpiresAt)
+            && now()->lt(\Illuminate\Support\Carbon::parse($this->pluginConnectionTokenExpiresAt));
+    }
+
+    public function pollForPluginConnection(): void
+    {
+        if (! $this->site || ! $this->shouldPollForPluginConnection()) {
+            return;
+        }
+
+        $this->site->refresh();
+
+        if (! $this->isPluginConnected()) {
+            return;
+        }
+
+        $this->pluginConnectionToken = null;
+        $this->pluginConnectionTokenExpiresAt = null;
+        $this->notify('WordPress plugin connected');
+    }
+
     public function isPluginConnected(): bool
     {
         return $this->site?->pluginConnection !== null;

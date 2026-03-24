@@ -95,9 +95,14 @@ class FirewallAccessRulesTable extends TableWidget
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         SiteFirewallRule::STATUS_ACTIVE => 'success',
+                        SiteFirewallRule::STATUS_REMOVED => 'gray',
                         SiteFirewallRule::STATUS_EXPIRED => 'gray',
                         SiteFirewallRule::STATUS_FAILED => 'danger',
                         default => 'warning',
+                    })
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        SiteFirewallRule::STATUS_REMOVED => 'Disabled',
+                        default => str($state)->headline()->toString(),
                     }),
                 Tables\Columns\TextColumn::make('meta.error')
                     ->label('Failure reason')
@@ -116,6 +121,7 @@ class FirewallAccessRulesTable extends TableWidget
                     ->options([
                         SiteFirewallRule::STATUS_PENDING => 'Pending',
                         SiteFirewallRule::STATUS_ACTIVE => 'Active',
+                        SiteFirewallRule::STATUS_REMOVED => 'Disabled',
                         SiteFirewallRule::STATUS_FAILED => 'Failed',
                         SiteFirewallRule::STATUS_EXPIRED => 'Expired',
                     ]),
@@ -250,6 +256,26 @@ class FirewallAccessRulesTable extends TableWidget
                     ->action(function (SiteFirewallRule $record): void {
                         app(FirewallAccessControlService::class)->applyRule($record, (int) auth()->id());
                         Notification::make()->title('Rule enforced.')->success()->send();
+                        $this->dispatch('firewall-access-rules-updated');
+                    }),
+                Action::make('disable')
+                    ->label('Disable')
+                    ->icon('heroicon-m-pause-circle')
+                    ->color('gray')
+                    ->visible(fn (SiteFirewallRule $record): bool => $record->status === SiteFirewallRule::STATUS_ACTIVE)
+                    ->requiresConfirmation()
+                    ->action(function (SiteFirewallRule $record): void {
+                        app(FirewallAccessControlService::class)->disableRule($record, (int) auth()->id());
+                        Notification::make()->title('Rule disabled.')->success()->send();
+                        $this->dispatch('firewall-access-rules-updated');
+                    }),
+                Action::make('enable')
+                    ->label('Enable')
+                    ->icon('heroicon-m-play-circle')
+                    ->visible(fn (SiteFirewallRule $record): bool => $record->status === SiteFirewallRule::STATUS_REMOVED)
+                    ->action(function (SiteFirewallRule $record): void {
+                        app(FirewallAccessControlService::class)->enableRule($record, (int) auth()->id());
+                        Notification::make()->title('Rule enabled.')->success()->send();
                         $this->dispatch('firewall-access-rules-updated');
                     }),
                 Action::make('remove')

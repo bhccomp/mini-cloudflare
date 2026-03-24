@@ -4,7 +4,44 @@
     @php($siteMeta = $this->wordpressSiteMeta())
     @php($billing = $this->pluginBillingSummary())
 
-    <div class="fp-protection-shell space-y-6">
+    <div
+        class="fp-protection-shell space-y-6"
+        x-data
+        @if ($this->shouldPollForPluginConnection()) wire:poll.10s="pollForPluginConnection" @endif
+        x-on:firephage-copy-to-clipboard.window="
+            const text = $event.detail.text ?? '';
+            const label = $event.detail.label ?? 'Value';
+            const key = $event.detail.key ?? null;
+            const fallbackCopy = () => {
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                textarea.setAttribute('readonly', 'readonly');
+                textarea.style.position = 'absolute';
+                textarea.style.left = '-9999px';
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+            };
+
+            try {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text)
+                        .then(() => window.dispatchEvent(new CustomEvent('firephage-copy-success', { detail: { key, label } })))
+                        .catch(() => {
+                            fallbackCopy();
+                            window.dispatchEvent(new CustomEvent('firephage-copy-success', { detail: { key, label } }));
+                        });
+                } else {
+                    fallbackCopy();
+                    window.dispatchEvent(new CustomEvent('firephage-copy-success', { detail: { key, label } }));
+                }
+            } catch (error) {
+                fallbackCopy();
+                window.dispatchEvent(new CustomEvent('firephage-copy-success', { detail: { key, label } }));
+            }
+        "
+    >
         @if (! $this->site)
             @include('filament.app.pages.protection.empty-state')
         @elseif (! $this->isPluginConnected())
@@ -35,13 +72,25 @@
 
                         <x-slot name="footer">
                             <x-filament::actions>
-                                <x-filament::button
-                                    color="gray"
-                                    size="sm"
-                                    x-on:click="navigator.clipboard.writeText(@js($this->pluginConnectionToken))"
+                                <div
+                                    x-data="{ copied: false, timer: null, key: 'copy-plugin-token' }"
+                                    x-on:firephage-copy-success.window="
+                                        if ($event.detail.key !== key) return;
+                                        copied = true;
+                                        if (timer) clearTimeout(timer);
+                                        timer = setTimeout(() => copied = false, 2000);
+                                    "
                                 >
-                                    Copy token
-                                </x-filament::button>
+                                    <x-filament::button
+                                        type="button"
+                                        color="gray"
+                                        size="sm"
+                                        wire:click="copyToClipboard('{{ base64_encode((string) $this->pluginConnectionToken) }}', 'Token', 'copy-plugin-token')"
+                                    >
+                                        <span x-show="! copied">Copy token</span>
+                                        <span x-show="copied" x-cloak>Copied</span>
+                                    </x-filament::button>
+                                </div>
                             </x-filament::actions>
                         </x-slot>
                     </x-filament::section>

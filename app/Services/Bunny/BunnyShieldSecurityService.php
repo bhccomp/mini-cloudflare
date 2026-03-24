@@ -556,6 +556,26 @@ class BunnyShieldSecurityService
         throw new \RuntimeException('Unable to create rate limit rule with current payload.');
     }
 
+    public function deleteRateLimit(Site $site, string $id): void
+    {
+        if ($site->isDemoSeeded() || trim($id) === '') {
+            return;
+        }
+
+        $responses = [
+            $this->api->client()->delete('/shield/rate-limit/'.$id),
+            $this->api->client()->delete('/shield/rate-limits/'.$id),
+        ];
+
+        foreach ($responses as $response) {
+            if ($response->successful() || in_array($response->status(), [404, 410], true)) {
+                return;
+            }
+        }
+
+        throw new \RuntimeException('Unable to delete rate limit rule.');
+    }
+
     public function sensitivityOptions(): array
     {
         return [

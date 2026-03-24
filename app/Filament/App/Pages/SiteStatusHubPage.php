@@ -25,7 +25,6 @@ use App\Services\WordPress\PluginSiteService;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
 
 class SiteStatusHubPage extends BaseProtectionPage
 {
@@ -60,7 +59,15 @@ class SiteStatusHubPage extends BaseProtectionPage
         if ($billingState === 'activated') {
             Notification::make()
                 ->title('Payment confirmed.')
-                ->body('Billing is active. Continue with DNS setup to finish onboarding this site.')
+                ->body('Billing is active. FirePhage has moved this site into setup so you can continue with provisioning and DNS.')
+                ->success()
+                ->send();
+        }
+
+        if ((string) $request->query('setup', '') === 'started') {
+            Notification::make()
+                ->title('Setup started.')
+                ->body('FirePhage started provisioning automatically after payment. Follow the setup steps below to finish onboarding this site.')
                 ->success()
                 ->send();
         }
@@ -80,11 +87,6 @@ class SiteStatusHubPage extends BaseProtectionPage
                 ->success()
                 ->send();
         }
-    }
-
-    public function getHeader(): ?View
-    {
-        return view('filament.app.pages.protection.page-header-with-routing-warning');
     }
 
     protected function getHeaderActions(): array
@@ -441,8 +443,29 @@ class SiteStatusHubPage extends BaseProtectionPage
         return app(SiteBillingStateService::class)->summaryForSite($this->site);
     }
 
+    public function copyToClipboard(string $encodedValue, string $label = 'Value', ?string $key = null): void
+    {
+        $value = base64_decode($encodedValue, true);
+
+        $this->dispatch(
+            'firephage-copy-to-clipboard',
+            text: is_string($value) ? $value : '',
+            label: $label,
+            key: $key,
+        );
+    }
+
+    public function shouldPrioritizeSetupFlow(): bool
+    {
+        if (! $this->site || $this->isSiteLive()) {
+            return false;
+        }
+
+        return (bool) data_get($this->siteBillingState(), 'can_progress_protection', false);
+    }
+
     /**
-     * @return array<int, array{label:string,value:string,support:string,help:string,color:string}>
+     * @return array<int, array{label:string,value:string,support:string,help:string,color:string,action_label?:string,action_url?:string}>
      */
     public function simpleServiceOverview(): array
     {
@@ -489,13 +512,21 @@ class SiteStatusHubPage extends BaseProtectionPage
             $warnings = (int) ($health['warning'] ?? 0);
             $critical = (int) ($health['critical'] ?? 0);
             $suspicious = (int) ($scan['suspicious_files'] ?? 0);
-            $wordpressValue = $critical > 0 || $suspicious > 0
-                ? 'Needs review'
-                : 'Connected';
-            $wordpressSupport = $critical > 0 || $suspicious > 0
-                ? trim("{$critical} critical issue(s), {$warnings} warning(s), {$suspicious} suspicious file(s) reported.")
-                : 'Plugin is connected and recent health reports look stable.';
-            $wordpressColor = $critical > 0 || $suspicious > 0 ? 'warning' : 'success';
+            $wordpressValue = match (true) {
+                $suspicious > 0 => 'Urgent',
+                $critical > 0 || $warnings > 0 => 'Warning',
+                default => 'Connected',
+            };
+            $wordpressSupport = match (true) {
+                $suspicious > 0 => trim("{$critical} critical issue(s), {$warnings} warning(s), {$suspicious} malicious file(s) reported. This needs urgent action."),
+                $critical > 0 || $warnings > 0 => trim("{$critical} critical issue(s), {$warnings} warning(s), no malicious files reported."),
+                default => 'Plugin is connected and recent health reports look stable.',
+            };
+            $wordpressColor = match (true) {
+                $suspicious > 0 => 'danger',
+                $critical > 0 || $warnings > 0 => 'warning',
+                default => 'success',
+            };
         }
 
         return [
@@ -547,6 +578,10 @@ class SiteStatusHubPage extends BaseProtectionPage
                 'support' => $wordpressSupport,
                 'help' => 'This summarizes whether the WordPress plugin is connected and whether recent health or malware reports need attention.',
                 'color' => $wordpressColor,
+                ...(! $this->site->pluginConnection ? [
+                    'action_label' => 'Connect WordPress Plugin',
+                    'action_url' => WordPressPage::getUrl(['site_id' => $this->site->id]),
+                ] : []),
             ],
         ];
     }
@@ -558,6 +593,24 @@ class SiteStatusHubPage extends BaseProtectionPage
     {
         $items = collect($this->simpleServiceOverview());
         $issues = $items->filter(fn (array $item): bool => in_array($item['color'], ['danger', 'warning'], true))->count();
+        $wordpressItem = $items->firstWhere('label', 'WordPress');
+        $protectionItem = $items->firstWhere('label', 'Protection');
+
+        if (($wordpressItem['color'] ?? null) === 'danger') {
+            return [
+                'title' => 'Urgent action needed',
+                'body' => 'FirePhage received a malware alert from the connected WordPress plugin. Review the WordPress card and malware findings immediately.',
+                'color' => 'danger',
+            ];
+        }
+
+        if (($protectionItem['color'] ?? null) === 'danger') {
+            return [
+                'title' => 'Protection needs attention',
+                'body' => 'Traffic is not fully routed through FirePhage right now. Fix the DNS or protection routing issue first, then review the remaining warnings.',
+                'color' => 'danger',
+            ];
+        }
 
         if ($issues >= 3) {
             return [

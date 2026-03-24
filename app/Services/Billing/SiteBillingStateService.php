@@ -10,6 +10,7 @@ class SiteBillingStateService
     public function __construct(
         private readonly SubscriptionSiteAssignmentService $assignmentService,
         private readonly OrganizationEntitlementService $entitlements,
+        private readonly StripeWebhookService $stripeWebhookService,
     ) {}
 
     /**
@@ -101,13 +102,52 @@ class SiteBillingStateService
         }
 
         if ($status === 'checkout_completed') {
+            $subscriptionId = (string) ($subscription?->stripe_subscription_id ?? '');
+
+            try {
+                $synced = $subscriptionId !== '' && $this->stripeWebhookService->syncStripeSubscriptionById($subscriptionId);
+            } catch (\Throwable) {
+                $synced = false;
+            }
+
+            if ($synced) {
+                $subscription = $subscription?->fresh();
+                $status = (string) ($subscription?->status ?? '');
+
+                if (in_array($status, ['active', 'trialing'], true) && (bool) data_get($subscription?->meta, 'cancel_at_period_end', false)) {
+                    return [
+                        'status' => 'ending',
+                        'subscription' => $subscription,
+                        'plan' => $subscription?->plan ?? $plan,
+                        'requires_checkout' => false,
+                        'can_progress_protection' => true,
+                        'message' => $plan
+                            ? "{$plan->name} remains active until the current period ends, but it is set to cancel in Stripe."
+                            : 'This subscription remains active until the current period ends, but it is set to cancel in Stripe.',
+                    ];
+                }
+
+                if (in_array($status, ['active', 'trialing'], true)) {
+                    return [
+                        'status' => $status,
+                        'subscription' => $subscription,
+                        'plan' => $subscription?->plan ?? $plan,
+                        'requires_checkout' => false,
+                        'can_progress_protection' => true,
+                        'message' => $plan ? "{$plan->name} is active for this site." : 'Billing is active for this site.',
+                    ];
+                }
+            }
+
             return [
                 'status' => $status,
                 'subscription' => $subscription,
                 'plan' => $plan,
                 'requires_checkout' => false,
-                'can_progress_protection' => false,
-                'message' => 'Checkout has completed, but Stripe sync is still finalizing. Try again in a moment.',
+                'can_progress_protection' => true,
+                'message' => $plan
+                    ? "{$plan->name} checkout completed successfully. You can continue with provisioning while FirePhage finishes syncing billing details."
+                    : 'Checkout completed successfully. You can continue with provisioning while FirePhage finishes syncing billing details.',
             ];
         }
 
@@ -144,7 +184,7 @@ class SiteBillingStateService
         $summary = $this->summaryForSite($site);
 
         return match ($summary['status']) {
-            'checkout_completed' => "{$action} is temporarily unavailable while Stripe finalizes this subscription.",
+            'checkout_completed' => "{$action} is temporarily unavailable while FirePhage syncs this subscription.",
             'past_due' => "{$action} is unavailable until the billing issue is resolved in Stripe.",
             'payment_required' => "{$action} is unavailable until checkout is completed for this site.",
             default => "{$action} is unavailable until billing is active for this site.",

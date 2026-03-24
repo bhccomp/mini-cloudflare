@@ -3,6 +3,8 @@
 namespace App\Filament\App\Pages;
 
 use App\Models\Site;
+use App\Filament\App\Pages\SupportPage;
+use App\Services\Bunny\BunnyGlobalDefaultsService;
 use App\Services\Bunny\BunnyShieldSecurityService;
 use App\Services\SiteContext;
 use App\Services\UiModeManager;
@@ -109,6 +111,19 @@ class FirewallRateLimitingPage extends BaseProtectionPage implements HasForms
             return;
         }
 
+        $conflict = $this->conflictingManagedRule($this->form->getState());
+
+        if ($conflict !== null) {
+            Notification::make()
+                ->title('This rule collides with a platform-managed protection rule.')
+                ->body("The path pattern {$conflict['path_pattern']} is already protected by FirePhage system defaults. Contact support if you need this adjusted: ".SupportPage::getUrl())
+                ->danger()
+                ->persistent()
+                ->send();
+
+            return;
+        }
+
         try {
             app(BunnyShieldSecurityService::class)->createRateLimit($this->site, $this->form->getState());
             $this->reloadState();
@@ -138,11 +153,40 @@ class FirewallRateLimitingPage extends BaseProtectionPage implements HasForms
         }
 
         try {
-            $this->rateLimits = app(BunnyShieldSecurityService::class)->listRateLimits($this->site);
+            $this->rateLimits = app(BunnyGlobalDefaultsService::class)->filterVisibleRateLimits(
+                app(BunnyShieldSecurityService::class)->listRateLimits($this->site)
+            );
         } catch (Throwable $e) {
             report($e);
             Notification::make()->title('Unable to load rate limit rules.')->body($e->getMessage())->warning()->send();
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $state
+     * @return array<string, mixed>|null
+     */
+    protected function conflictingManagedRule(array $state): ?array
+    {
+        $requested = trim(strtolower((string) ($state['path_pattern'] ?? '')));
+
+        if ($requested === '') {
+            return null;
+        }
+
+        foreach (app(BunnyGlobalDefaultsService::class)->activeSecurityRateLimits() as $rule) {
+            $managedPattern = trim(strtolower((string) ($rule['path_pattern'] ?? '')));
+
+            if ($managedPattern === '') {
+                continue;
+            }
+
+            if ($requested === $managedPattern || str_contains($requested, $managedPattern) || str_contains($managedPattern, $requested)) {
+                return $rule;
+            }
+        }
+
+        return null;
     }
 
 }

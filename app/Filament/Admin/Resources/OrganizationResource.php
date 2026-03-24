@@ -10,6 +10,7 @@ use Filament\Actions;
 use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -51,7 +52,7 @@ class OrganizationResource extends Resource
                     Forms\Components\DateTimePicker::make('settings.trial_ends_at')
                         ->label('Manual trial ends at')
                         ->seconds(false)
-                        ->visible(fn (Forms\Get $get): bool => $get('settings.billing_mode') === OrganizationEntitlementService::MODE_MANUAL_TRIAL)
+                        ->visible(fn (Get $get): bool => $get('settings.billing_mode') === OrganizationEntitlementService::MODE_MANUAL_TRIAL)
                         ->helperText('Only used when Billing mode is set to Manual trial.'),
                 ])->columns(2),
         ]);
