@@ -2,8 +2,10 @@
 
 use App\Http\Controllers\EarlyAccessController;
 use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\App\AcceptOrganizationInvitationController;
 use App\Http\Controllers\App\SiteCheckoutController;
+use App\Http\Controllers\App\SiteCheckoutSuccessController;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\SeoController;
@@ -42,6 +44,8 @@ Route::post('/stripe/webhook', StripeWebhookController::class)->name('stripe.web
 Route::middleware('guest')->group(function (): void {
     Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
     Route::post('/register', [RegisteredUserController::class, 'store'])->name('register.store');
+    Route::get('/auth/google/redirect', [GoogleAuthController::class, 'redirect'])->name('auth.google.redirect');
+    Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->name('auth.google.callback');
 });
 Route::redirect('/login', '/app/login')->name('login');
 Route::get('/wordpress/free-token/verify/{token}', VerifyFreeTokenController::class)->name('wordpress.free-token.verify');
@@ -60,4 +64,6 @@ Route::middleware('auth')->group(function (): void {
         ->name('app.invitations.accept');
     Route::get('/app/sites/{site}/checkout/{plan}', SiteCheckoutController::class)
         ->name('app.sites.checkout');
+    Route::get('/app/sites/{site}/checkout/success', SiteCheckoutSuccessController::class)
+        ->name('app.sites.checkout.success');
 });

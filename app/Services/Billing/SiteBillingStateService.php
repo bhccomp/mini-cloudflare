@@ -21,6 +21,7 @@ class SiteBillingStateService
         $subscription = $this->assignmentService->subscriptionForSite($site);
         $plan = $subscription?->plan ?? $this->entitlements->sitePlan($site);
         $status = (string) ($subscription?->status ?? '');
+        $cancelAtPeriodEnd = (bool) data_get($subscription?->meta, 'cancel_at_period_end', false);
         $selectedPlanId = $plan?->id ?? (int) data_get($site->provider_meta, 'billing.selected_plan_id', 0);
 
         if ($mode === OrganizationEntitlementService::MODE_COMPED) {
@@ -72,6 +73,19 @@ class SiteBillingStateService
                 'requires_checkout' => false,
                 'can_progress_protection' => true,
                 'message' => 'No billing plan is attached to this site yet.',
+            ];
+        }
+
+        if (in_array($status, ['active', 'trialing'], true) && $cancelAtPeriodEnd) {
+            return [
+                'status' => 'ending',
+                'subscription' => $subscription,
+                'plan' => $plan,
+                'requires_checkout' => false,
+                'can_progress_protection' => true,
+                'message' => $plan
+                    ? "{$plan->name} remains active until the current period ends, but it is set to cancel in Stripe."
+                    : 'This subscription remains active until the current period ends, but it is set to cancel in Stripe.',
             ];
         }
 

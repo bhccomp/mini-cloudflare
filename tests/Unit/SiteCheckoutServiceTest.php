@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Filament\App\Pages\SiteStatusHubPage;
 use App\Models\Organization;
 use App\Models\Plan;
 use App\Models\Site;
@@ -101,6 +102,14 @@ class SiteCheckoutServiceTest extends TestCase
         $this->assertSame('always', data_get($capturedPayload, 'payment_method_collection'));
         $this->assertSame(14, data_get($capturedPayload, 'subscription_data.trial_period_days'));
         $this->assertSame('price_monthly_growth', data_get($capturedPayload, 'line_items.0.price'));
+        $this->assertSame(
+            route('app.sites.checkout.success', ['site' => $site], absolute: true).'?session_id=%7BCHECKOUT_SESSION_ID%7D',
+            data_get($capturedPayload, 'success_url')
+        );
+        $this->assertSame(
+            SiteStatusHubPage::getUrl(['site_id' => $site->id], isAbsolute: true).'&billing=cancelled',
+            data_get($capturedPayload, 'cancel_url')
+        );
     }
 
     public function test_checkout_payload_skips_trial_settings_when_plan_has_no_trial_days(): void

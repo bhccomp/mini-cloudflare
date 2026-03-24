@@ -40,11 +40,12 @@ class SiteCheckoutService
         }
 
         $statusHubUrl = SiteStatusHubPage::getUrl(['site_id' => $site->id], isAbsolute: true);
+        $checkoutSuccessUrl = route('app.sites.checkout.success', ['site' => $site], absolute: true);
 
         if ($reusableSubscription = $this->assignmentService->reusableSubscriptionForPlan($site, $plan)) {
             $this->assignmentService->assignSite($reusableSubscription, $site);
 
-            return $statusHubUrl.'&billing=covered';
+            return $this->withQuery($statusHubUrl, ['billing' => 'covered']);
         }
 
         $site->forceFill([
@@ -64,8 +65,8 @@ class SiteCheckoutService
         $session = $this->createCheckoutSession([
             'mode' => 'subscription',
             'customer' => $customerId,
-            'success_url' => $statusHubUrl.'?billing=success',
-            'cancel_url' => $statusHubUrl.'?billing=cancelled',
+            'success_url' => $this->withQuery($checkoutSuccessUrl, ['session_id' => '{CHECKOUT_SESSION_ID}']),
+            'cancel_url' => $this->withQuery($statusHubUrl, ['billing' => 'cancelled']),
             'payment_method_collection' => $this->requiresPaymentMethodCollection($plan) ? 'always' : 'if_required',
             'line_items' => array_values(array_filter([
                 [
@@ -120,5 +121,15 @@ class SiteCheckoutService
     private function requiresPaymentMethodCollection(Plan $plan): bool
     {
         return (int) $plan->trial_days > 0;
+    }
+
+    /**
+     * @param  array<string, scalar|null>  $query
+     */
+    private function withQuery(string $url, array $query): string
+    {
+        $separator = str_contains($url, '?') ? '&' : '?';
+
+        return $url.$separator.http_build_query($query);
     }
 }

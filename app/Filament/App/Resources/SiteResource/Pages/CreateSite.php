@@ -9,6 +9,7 @@ use App\Jobs\ProvisionEdgeDeploymentJob;
 use App\Models\Plan;
 use App\Models\Site;
 use App\Services\Billing\BillingNotificationService;
+use App\Services\Billing\SiteCheckoutService;
 use App\Services\Billing\SiteBillingStateService;
 use App\Services\Billing\SubscriptionSiteAssignmentService;
 use App\Services\Edge\EdgeProviderManager;
@@ -71,6 +72,11 @@ class CreateSite extends CreateRecord
             ->label('Create protection layer');
     }
 
+    protected function getFormActions(): array
+    {
+        return [];
+    }
+
     protected function getRedirectUrl(): string
     {
         $this->tryAssignExistingSubscriptionSlot();
@@ -86,10 +92,7 @@ class CreateSite extends CreateRecord
             && app(SiteBillingStateService::class)->summaryForSite($this->record)['requires_checkout']
             && ! app()->runningUnitTests()
         ) {
-            return route('app.sites.checkout', [
-                'site' => $this->record,
-                'plan' => $this->selectedPlan,
-            ]);
+            return app(SiteCheckoutService::class)->createSiteSubscriptionCheckoutUrl($this->record, $this->selectedPlan);
         }
 
         return SiteStatusHubPage::getUrl(['site_id' => $this->record->id]);

@@ -24,13 +24,13 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
-use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\IconPosition;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\HtmlString;
 use Livewire\Component as LivewireComponent;
 
 class SiteResource extends Resource
@@ -79,8 +79,7 @@ class SiteResource extends Resource
                                             );
                                         };
                                     })
-                                    ->dehydrateStateUsing(fn (?string $state): string => static::normalizeDomainInput($state))
-                                    ->live(onBlur: true),
+                                    ->dehydrateStateUsing(fn (?string $state): string => static::normalizeDomainInput($state)),
                             ])->columns(1),
                         \Filament\Schemas\Components\Wizard\Step::make('Origin')
                             ->description('Tell us where requests should be forwarded after inspection.')
@@ -99,62 +98,8 @@ class SiteResource extends Resource
                                             );
                                         };
                                     })
-                                    ->dehydrateStateUsing(fn (?string $state): string => static::normalizeOriginIpInput((string) $state))
-                                    ->suffixAction(
-                                        Actions\Action::make('testOrigin')
-                                            ->label('Test')
-                                            ->icon('heroicon-m-signal')
-                                            ->action(function (Get $get, Set $set): void {
-                                                $originIp = static::normalizeOriginIpInput((string) $get('origin_ip'));
-
-                                                if ($originIp === '') {
-                                                    $set('origin_test_feedback', 'Enter an origin server IP before running a test.');
-
-                                                    return;
-                                                }
-
-                                                try {
-                                                    $response = Http::timeout(8)
-                                                        ->withoutRedirecting()
-                                                        ->get('http://'.$originIp);
-
-                                                    if ($response->successful() || in_array($response->status(), [301, 302, 307, 308, 401, 403], true)) {
-                                                        $set('origin_test_feedback', 'Origin reachable. Connection check succeeded.');
-
-                                                        return;
-                                                    }
-
-                                                    $set('origin_test_feedback', "Origin responded with status {$response->status()}. Please verify the URL.");
-                                                } catch (\Throwable $exception) {
-                                                    $set('origin_test_feedback', 'Could not connect to origin IP. Check server firewall and reachability.');
-                                                }
-                                            })
-                                    ),
-                                Forms\Components\Hidden::make('origin_test_feedback')
-                                    ->dehydrated(false),
-                                Forms\Components\Placeholder::make('origin_test_result')
-                                    ->label('Connectivity test')
-                                    ->content(fn (Get $get): string => (string) ($get('origin_test_feedback') ?: 'Run a quick connectivity test before continuing.')),
+                                    ->dehydrateStateUsing(fn (?string $state): string => static::normalizeOriginIpInput((string) $state)),
                             ])->columns(1),
-                        \Filament\Schemas\Components\Wizard\Step::make('Advanced')
-                            ->description('Optional controls for advanced rollout behavior.')
-                            ->schema([
-                                Forms\Components\Toggle::make('show_advanced_provider')
-                                    ->label('I want to choose edge mode manually')
-                                    ->dehydrated(false)
-                                    ->default(false),
-                                Forms\Components\Select::make('provider')
-                                    ->label('Edge mode')
-                                    ->options([
-                                        Site::PROVIDER_BUNNY => 'Standard Edge (Recommended)',
-                                        Site::PROVIDER_AWS => 'Legacy Edge (Advanced)',
-                                    ])
-                                    ->default((string) config('edge.default_provider', Site::PROVIDER_BUNNY))
-                                    ->visible(fn (Get $get): bool => (bool) config('edge.feature_aws_onboarding', false) || (bool) $get('show_advanced_provider')),
-                                Forms\Components\Placeholder::make('advanced_note')
-                                    ->label('Onboarding mode')
-                                    ->content('Standard mode skips pre-validation and activates SSL after DNS cutover. Legacy mode remains available for advanced users.'),
-                            ]),
                         \Filament\Schemas\Components\Wizard\Step::make('Plan')
                             ->description('Choose the protection plan for this website before launching checkout.')
                             ->schema([
@@ -202,9 +147,20 @@ class SiteResource extends Resource
                                     }),
                                 Forms\Components\Placeholder::make('review_note')
                                     ->label('Next action after creation')
-                                    ->content('Create the site draft, complete secure checkout, then continue DNS and protection setup in the Site Status Hub.'),
+                                    ->content('Go straight to secure checkout. After payment, FirePhage returns you to DNS and protection setup in the Site Status Hub.'),
                             ])->columns(1),
-                    ])->columnSpanFull(),
+                    ])
+                        ->submitAction(
+                            new HtmlString(
+                                Actions\Action::make('submitSiteOnboarding')
+                                    ->label('Go to Checkout')
+                                    ->icon('heroicon-m-arrow-right')
+                                    ->iconPosition(IconPosition::After)
+                                    ->submit('create')
+                                    ->toHtml()
+                            )
+                        )
+                        ->columnSpanFull(),
                 ])
                 ->visible(fn (string $operation): bool => $operation === 'create'),
 

@@ -69,6 +69,13 @@
                             </div>
                         @endif
 
+                        <a
+                            href="{{ route('auth.google.redirect') }}"
+                            class="mb-6 inline-flex w-full items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:border-cyan-300 hover:bg-white/10"
+                        >
+                            Continue with Google
+                        </a>
+
                         <form method="POST" action="{{ route('register.store') }}" class="space-y-5">
                             @csrf
 

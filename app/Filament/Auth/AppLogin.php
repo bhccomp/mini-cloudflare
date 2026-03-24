@@ -9,7 +9,9 @@ use Filament\Schemas\Schema;
 use App\Services\DemoModeService;
 use Filament\Auth\Pages\Login;
 use Filament\Facades\Filament;
+use Filament\Actions\Action;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\HtmlString;
 
 class AppLogin extends Login
 {
@@ -53,6 +55,26 @@ class AppLogin extends Login
         }
 
         return parent::authenticate();
+    }
+
+    public function getSubheading(): string | \Illuminate\Contracts\Support\Htmlable | null
+    {
+        if (filled($this->userUndertakingMultiFactorAuthentication)) {
+            return parent::getSubheading();
+        }
+
+        return new HtmlString('Don&apos;t have an account? <a href="'.e(url('/register')).'" class="fi-link fi-size-sm">Register here</a>');
+    }
+
+    protected function getFormActions(): array
+    {
+        return [
+            $this->getAuthenticateFormAction(),
+            Action::make('google')
+                ->label('Continue with Google')
+                ->color('gray')
+                ->url(route('auth.google.redirect')),
+        ];
     }
 
     protected function getDemoCaptchaFormComponent(): Component

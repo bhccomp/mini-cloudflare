@@ -26,6 +26,8 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
         'selected_site_id',
         'ui_mode',
         'avatar_url',
+        'google_id',
+        'email_verified_at',
     ];
 
     protected $hidden = [
@@ -81,6 +83,10 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
     {
         if (! $this->avatar_url) {
             return null;
+        }
+
+        if (str_starts_with($this->avatar_url, 'http://') || str_starts_with($this->avatar_url, 'https://')) {
+            return $this->avatar_url;
         }
 
         return Storage::url($this->avatar_url);

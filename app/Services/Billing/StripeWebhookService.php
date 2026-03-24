@@ -34,6 +34,11 @@ class StripeWebhookService
         };
     }
 
+    public function syncStripeSubscriptionObject(object $subscription): void
+    {
+        $this->syncSubscriptionObject($subscription);
+    }
+
     private function constructEvent(string $payload, string $signature): Event
     {
         $secret = (string) config('services.stripe.webhook_secret');

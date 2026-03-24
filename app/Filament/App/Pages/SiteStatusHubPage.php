@@ -57,6 +57,14 @@ class SiteStatusHubPage extends BaseProtectionPage
                 ->send();
         }
 
+        if ($billingState === 'activated') {
+            Notification::make()
+                ->title('Payment confirmed.')
+                ->body('Billing is active. Continue with DNS setup to finish onboarding this site.')
+                ->success()
+                ->send();
+        }
+
         if ($billingState === 'cancelled') {
             Notification::make()
                 ->title('Checkout was cancelled.')
@@ -304,6 +312,7 @@ class SiteStatusHubPage extends BaseProtectionPage
         return match ($status) {
             'active' => 'Paid',
             'trialing' => 'Trialing',
+            'ending' => 'Ending',
             'past_due' => 'Past Due',
             'checkout_completed' => 'Syncing',
             default => data_get($this->site?->provider_meta, 'billing.selected_plan_id') ? 'Payment Required' : 'Not Set Up',
@@ -316,6 +325,7 @@ class SiteStatusHubPage extends BaseProtectionPage
 
         return match ($status) {
             'active', 'trialing' => 'success',
+            'ending' => 'warning',
             'checkout_completed' => 'primary',
             'past_due' => 'warning',
             default => 'gray',
@@ -336,17 +346,18 @@ class SiteStatusHubPage extends BaseProtectionPage
         $description = match ($status) {
             'active' => $plan ? "This domain is covered by the {$plan->name} plan.{$capacityLine}" : 'This domain has an active paid subscription.',
             'trialing' => $plan ? "This domain is currently trialing on the {$plan->name} plan.{$capacityLine}" : 'This domain is currently in trial.',
+            'ending' => $plan ? "{$plan->name} is still active for this domain, but it is scheduled to end at the close of the current Stripe period." : 'This subscription is still active, but it is scheduled to end at the close of the current Stripe period.',
             'past_due' => 'Stripe reported a payment issue for this domain. Update billing in the customer portal or restart checkout.',
             'checkout_completed' => 'Checkout finished and FirePhage is syncing the subscription. Refresh shortly if the badge has not updated yet.',
             'not_set_up' => 'Choose a plan and complete checkout before activating paid protection for this domain.',
             default => $plan ? "This domain is assigned to {$plan->name}, but checkout still needs to be completed." : 'Choose a plan and complete checkout before activating paid protection for this domain.',
         };
 
-        if (! in_array($status, ['active', 'trialing', 'past_due', 'checkout_completed', 'payment_required', 'not_set_up'], true)) {
+        if (! in_array($status, ['active', 'trialing', 'ending', 'past_due', 'checkout_completed', 'payment_required', 'not_set_up'], true)) {
             return (string) data_get($billingState, 'message', $description);
         }
 
-        if (in_array($status, ['active', 'trialing'], true) && ! $subscription) {
+        if (in_array($status, ['active', 'trialing', 'ending'], true) && ! $subscription) {
             return (string) data_get($billingState, 'message', $description);
         }
 
