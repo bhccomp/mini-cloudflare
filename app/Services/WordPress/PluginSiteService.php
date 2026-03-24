@@ -2,6 +2,7 @@
 
 namespace App\Services\WordPress;
 
+use App\Models\AlertChannel;
 use App\Models\EdgeRequestLog;
 use App\Models\PluginConnectionToken;
 use App\Models\PluginSiteConnection;
@@ -311,6 +312,7 @@ class PluginSiteService
                 'performance_summary' => (bool) $access['pro_enabled'],
                 'live_wordpress_telemetry' => (bool) $access['pro_enabled'],
             ],
+            'alert_channels' => $this->alertChannelSummary($site),
         ];
     }
 
@@ -502,5 +504,40 @@ class PluginSiteService
                 : [],
             'top_paths' => $access['pro_enabled'] ? $topPaths : [],
         ];
+    }
+
+    /**
+     * @return array<string, array<string, bool>>
+     */
+    protected function alertChannelSummary(Site $site): array
+    {
+        $channels = AlertChannel::query()
+            ->where('organization_id', $site->organization_id)
+            ->where('site_id', $site->id)
+            ->whereIn('type', ['slack', 'webhook'])
+            ->get()
+            ->keyBy('type');
+
+        $summaries = [];
+
+        foreach (['slack', 'webhook'] as $type) {
+            $record = $channels->get($type);
+            $config = $record && is_array($record->config) ? $record->config : [];
+
+            $configured = false;
+
+            if ($type === 'slack') {
+                $configured = ((string) ($config['webhook_url'] ?? '')) !== '';
+            } elseif ($type === 'webhook') {
+                $configured = ((string) ($config['url'] ?? '')) !== '';
+            }
+
+            $summaries[$type] = [
+                'enabled' => (bool) ($record?->is_active ?? false),
+                'configured' => $configured,
+            ];
+        }
+
+        return $summaries;
     }
 }
