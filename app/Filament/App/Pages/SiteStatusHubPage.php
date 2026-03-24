@@ -19,6 +19,7 @@ use App\Models\SiteAvailabilityCheck;
 use App\Services\Billing\SiteBillingStateService;
 use App\Services\Billing\SiteUsageMeteringService;
 use App\Services\Billing\SubscriptionSiteAssignmentService;
+use App\Services\Billing\OrganizationEntitlementService;
 use App\Services\OrganizationAccessService;
 use App\Services\WordPress\PluginSiteService;
 use Filament\Actions\Action;
@@ -289,24 +290,16 @@ class SiteStatusHubPage extends BaseProtectionPage
 
     public function sitePlan(): ?Plan
     {
-        $subscriptionPlan = $this->siteSubscription()?->plan;
-
-        if ($subscriptionPlan) {
-            return $subscriptionPlan;
-        }
-
-        $planId = (int) data_get($this->site?->provider_meta, 'billing.selected_plan_id', 0);
-
-        if ($planId < 1) {
+        if (! $this->site) {
             return null;
         }
 
-        return Plan::query()->find($planId);
+        return app(OrganizationEntitlementService::class)->sitePlan($this->site);
     }
 
     public function siteBillingStatusLabel(): string
     {
-        $status = (string) ($this->siteSubscription()?->status ?? '');
+        $status = (string) data_get($this->siteBillingState(), 'status', '');
 
         return match ($status) {
             'active' => 'Paid',
@@ -319,7 +312,7 @@ class SiteStatusHubPage extends BaseProtectionPage
 
     public function siteBillingStatusColor(): string
     {
-        $status = (string) ($this->siteSubscription()?->status ?? '');
+        $status = (string) data_get($this->siteBillingState(), 'status', '');
 
         return match ($status) {
             'active', 'trialing' => 'success',
@@ -331,21 +324,33 @@ class SiteStatusHubPage extends BaseProtectionPage
 
     public function siteBillingDescription(): string
     {
+        $billingState = $this->siteBillingState();
         $plan = $this->sitePlan();
-        $status = (string) ($this->siteSubscription()?->status ?? '');
+        $status = (string) data_get($billingState, 'status', '');
         $assignment = app(SubscriptionSiteAssignmentService::class);
         $subscription = $this->siteSubscription();
         $siteUsage = $subscription ? $assignment->usedWebsiteSlots($subscription) : 0;
         $siteCapacity = $subscription ? $assignment->includedWebsiteSlots($subscription) : ($plan?->includedWebsites() ?? 1);
         $capacityLine = $plan ? " {$siteUsage} of {$siteCapacity} site slots are currently assigned." : '';
 
-        return match ($status) {
+        $description = match ($status) {
             'active' => $plan ? "This domain is covered by the {$plan->name} plan.{$capacityLine}" : 'This domain has an active paid subscription.',
             'trialing' => $plan ? "This domain is currently trialing on the {$plan->name} plan.{$capacityLine}" : 'This domain is currently in trial.',
             'past_due' => 'Stripe reported a payment issue for this domain. Update billing in the customer portal or restart checkout.',
             'checkout_completed' => 'Checkout finished and FirePhage is syncing the subscription. Refresh shortly if the badge has not updated yet.',
+            'not_set_up' => 'Choose a plan and complete checkout before activating paid protection for this domain.',
             default => $plan ? "This domain is assigned to {$plan->name}, but checkout still needs to be completed." : 'Choose a plan and complete checkout before activating paid protection for this domain.',
         };
+
+        if (! in_array($status, ['active', 'trialing', 'past_due', 'checkout_completed', 'payment_required', 'not_set_up'], true)) {
+            return (string) data_get($billingState, 'message', $description);
+        }
+
+        if (in_array($status, ['active', 'trialing'], true) && ! $subscription) {
+            return (string) data_get($billingState, 'message', $description);
+        }
+
+        return $description;
     }
 
     public function canCheckoutSitePlan(): bool

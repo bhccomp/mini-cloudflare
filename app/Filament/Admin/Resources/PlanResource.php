@@ -61,6 +61,25 @@ class PlanResource extends Resource
                         ->prefix('$')
                         ->step('0.01')
                         ->helperText('Enter the yearly price in dollars.'),
+                    Forms\Components\Toggle::make('trial_enabled')
+                        ->label('Enable free trial')
+                        ->live()
+                        ->default(false)
+                        ->dehydrated(false)
+                        ->afterStateHydrated(function (Forms\Components\Toggle $component, ?Plan $record): void {
+                            $component->state(((int) ($record?->trial_days ?? 0)) > 0);
+                        }),
+                    Forms\Components\TextInput::make('trial_days')
+                        ->label('Free trial days')
+                        ->numeric()
+                        ->default(14)
+                        ->minValue(1)
+                        ->maxValue(60)
+                        ->required(fn (Get $get): bool => ! $get('is_contact_only') && (bool) $get('trial_enabled'))
+                        ->hidden(fn (Get $get): bool => (bool) $get('is_contact_only') || ! (bool) $get('trial_enabled'))
+                        ->dehydrated(fn (Get $get): bool => ! $get('is_contact_only'))
+                        ->dehydrateStateUsing(fn ($state, Get $get): int => (bool) $get('trial_enabled') ? max(1, (int) $state) : 0)
+                        ->helperText('Collected payment methods are stored in Stripe during trial checkout and can be charged automatically when the trial ends.'),
                     Forms\Components\TextInput::make('included_websites')
                         ->label('Included websites')
                         ->numeric()
@@ -151,6 +170,7 @@ class PlanResource extends Resource
             Tables\Columns\TextColumn::make('name')->searchable(),
             Tables\Columns\TextColumn::make('badge')->toggleable(),
             Tables\Columns\TextColumn::make('monthly_price_cents')->money('USD', divideBy: 100),
+            Tables\Columns\TextColumn::make('trial_days')->label('Trial')->suffix(' days')->toggleable(),
             Tables\Columns\TextColumn::make('included_websites')->numeric()->label('Sites'),
             Tables\Columns\TextColumn::make('included_requests_per_month')->numeric()->label('Included / mo'),
             Tables\Columns\TextColumn::make('overage_price_cents')->money('USD', divideBy: 100)->label('Overage / block'),

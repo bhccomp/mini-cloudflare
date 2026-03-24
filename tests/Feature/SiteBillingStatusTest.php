@@ -17,7 +17,7 @@ class SiteBillingStatusTest extends TestCase
 
     public function test_status_hub_shows_payment_required_for_unpaid_site_plan(): void
     {
-        [$user, $site, $plan] = $this->seedSiteWithPlan();
+        [$user, $site, $plan] = array_slice($this->seedSiteWithPlan(), 0, 3);
 
         $site->forceFill([
             'provider_meta' => array_merge((array) $site->provider_meta, [
@@ -40,7 +40,7 @@ class SiteBillingStatusTest extends TestCase
 
     public function test_status_hub_shows_paid_for_active_site_subscription(): void
     {
-        [$user, $site, $plan] = $this->seedSiteWithPlan();
+        [$user, $site, $plan] = array_slice($this->seedSiteWithPlan(), 0, 3);
 
         OrganizationSubscription::create([
             'organization_id' => $site->organization_id,
@@ -58,6 +58,45 @@ class SiteBillingStatusTest extends TestCase
             ->assertSee('Site Billing')
             ->assertSee('Paid')
             ->assertSee($plan->name);
+    }
+
+    public function test_status_hub_shows_paid_for_comped_organization_override(): void
+    {
+        [$user, $site, $plan, $organization] = $this->seedSiteWithPlan();
+
+        $organization->forceFill([
+            'settings' => [
+                'billing_mode' => 'comped',
+                'assigned_plan_id' => $plan->id,
+            ],
+        ])->save();
+
+        $this->actingAs($user)
+            ->get('/app/status-hub?site_id='.$site->id)
+            ->assertOk()
+            ->assertSee('Site Billing')
+            ->assertSee('Paid')
+            ->assertSee('manual FirePhage account override');
+    }
+
+    public function test_status_hub_shows_trialing_for_manual_trial_override(): void
+    {
+        [$user, $site, $plan, $organization] = $this->seedSiteWithPlan();
+
+        $organization->forceFill([
+            'settings' => [
+                'billing_mode' => 'manual_trial',
+                'assigned_plan_id' => $plan->id,
+                'trial_ends_at' => now()->addDays(60)->toIso8601String(),
+            ],
+        ])->save();
+
+        $this->actingAs($user)
+            ->get('/app/status-hub?site_id='.$site->id)
+            ->assertOk()
+            ->assertSee('Site Billing')
+            ->assertSee('Trialing')
+            ->assertSee('manual trial');
     }
 
     private function seedSiteWithPlan(): array
@@ -105,6 +144,6 @@ class SiteBillingStatusTest extends TestCase
             'status' => Site::STATUS_DRAFT,
         ]);
 
-        return [$user, $site, $plan];
+        return [$user, $site, $plan, $organization];
     }
 }

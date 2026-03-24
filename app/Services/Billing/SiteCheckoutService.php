@@ -61,11 +61,12 @@ class SiteCheckoutService
 
         $customerId = $this->organizationBillingService->ensureStripeCustomer($organization);
 
-        $session = $this->stripe()->checkout->sessions->create([
+        $session = $this->createCheckoutSession([
             'mode' => 'subscription',
             'customer' => $customerId,
             'success_url' => $statusHubUrl.'?billing=success',
             'cancel_url' => $statusHubUrl.'?billing=cancelled',
+            'payment_method_collection' => $this->requiresPaymentMethodCollection($plan) ? 'always' : 'if_required',
             'line_items' => array_values(array_filter([
                 [
                     'price' => $priceId,
@@ -88,6 +89,7 @@ class SiteCheckoutService
                 'billing_interval' => 'month',
             ],
             'subscription_data' => [
+                ...( $plan->trial_days > 0 ? ['trial_period_days' => (int) $plan->trial_days] : []),
                 'metadata' => [
                     'organization_id' => (string) $organization->id,
                     'site_id' => (string) $site->id,
@@ -102,8 +104,21 @@ class SiteCheckoutService
         return (string) $session->url;
     }
 
-    private function stripe(): StripeClient
+    /**
+     * @param array<string, mixed> $payload
+     */
+    protected function createCheckoutSession(array $payload): object
+    {
+        return $this->stripe()->checkout->sessions->create($payload);
+    }
+
+    protected function stripe(): StripeClient
     {
         return new StripeClient((string) config('services.stripe.secret'));
+    }
+
+    private function requiresPaymentMethodCollection(Plan $plan): bool
+    {
+        return (int) $plan->trial_days > 0;
     }
 }

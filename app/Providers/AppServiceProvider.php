@@ -98,11 +98,15 @@ class AppServiceProvider extends ServiceProvider
         View::composer([
             'components.marketing.pricing',
             'components.marketing.pricing-variant-1',
+            'components.marketing.hero',
+            'components.marketing.hero-variant-1',
         ], function ($view): void {
-            $view->with('marketingPlans', app(PlanCatalogService::class)->marketingPlans());
-        });
+            $catalog = app(PlanCatalogService::class);
 
-        View::composer('components.marketing.hero-variant-1', function ($view): void {
+            $view->with('marketingPlans', $catalog->marketingPlans());
+            $view->with('marketingTrialPlan', $catalog->marketingTrialPlan());
+        });
+        View::composer(['components.marketing.hero', 'components.marketing.hero-variant-1'], function ($view): void {
             $view->with('demoDashboardUrl', 'https://'.config('demo.host').'/app');
         });
     }

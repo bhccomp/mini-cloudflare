@@ -9,6 +9,7 @@ use App\Jobs\ProvisionEdgeDeploymentJob;
 use App\Models\Plan;
 use App\Models\Site;
 use App\Services\Billing\BillingNotificationService;
+use App\Services\Billing\SiteBillingStateService;
 use App\Services\Billing\SubscriptionSiteAssignmentService;
 use App\Services\Edge\EdgeProviderManager;
 use App\Services\OrganizationAccessService;
@@ -82,6 +83,7 @@ class CreateSite extends CreateRecord
             $this->record
             && $this->selectedPlan
             && $this->userCanOpenCheckout()
+            && app(SiteBillingStateService::class)->summaryForSite($this->record)['requires_checkout']
             && ! app()->runningUnitTests()
         ) {
             return route('app.sites.checkout', [
@@ -111,7 +113,7 @@ class CreateSite extends CreateRecord
         if (
             $this->record->provider === Site::PROVIDER_BUNNY
             && ! app()->runningUnitTests()
-            && ($this->subscriptionSlotAssigned || ! $this->selectedPlan)
+            && app(SiteBillingStateService::class)->summaryForSite($this->record)['can_progress_protection']
         ) {
             try {
                 (new ProvisionEdgeDeploymentJob($this->record->id, auth()->id()))

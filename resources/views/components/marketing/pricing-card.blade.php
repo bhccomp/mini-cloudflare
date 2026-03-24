@@ -9,6 +9,7 @@
     'description' => null,
     'features' => [],
     'limits' => [],
+    'trialDays' => 0,
 ])
 
 <article @class([
@@ -35,6 +36,10 @@
         <p class="mt-3 text-sm leading-6 text-slate-300">{{ $description }}</p>
     @else
         <p class="mt-3 text-xs font-semibold text-cyan-200">Free assisted onboarding included (we can handle DNS).</p>
+    @endif
+
+    @if ((int) $trialDays > 0)
+        <p class="mt-3 text-xs font-semibold text-cyan-200">Includes a {{ (int) $trialDays }}-day free trial. Checkout still collects a payment method for automatic billing after the trial unless canceled.</p>
     @endif
 
     <div class="mt-5 space-y-5">

@@ -19,4 +19,10 @@ class PlanCatalogService
             ->orderBy('id')
             ->get();
     }
+
+    public function marketingTrialPlan(): ?Plan
+    {
+        return $this->marketingPlans()
+            ->first(fn (Plan $plan): bool => $plan->hasTrial() && ! $plan->is_contact_only);
+    }
 }

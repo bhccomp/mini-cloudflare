@@ -46,6 +46,14 @@ class SiteResource extends Resource
                         Site::STATUS_FAILED => 'Failed',
                     ]),
                     Forms\Components\Toggle::make('under_attack'),
+                    Forms\Components\Select::make('provider_meta.billing.comped_shield_mode')
+                        ->label('Comped Shield mode')
+                        ->options([
+                            'basic' => 'Basic / free Shield',
+                            'advanced' => 'Advanced Shield',
+                        ])
+                        ->default('basic')
+                        ->helperText('Only used for organizations on the comped/free billing mode. Paid and trial accounts always use Advanced Shield.'),
                     Forms\Components\Textarea::make('last_error')->columnSpanFull(),
                 ])->columns(2),
             Section::make('AWS State')
@@ -67,6 +75,7 @@ class SiteResource extends Resource
                 Tables\Columns\TextColumn::make('display_name')->searchable(),
                 Tables\Columns\TextColumn::make('apex_domain')->searchable(),
                 Tables\Columns\TextColumn::make('status')->badge(),
+                Tables\Columns\TextColumn::make('provider_meta.billing.comped_shield_mode')->label('Comped Shield')->badge()->toggleable(),
                 Tables\Columns\IconColumn::make('under_attack')->boolean(),
                 Tables\Columns\TextColumn::make('cloudfront_distribution_id')->label('CF ID')->toggleable(),
                 Tables\Columns\TextColumn::make('cloudfront_domain_name')->label('CF Domain')->toggleable(),

@@ -7,6 +7,7 @@ use App\Models\SystemSetting;
 use App\Services\Bunny\BunnyEdgeErrorPageService;
 use App\Services\Bunny\BunnyShieldAccessListService;
 use App\Services\Bunny\BunnyShieldSecurityService;
+use App\Services\Billing\OrganizationEntitlementService;
 use App\Services\Edge\EdgeProviderInterface;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Arr;
@@ -96,10 +97,21 @@ class BunnyCdnProvider implements EdgeProviderInterface
 
             $shieldZoneId = $this->shieldAccess()->ensureShieldZone($site);
 
-            if ((bool) config('edge.bunny.shield_auto_upgrade_to_advanced', false)) {
+            if ($this->shouldUseAdvancedShield($site)) {
                 $planResult = $this->shieldSecurity()->ensureAdvancedPlan($site, $shieldZoneId);
                 $shieldPlanStatus = ((bool) ($planResult['changed'] ?? false)) ? 'active' : 'unchanged';
                 $shieldPlanMessage = (string) ($planResult['message'] ?? 'Bunny Shield advanced plan is enabled.');
+            } elseif ($shieldZoneId) {
+                $planState = $this->shieldSecurity()->currentPlanState($shieldZoneId);
+
+                if ((bool) ($planState['premium_plan'] ?? false)) {
+                    $planResult = $this->shieldSecurity()->downgradePlan($site, $shieldZoneId);
+                    $shieldPlanStatus = ((bool) ($planResult['changed'] ?? false)) ? 'downgraded' : 'unchanged';
+                    $shieldPlanMessage = (string) ($planResult['message'] ?? 'Bunny Shield is using the basic plan for this site.');
+                } else {
+                    $shieldPlanStatus = 'basic';
+                    $shieldPlanMessage = 'Bunny Shield is using the basic plan for this site.';
+                }
             }
         } catch (\Throwable $e) {
             $shieldMessage = $e->getMessage();
@@ -195,6 +207,15 @@ class BunnyCdnProvider implements EdgeProviderInterface
         }
 
         return $fallback;
+    }
+
+    private function shouldUseAdvancedShield(Site $site): bool
+    {
+        if (! (bool) config('edge.bunny.shield_auto_upgrade_to_advanced', false)) {
+            return false;
+        }
+
+        return app(OrganizationEntitlementService::class)->shouldUseAdvancedShield($site);
     }
 
     private function resolvePreferredOriginUrl(Site $site): string

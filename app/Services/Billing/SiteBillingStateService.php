@@ -9,6 +9,7 @@ class SiteBillingStateService
 {
     public function __construct(
         private readonly SubscriptionSiteAssignmentService $assignmentService,
+        private readonly OrganizationEntitlementService $entitlements,
     ) {}
 
     /**
@@ -16,10 +17,52 @@ class SiteBillingStateService
      */
     public function summaryForSite(Site $site): array
     {
+        $mode = $this->entitlements->billingMode($site->organization);
         $subscription = $this->assignmentService->subscriptionForSite($site);
-        $plan = $subscription?->plan ?? $this->selectedPlanForSite($site);
+        $plan = $subscription?->plan ?? $this->entitlements->sitePlan($site);
         $status = (string) ($subscription?->status ?? '');
-        $selectedPlanId = (int) data_get($site->provider_meta, 'billing.selected_plan_id', 0);
+        $selectedPlanId = $plan?->id ?? (int) data_get($site->provider_meta, 'billing.selected_plan_id', 0);
+
+        if ($mode === OrganizationEntitlementService::MODE_COMPED) {
+            return [
+                'status' => 'active',
+                'subscription' => null,
+                'plan' => $plan,
+                'requires_checkout' => false,
+                'can_progress_protection' => true,
+                'message' => $plan
+                    ? "{$plan->name} is active for this site through a manual FirePhage account override."
+                    : 'This site is active through a manual FirePhage account override.',
+            ];
+        }
+
+        if ($mode === OrganizationEntitlementService::MODE_MANUAL_TRIAL) {
+            if ($this->entitlements->hasActiveManualTrial($site->organization)) {
+                $trialEndsAt = $this->entitlements->trialEndsAt($site->organization);
+
+                return [
+                    'status' => 'trialing',
+                    'subscription' => null,
+                    'plan' => $plan,
+                    'requires_checkout' => false,
+                    'can_progress_protection' => true,
+                    'message' => $plan && $trialEndsAt
+                        ? "{$plan->name} is active on a manual trial until {$trialEndsAt->toFormattedDateString()}."
+                        : 'This site is active on a manual trial.',
+                ];
+            }
+
+            return [
+                'status' => 'payment_required',
+                'subscription' => null,
+                'plan' => $plan,
+                'requires_checkout' => true,
+                'can_progress_protection' => false,
+                'message' => $plan
+                    ? "The manual trial for {$plan->name} has ended. Complete checkout before FirePhage continues protection setup."
+                    : 'The manual trial has ended. Complete checkout before FirePhage continues protection setup.',
+            ];
+        }
 
         if ($selectedPlanId < 1 && ! $subscription) {
             return [
@@ -96,8 +139,6 @@ class SiteBillingStateService
 
     private function selectedPlanForSite(Site $site): ?Plan
     {
-        $planId = (int) data_get($site->provider_meta, 'billing.selected_plan_id', 0);
-
-        return $planId > 0 ? Plan::query()->find($planId) : null;
+        return $this->entitlements->sitePlan($site);
     }
 }

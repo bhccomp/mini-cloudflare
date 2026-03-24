@@ -17,6 +17,7 @@ class Plan extends Model
         'description',
         'monthly_price_cents',
         'yearly_price_cents',
+        'trial_days',
         'included_websites',
         'included_requests_per_month',
         'overage_block_size',
@@ -45,6 +46,7 @@ class Plan extends Model
         return [
             'limits' => 'array',
             'features' => 'array',
+            'trial_days' => 'integer',
             'is_active' => 'boolean',
             'is_featured' => 'boolean',
             'is_contact_only' => 'boolean',
@@ -58,6 +60,16 @@ class Plan extends Model
         return $this->included_requests_per_month > 0
             && $this->overage_block_size > 0
             && $this->overage_price_cents > 0;
+    }
+
+    public function hasTrial(): bool
+    {
+        return (int) $this->trial_days > 0;
+    }
+
+    public function trialLabel(): string
+    {
+        return sprintf('%d-day free trial', (int) $this->trial_days);
     }
 
     public function includedWebsites(): int

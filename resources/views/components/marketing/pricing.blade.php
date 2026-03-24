@@ -15,10 +15,11 @@
                     :features="$plan->displayFeatures()"
                     :limits="$plan->displayLimits()"
                     :cta-href="$plan->is_contact_only ? url('/contact') : (auth()->check() ? (auth()->user()->is_super_admin ? url('/admin') : \App\Filament\App\Resources\SiteResource::getUrl('create')) : url('/register'))"
-                    :cta-label="$plan->is_contact_only ? ($plan->cta_label ?: 'Contact Sales') : ($plan->cta_label ?: 'Get Started')"
+                    :cta-label="$plan->is_contact_only ? ($plan->cta_label ?: 'Contact Sales') : ($plan->hasTrial() ? ('Start '.$plan->trialLabel()) : ($plan->cta_label ?: 'Get Started'))"
                     :featured="$plan->is_featured"
-                    :badge="$plan->badge"
+                    :badge="$plan->badge ?: ($plan->hasTrial() ? $plan->trialLabel() : null)"
                     :description="$plan->description"
+                    :trial-days="$plan->trial_days"
                 />
             @endforeach
         </div>
