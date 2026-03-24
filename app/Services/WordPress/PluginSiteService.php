@@ -9,6 +9,7 @@ use App\Models\Site;
 use App\Services\ActivityFeedService;
 use App\Services\BandwidthUsageService;
 use App\Services\Billing\SiteBillingStateService;
+use App\Services\Firewall\FirewallInsightsPresenter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -333,6 +334,7 @@ class PluginSiteService
         $site = $connection->site;
         $site->loadMissing('analyticsMetric', 'organization.subscriptions.plan');
         $access = $this->billingAccessSummaryForSite($site);
+        $insights = app(FirewallInsightsPresenter::class)->insights($site);
 
         $since = now()->subDay();
         $blockedActions = ['BLOCK', 'DENY', 'CHALLENGE'];
@@ -349,6 +351,26 @@ class PluginSiteService
         $requestTotal = max(1, (int) ($site->analyticsMetric?->total_requests_24h ?? 0));
         $challengeRate = round(($challengeCount / $requestTotal) * 100, 2);
         $botPressure = round(($blockedCount / $requestTotal) * 100, 2);
+        $insightTotal = (int) data_get($insights, 'summary.total', 0);
+        $topCountries = collect((array) data_get($insights, 'top_countries', []))
+            ->map(fn (array $row): array => [
+                'country' => strtoupper((string) ($row['country'] ?? '')),
+                'requests' => (int) ($row['requests'] ?? 0),
+            ])
+            ->filter(fn (array $row): bool => $row['country'] !== '')
+            ->take(5)
+            ->values()
+            ->all();
+        $topIps = collect((array) data_get($insights, 'top_ips', []))
+            ->map(fn (array $row): array => [
+                'ip' => (string) ($row['ip'] ?? ''),
+                'requests' => (int) ($row['requests'] ?? 0),
+                'blocked' => (int) ($row['blocked'] ?? 0),
+            ])
+            ->filter(fn (array $row): bool => $row['ip'] !== '')
+            ->take(5)
+            ->values()
+            ->all();
 
         return [
             'connected' => true,
@@ -369,6 +391,7 @@ class PluginSiteService
             ],
             'metrics' => [
                 'requests_blocked' => $access['pro_enabled'] ? $blockedCount : 0,
+                'total_requests' => $access['pro_enabled'] ? max($insightTotal, (int) ($site->analyticsMetric?->total_requests_24h ?? 0)) : 0,
                 'challenge_rate' => $access['pro_enabled'] ? $challengeRate : 0,
                 'bot_pressure' => $access['pro_enabled'] ? $botPressure : 0,
             ],
@@ -385,6 +408,10 @@ class PluginSiteService
             ],
             'activity' => $access['pro_enabled'] ? $this->recentFirewallEventsForSite($site, 10) : [],
             'feed' => $access['pro_enabled'] ? $this->activityFeed->forSite($site, 10) : [],
+            'insights' => [
+                'top_countries' => $access['pro_enabled'] ? $topCountries : [],
+                'top_ips' => $access['pro_enabled'] ? $topIps : [],
+            ],
         ];
     }
 
