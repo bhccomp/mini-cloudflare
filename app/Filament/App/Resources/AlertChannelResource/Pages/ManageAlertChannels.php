@@ -5,6 +5,7 @@ namespace App\Filament\App\Resources\AlertChannelResource\Pages;
 use App\Filament\App\Resources\AlertChannelResource;
 use App\Models\AlertChannel;
 use App\Models\Site;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -16,6 +17,7 @@ use Filament\Resources\Pages\Page;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
+use Illuminate\Support\HtmlString;
 
 class ManageAlertChannels extends Page implements HasForms
 {
@@ -112,6 +114,9 @@ class ManageAlertChannels extends Page implements HasForms
                                     ->label('Signing secret (optional)')
                                     ->password()
                                     ->revealable(),
+                                Placeholder::make('webhook_delivery_reference')
+                                    ->label('Webhook delivery reference')
+                                    ->content(fn (): HtmlString => new HtmlString($this->webhookDeliveryReferenceHtml())),
                             ]),
                     ])
                     ->columnSpanFull(),
@@ -258,6 +263,45 @@ class ManageAlertChannels extends Page implements HasForms
                 'secret' => '',
             ],
         ];
+    }
+
+    protected function webhookDeliveryReferenceHtml(): string
+    {
+        $sample = [
+            'source' => 'firephage-wordpress-plugin',
+            'event' => 'wordpress_malware_detected',
+            'payload' => [
+                'event' => 'wordpress_malware_detected',
+                'title' => 'Malware detected',
+                'site' => 'example.com',
+                'site_id' => 123,
+                'scan_id' => 'scan_abc123',
+                'summary' => '3 malicious file(s) reported.',
+                'malicious_files' => 3,
+                'integrity_issues' => 1,
+                'findings' => [
+                    'wp-content/uploads/evil.php',
+                    'index.php',
+                ],
+                'dashboard_url' => rtrim((string) config('app.url'), '/') . '/app/wordpress?site_id=123',
+            ],
+        ];
+
+        return sprintf(
+            '<div class="space-y-3 text-sm text-gray-600 dark:text-gray-300">
+                <p>FirePhage sends a <strong>POST</strong> request with a JSON body when a connected WordPress site reports malware or modified core files.</p>
+                <ul class="list-disc space-y-1 pl-5">
+                    <li><strong>Content-Type:</strong> <code>application/json</code></li>
+                    <li><strong>Events:</strong> <code>wordpress_malware_detected</code>, <code>wordpress_core_edits_detected</code></li>
+                    <li><strong>Signature header:</strong> <code>X-FirePhage-Signature</code> when a signing secret is set</li>
+                </ul>
+                <details class="rounded-lg border border-gray-200 bg-white p-3 dark:border-white/10 dark:bg-white/5">
+                    <summary class="cursor-pointer font-medium text-gray-900 dark:text-white">View sample payload</summary>
+                    <pre class="mt-3 overflow-x-auto rounded-md bg-gray-950/95 p-3 text-xs leading-5 text-gray-100">%s</pre>
+                </details>
+            </div>',
+            e(json_encode($sample, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES))
+        );
     }
 
     protected function organizationId(): ?int
