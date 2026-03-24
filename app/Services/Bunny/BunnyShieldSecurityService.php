@@ -191,6 +191,12 @@ class BunnyShieldSecurityService
             throw new \RuntimeException($this->responseError($response, 'Unable to enable Bunny Shield advanced plan.'));
         }
 
+        $verified = $this->waitForAdvancedPlan($shieldZoneId, $planType);
+
+        if (! $verified['premium_plan'] || ! $verified['whitelabel_response_pages']) {
+            throw new \RuntimeException('Bunny Shield advanced plan is still being applied. Premium plan and white-label response pages are not active yet.');
+        }
+
         $meta = is_array($site->provider_meta) ? $site->provider_meta : [];
         $meta['shield_plan'] = 'advanced';
         $meta['shield_premium_plan'] = true;
@@ -203,6 +209,53 @@ class BunnyShieldSecurityService
             'changed' => true,
             'message' => 'Bunny Shield advanced plan enabled.',
         ];
+    }
+
+    /**
+     * @return array{premium_plan: bool, whitelabel_response_pages: bool, plan_type: int}
+     */
+    protected function waitForAdvancedPlan(int $shieldZoneId, int $planType, int $attempts = 6, int $sleepSeconds = 2): array
+    {
+        $last = [
+            'premium_plan' => false,
+            'whitelabel_response_pages' => false,
+            'plan_type' => 0,
+        ];
+
+        for ($attempt = 0; $attempt < $attempts; $attempt++) {
+            $response = $this->api->client()->get("/shield/shield-zone/{$shieldZoneId}");
+
+            if ($response->successful()) {
+                $current = $this->normalizeEnvelope($response->json());
+                $last = [
+                    'premium_plan' => (bool) (
+                        Arr::get($current, 'premiumPlan')
+                        ?? Arr::get($current, 'PremiumPlan')
+                        ?? false
+                    ),
+                    'whitelabel_response_pages' => (bool) (
+                        Arr::get($current, 'whitelabelResponsePages')
+                        ?? Arr::get($current, 'WhitelabelResponsePages')
+                        ?? false
+                    ),
+                    'plan_type' => (int) (
+                        Arr::get($current, 'planType')
+                        ?? Arr::get($current, 'PlanType')
+                        ?? 0
+                    ),
+                ];
+
+                if ($last['premium_plan'] && $last['whitelabel_response_pages'] && $last['plan_type'] === $planType) {
+                    return $last;
+                }
+            }
+
+            if ($attempt < $attempts - 1) {
+                sleep($sleepSeconds);
+            }
+        }
+
+        return $last;
     }
 
     /**
