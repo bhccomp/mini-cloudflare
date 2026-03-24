@@ -21,6 +21,7 @@ class PluginSiteService
         protected ActivityFeedService $activityFeed,
         protected BandwidthUsageService $bandwidthUsage,
         protected SiteBillingStateService $billingState,
+        protected PluginAlertChannelService $alertChannels,
     ) {}
 
     /**
@@ -137,11 +138,20 @@ class PluginSiteService
      */
     public function storeReport(PluginSiteConnection $connection, array $report): array
     {
+        $previousReport = is_array($connection->last_report_payload) ? $connection->last_report_payload : [];
+
         $connection->forceFill([
             'last_report_payload' => $report,
             'last_reported_at' => now(),
             'last_seen_at' => now(),
         ])->save();
+
+        $site = $connection->site()->with('organization.subscriptions.plan')->first();
+
+        if ($site) {
+            $access = $this->billingAccessSummaryForSite($site);
+            $this->alertChannels->dispatchAlertsForReport($connection, $previousReport, $report, (bool) ($access['pro_enabled'] ?? false));
+        }
 
         return [
             'site_id' => (string) $connection->site_id,

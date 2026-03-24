@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\PluginConnectController;
+use App\Http\Controllers\Api\PluginAlertChannelsController;
 use App\Http\Controllers\Api\PluginFirewallSummaryController;
 use App\Http\Controllers\Api\PackageChecksumController;
 use App\Http\Controllers\Api\PackageReferenceFileController;
@@ -21,6 +22,7 @@ Route::get('/plugin/free-token/status', PluginFreeTokenStatusController::class)-
 Route::post('/plugin/free-token/verify', PluginFreeTokenVerifyController::class)->middleware('throttle:30,1');
 Route::get('/plugin/signatures', PluginSignatureController::class)->middleware('throttle:60,1');
 Route::post('/plugin/connect', PluginConnectController::class);
+Route::post('/plugin/alert-channels', PluginAlertChannelsController::class);
 Route::get('/plugin/status', PluginStatusController::class);
 Route::post('/plugin/report', PluginReportController::class);
 Route::get('/plugin/firewall-summary', PluginFirewallSummaryController::class);
