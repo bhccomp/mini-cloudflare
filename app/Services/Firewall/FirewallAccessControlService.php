@@ -61,7 +61,7 @@ class FirewallAccessControlService
      */
     public function createRules(
         Site $site,
-        int $actorId,
+        ?int $actorId,
         string $ruleType,
         array $targets,
         string $action,
@@ -105,7 +105,7 @@ class FirewallAccessControlService
         return $created;
     }
 
-    public function applyRule(SiteFirewallRule $rule, int $actorId): SiteFirewallRule
+    public function applyRule(SiteFirewallRule $rule, ?int $actorId): SiteFirewallRule
     {
         $site = $rule->site;
 
@@ -174,7 +174,7 @@ class FirewallAccessControlService
      */
     public function createRuleSet(
         Site $site,
-        int $actorId,
+        ?int $actorId,
         string $ruleType,
         array $targets,
         string $action,
@@ -222,7 +222,7 @@ class FirewallAccessControlService
         return [$rule->fresh()];
     }
 
-    public function removeRule(SiteFirewallRule $rule, int $actorId): void
+    public function removeRule(SiteFirewallRule $rule, ?int $actorId): void
     {
         $site = $rule->site;
 
@@ -240,7 +240,7 @@ class FirewallAccessControlService
         $rule->delete();
     }
 
-    public function disableRule(SiteFirewallRule $rule, int $actorId): SiteFirewallRule
+    public function disableRule(SiteFirewallRule $rule, ?int $actorId): SiteFirewallRule
     {
         $site = $rule->site;
 
@@ -270,7 +270,7 @@ class FirewallAccessControlService
         return $rule->fresh();
     }
 
-    public function enableRule(SiteFirewallRule $rule, int $actorId): SiteFirewallRule
+    public function enableRule(SiteFirewallRule $rule, ?int $actorId): SiteFirewallRule
     {
         $meta = is_array($rule->meta) ? $rule->meta : [];
         unset($meta['error'], $meta['disabled_at']);
@@ -290,7 +290,7 @@ class FirewallAccessControlService
     /**
      * @param  array<string, mixed>  $data
      */
-    public function updateRule(SiteFirewallRule $rule, int $actorId, array $data): SiteFirewallRule
+    public function updateRule(SiteFirewallRule $rule, ?int $actorId, array $data): SiteFirewallRule
     {
         $site = $rule->site;
         if (! $site) {
@@ -361,7 +361,7 @@ class FirewallAccessControlService
         return $rule->fresh();
     }
 
-    public function deployStagedRules(Site $site, int $actorId): int
+    public function deployStagedRules(Site $site, ?int $actorId): int
     {
         $rules = SiteFirewallRule::query()
             ->where('site_id', $site->id)
@@ -381,7 +381,7 @@ class FirewallAccessControlService
         return $count;
     }
 
-    public function expireTemporaryRules(Site $site, int $actorId): int
+    public function expireTemporaryRules(Site $site, ?int $actorId): int
     {
         $rules = SiteFirewallRule::query()
             ->where('site_id', $site->id)
@@ -414,7 +414,7 @@ class FirewallAccessControlService
         }
     }
 
-    public function quickBlockIp(Site $site, int $actorId, string $ip, ?string $note = null): ?SiteFirewallRule
+    public function quickBlockIp(Site $site, ?int $actorId, string $ip, ?string $note = null): ?SiteFirewallRule
     {
         $ip = trim($ip);
         if (filter_var($ip, FILTER_VALIDATE_IP) === false) {
@@ -438,7 +438,7 @@ class FirewallAccessControlService
     /**
      * @param  array<string, mixed>  $meta
      */
-    protected function audit(Site $site, int $actorId, string $action, string $status, string $message, array $meta = []): void
+    protected function audit(Site $site, ?int $actorId, string $action, string $status, string $message, array $meta = []): void
     {
         AuditLog::query()->create([
             'actor_id' => $actorId,

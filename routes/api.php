@@ -3,15 +3,18 @@
 use App\Http\Controllers\Api\PluginConnectController;
 use App\Http\Controllers\Api\PluginAlertChannelsController;
 use App\Http\Controllers\Api\PluginFirewallSummaryController;
+use App\Http\Controllers\Api\PluginFirewallRuleController;
 use App\Http\Controllers\Api\PackageChecksumController;
 use App\Http\Controllers\Api\PackageReferenceFileController;
 use App\Http\Controllers\Api\PluginFreeTokenRegistrationController;
 use App\Http\Controllers\Api\PluginFreeTokenStatusController;
 use App\Http\Controllers\Api\PluginFreeTokenVerifyController;
 use App\Http\Controllers\Api\PluginPerformanceSummaryController;
+use App\Http\Controllers\Api\PluginPurgeCacheController;
 use App\Http\Controllers\Api\PluginReportController;
 use App\Http\Controllers\Api\PluginSignatureController;
 use App\Http\Controllers\Api\PluginStatusController;
+use App\Http\Controllers\Api\PluginTroubleshootingModeController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/health', fn () => response()->json(['ok' => true]));
@@ -26,4 +29,7 @@ Route::post('/plugin/alert-channels', PluginAlertChannelsController::class);
 Route::get('/plugin/status', PluginStatusController::class);
 Route::post('/plugin/report', PluginReportController::class);
 Route::get('/plugin/firewall-summary', PluginFirewallSummaryController::class);
+Route::post('/plugin/firewall-rule', PluginFirewallRuleController::class);
 Route::get('/plugin/performance-summary', PluginPerformanceSummaryController::class);
+Route::post('/plugin/purge-cache', PluginPurgeCacheController::class);
+Route::post('/plugin/troubleshooting-mode', PluginTroubleshootingModeController::class);

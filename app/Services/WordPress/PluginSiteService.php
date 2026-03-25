@@ -7,10 +7,14 @@ use App\Models\EdgeRequestLog;
 use App\Models\PluginConnectionToken;
 use App\Models\PluginSiteConnection;
 use App\Models\Site;
+use App\Models\SiteFirewallRule;
 use App\Services\ActivityFeedService;
 use App\Services\BandwidthUsageService;
 use App\Services\Billing\SiteBillingStateService;
+use App\Services\Edge\EdgeProviderManager;
+use App\Services\Firewall\FirewallAccessControlService;
 use App\Services\Firewall\FirewallInsightsPresenter;
+use App\Jobs\ToggleTroubleshootingModeJob;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -23,6 +27,8 @@ class PluginSiteService
         protected BandwidthUsageService $bandwidthUsage,
         protected SiteBillingStateService $billingState,
         protected PluginAlertChannelService $alertChannels,
+        protected FirewallAccessControlService $accessControl,
+        protected EdgeProviderManager $providers,
     ) {}
 
     /**
@@ -418,6 +424,11 @@ class PluginSiteService
                 'country_blocks' => $access['pro_enabled']
                     ? implode(', ', (array) data_get($site->provider_meta, 'firewall_policy.block_countries', []))
                     : '',
+                'troubleshooting_mode' => $access['pro_enabled'] ? (bool) $site->troubleshooting_mode : false,
+            ],
+            'options' => [
+                'countries' => $access['pro_enabled'] ? $this->accessControl->countryOptions($site) : [],
+                'continents' => $access['pro_enabled'] ? $this->accessControl->continentOptions($site) : [],
             ],
             'activity' => $access['pro_enabled'] ? $this->recentFirewallEventsForSite($site, 10) : [],
             'feed' => $access['pro_enabled'] ? $this->activityFeed->forSite($site, 10) : [],
@@ -468,7 +479,9 @@ class PluginSiteService
             ],
             'summary' => [
                 'edge_hostname' => (string) ($site->cloudfront_domain_name ?: data_get($site->provider_meta, 'edge_domain', '')),
+                'edge_enabled' => $access['pro_enabled'] && $site->status === Site::STATUS_ACTIVE,
                 'development_mode' => (bool) $site->development_mode,
+                'troubleshooting_mode' => (bool) $site->troubleshooting_mode,
                 'requests_24h' => $access['pro_enabled'] ? (int) ($metric?->total_requests_24h ?? 0) : 0,
                 'cache_hit_ratio' => $access['pro_enabled'] ? round((float) ($metric?->cache_hit_ratio ?? 0), 2) : 0.0,
                 'origin_offload_ratio' => $access['pro_enabled'] ? round(($cached / $total) * 100, 2) : 0.0,
@@ -478,6 +491,7 @@ class PluginSiteService
             'settings' => [
                 'smart_image_optimization' => $access['pro_enabled'] && ! $site->development_mode,
                 'edge_compression' => $access['pro_enabled'] && ! $site->development_mode,
+                'troubleshooting_mode' => $access['pro_enabled'] ? (bool) $site->troubleshooting_mode : false,
             ],
             'cache_rules' => $access['pro_enabled']
                 ? [
@@ -504,6 +518,111 @@ class PluginSiteService
                 ]
                 : [],
             'top_paths' => $access['pro_enabled'] ? $topPaths : [],
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     * @return array<string, mixed>
+     */
+    public function createFirewallRule(PluginSiteConnection $connection, array $payload): array
+    {
+        $site = $connection->site()->with('organization.users')->firstOrFail();
+        $this->ensurePluginProAccess($site);
+
+        $ruleType = strtolower(trim((string) ($payload['rule_type'] ?? '')));
+        $targets = collect((array) ($payload['targets'] ?? []))
+            ->map(fn (mixed $value): string => strtoupper(trim((string) $value)))
+            ->filter()
+            ->values()
+            ->all();
+
+        if ($targets === [] && ! empty($payload['target'])) {
+            $targets = [strtoupper(trim((string) $payload['target']))];
+        }
+
+        if (! in_array($ruleType, [SiteFirewallRule::TYPE_IP, SiteFirewallRule::TYPE_COUNTRY, SiteFirewallRule::TYPE_CONTINENT], true)) {
+            throw new RuntimeException('Unsupported firewall rule type.');
+        }
+
+        if ($targets === []) {
+            throw new RuntimeException('Select at least one target to block.');
+        }
+
+        $actorId = $this->pluginActorId($site);
+
+        if ($ruleType === SiteFirewallRule::TYPE_IP) {
+            $created = $this->accessControl->createRules(
+                site: $site,
+                actorId: $actorId,
+                ruleType: SiteFirewallRule::TYPE_IP,
+                targets: $targets,
+                action: SiteFirewallRule::ACTION_BLOCK,
+                mode: SiteFirewallRule::MODE_ENFORCED,
+                note: 'Added from WordPress plugin.',
+            );
+        } else {
+            $created = $this->accessControl->createRuleSet(
+                site: $site,
+                actorId: $actorId,
+                ruleType: $ruleType,
+                targets: $targets,
+                action: SiteFirewallRule::ACTION_BLOCK,
+                mode: SiteFirewallRule::MODE_ENFORCED,
+                note: 'Added from WordPress plugin.',
+            );
+        }
+
+        return [
+            'changed' => $created !== [],
+            'message' => $created !== []
+                ? 'Firewall block rule created.'
+                : 'No firewall rule was created.',
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     * @return array<string, mixed>
+     */
+    public function purgePluginCache(PluginSiteConnection $connection, array $payload): array
+    {
+        $site = $connection->site;
+        $this->ensurePluginProAccess($site);
+
+        $paths = collect((array) ($payload['paths'] ?? ['/*']))
+            ->map(fn (mixed $value): string => trim((string) $value))
+            ->filter()
+            ->values()
+            ->all();
+
+        if ($paths === []) {
+            $paths = ['/*'];
+        }
+
+        return $this->providers->forSite($site)->purgeCache($site, $paths);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function setPluginTroubleshootingMode(PluginSiteConnection $connection, bool $enabled): array
+    {
+        $site = $connection->site;
+        $this->ensurePluginProAccess($site);
+
+        (new ToggleTroubleshootingModeJob($site->id, $enabled, $this->pluginActorId($site)))
+            ->handle($this->providers);
+
+        $site->refresh();
+
+        return [
+            'changed' => true,
+            'enabled' => (bool) $site->troubleshooting_mode,
+            'development_mode' => (bool) $site->development_mode,
+            'message' => $site->troubleshooting_mode
+                ? 'Troubleshooting mode enabled.'
+                : 'Troubleshooting mode disabled.',
         ];
     }
 
@@ -540,5 +659,22 @@ class PluginSiteService
         }
 
         return $summaries;
+    }
+
+    protected function ensurePluginProAccess(Site $site): void
+    {
+        $access = $this->billingAccessSummaryForSite($site);
+
+        if (! ($access['pro_enabled'] ?? false)) {
+            throw new RuntimeException((string) ($access['message'] ?? 'A paid FirePhage plan is required for this action.'));
+        }
+    }
+
+    protected function pluginActorId(Site $site): ?int
+    {
+        return $site->organization()
+            ->first()?->users()
+            ->orderBy('users.id')
+            ->value('users.id');
     }
 }
