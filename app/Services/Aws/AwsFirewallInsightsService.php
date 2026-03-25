@@ -105,11 +105,20 @@ class AwsFirewallInsightsService
 
         $topIps = $events
             ->groupBy('ip')
-            ->map(fn ($group, string $ip): array => [
-                'ip' => $ip,
-                'requests' => $group->count(),
-                'blocked' => $group->whereIn('action', ['BLOCK', 'CHALLENGE', 'CAPTCHA'])->count(),
-            ])
+            ->map(function ($group, string $ip): array {
+                $country = (string) collect($group)
+                    ->groupBy(fn (array $event): string => strtoupper((string) ($event['country'] ?? '')))
+                    ->sortByDesc(fn ($rows) => count($rows))
+                    ->keys()
+                    ->first();
+
+                return [
+                    'ip' => $ip,
+                    'country' => $country !== '' ? $country : '??',
+                    'requests' => $group->count(),
+                    'blocked' => $group->whereIn('action', ['BLOCK', 'CHALLENGE', 'CAPTCHA'])->count(),
+                ];
+            })
             ->sortByDesc('requests')
             ->take(10)
             ->values()

@@ -123,11 +123,20 @@ class BunnyFirewallInsightsService
 
         $topIps = $events
             ->groupBy('ip')
-            ->map(fn ($group, string $ip): array => [
-                'ip' => $ip,
-                'requests' => $group->count(),
-                'blocked' => $group->filter(fn (array $event): bool => in_array(strtoupper((string) ($event['action'] ?? 'ALLOW')), ['BLOCK', 'DENY', 'CHALLENGE', 'CAPTCHA'], true) || (int) ($event['status_code'] ?? 200) === 403)->count(),
-            ])
+            ->map(function ($group, string $ip): array {
+                $country = (string) collect($group)
+                    ->groupBy(fn (array $event): string => strtoupper((string) ($event['country'] ?? '')))
+                    ->sortByDesc(fn ($rows) => count($rows))
+                    ->keys()
+                    ->first();
+
+                return [
+                    'ip' => $ip,
+                    'country' => $country !== '' ? $country : '??',
+                    'requests' => $group->count(),
+                    'blocked' => $group->filter(fn (array $event): bool => in_array(strtoupper((string) ($event['action'] ?? 'ALLOW')), ['BLOCK', 'DENY', 'CHALLENGE', 'CAPTCHA'], true) || (int) ($event['status_code'] ?? 200) === 403)->count(),
+                ];
+            })
             ->sortByDesc('requests')
             ->take(10)
             ->values()
@@ -141,6 +150,7 @@ class BunnyFirewallInsightsService
                     ->map(function (array $row): array {
                         return [
                             'ip' => (string) ($row['ip'] ?? ''),
+                            'country' => strtoupper((string) ($row['country'] ?? '??')),
                             'requests' => max(0, (int) ($row['requests'] ?? 0)),
                             'blocked' => max(0, (int) ($row['blocked'] ?? 0)),
                         ];
