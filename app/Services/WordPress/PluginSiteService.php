@@ -436,6 +436,7 @@ class PluginSiteService
                 'top_countries' => $access['pro_enabled'] ? $topCountries : [],
                 'top_ips' => $access['pro_enabled'] ? $topIps : [],
             ],
+            'rules' => $access['pro_enabled'] ? $this->pluginFirewallRules($site) : [],
         ];
     }
 
@@ -531,6 +532,7 @@ class PluginSiteService
         $this->ensurePluginProAccess($site);
 
         $ruleType = strtolower(trim((string) ($payload['rule_type'] ?? '')));
+        $action = strtolower(trim((string) ($payload['action'] ?? SiteFirewallRule::ACTION_BLOCK)));
         $targets = collect((array) ($payload['targets'] ?? []))
             ->map(fn (mixed $value): string => strtoupper(trim((string) $value)))
             ->filter()
@@ -543,6 +545,9 @@ class PluginSiteService
 
         if (! in_array($ruleType, [SiteFirewallRule::TYPE_IP, SiteFirewallRule::TYPE_COUNTRY, SiteFirewallRule::TYPE_CONTINENT], true)) {
             throw new RuntimeException('Unsupported firewall rule type.');
+        }
+        if (! in_array($action, [SiteFirewallRule::ACTION_BLOCK, SiteFirewallRule::ACTION_ALLOW], true)) {
+            throw new RuntimeException('Unsupported firewall action.');
         }
 
         if ($targets === []) {
@@ -557,7 +562,7 @@ class PluginSiteService
                 actorId: $actorId,
                 ruleType: SiteFirewallRule::TYPE_IP,
                 targets: $targets,
-                action: SiteFirewallRule::ACTION_BLOCK,
+                action: $action,
                 mode: SiteFirewallRule::MODE_ENFORCED,
                 note: 'Added from WordPress plugin.',
             );
@@ -567,7 +572,7 @@ class PluginSiteService
                 actorId: $actorId,
                 ruleType: $ruleType,
                 targets: $targets,
-                action: SiteFirewallRule::ACTION_BLOCK,
+                action: $action,
                 mode: SiteFirewallRule::MODE_ENFORCED,
                 note: 'Added from WordPress plugin.',
             );
@@ -578,6 +583,27 @@ class PluginSiteService
             'message' => $created !== []
                 ? 'Firewall block rule created.'
                 : 'No firewall rule was created.',
+        ];
+    }
+
+    public function removeFirewallRule(PluginSiteConnection $connection, int $ruleId): array
+    {
+        $site = $connection->site()->with('organization.users')->firstOrFail();
+        $this->ensurePluginProAccess($site);
+
+        $rule = SiteFirewallRule::query()
+            ->where('site_id', $site->id)
+            ->find($ruleId);
+
+        if (! $rule) {
+            throw new RuntimeException('Firewall rule not found.');
+        }
+
+        $this->accessControl->removeRule($rule, $this->pluginActorId($site));
+
+        return [
+            'changed' => true,
+            'message' => 'Firewall rule removed.',
         ];
     }
 
@@ -676,5 +702,31 @@ class PluginSiteService
             ->first()?->users()
             ->orderBy('users.id')
             ->value('users.id');
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    protected function pluginFirewallRules(Site $site): array
+    {
+        return SiteFirewallRule::query()
+            ->where('site_id', $site->id)
+            ->whereIn('status', [
+                SiteFirewallRule::STATUS_ACTIVE,
+                SiteFirewallRule::STATUS_PENDING,
+                SiteFirewallRule::STATUS_REMOVED,
+            ])
+            ->latest('updated_at')
+            ->limit(20)
+            ->get()
+            ->map(fn (SiteFirewallRule $rule): array => [
+                'id' => (int) $rule->id,
+                'type' => (string) $rule->rule_type,
+                'target' => (string) $rule->target,
+                'action' => (string) $rule->action,
+                'status' => (string) $rule->status,
+                'note' => (string) ($rule->note ?? ''),
+            ])
+            ->all();
     }
 }
