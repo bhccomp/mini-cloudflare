@@ -376,6 +376,7 @@ class PluginSiteService
         $topIps = collect((array) data_get($insights, 'top_ips', []))
             ->map(fn (array $row): array => [
                 'ip' => (string) ($row['ip'] ?? ''),
+                'country' => strtoupper((string) ($row['country'] ?? '')),
                 'requests' => (int) ($row['requests'] ?? 0),
                 'blocked' => (int) ($row['blocked'] ?? 0),
             ])
