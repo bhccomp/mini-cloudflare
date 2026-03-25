@@ -30,18 +30,20 @@ class BunnyFirewallInsightsService
 
     protected function buildInsights(Site $site): array
     {
-        $events = $this->localEvents($site);
+        // Prefer a larger live Bunny sample so top countries / IPs reflect recent edge traffic
+        // instead of a small or stale local subset.
+        $events = collect($this->logs->recentLogs($site, 2000));
 
         if ($events->isEmpty()) {
-            $synced = $this->logs->syncToLocalStore($site, 400);
-
-            if ($synced > 0) {
-                $events = $this->localEvents($site);
-            }
+            $events = $this->localEvents($site, 2000);
         }
 
         if ($events->isEmpty()) {
-            $events = collect($this->logs->recentLogs($site, 300));
+            $synced = $this->logs->syncToLocalStore($site, 1000);
+
+            if ($synced > 0) {
+                $events = $this->localEvents($site, 2000);
+            }
         }
 
         if ($events->isEmpty()) {
@@ -189,13 +191,13 @@ class BunnyFirewallInsightsService
         return 'firewall-insights:bunny:site:'.$siteId;
     }
 
-    protected function localEvents(Site $site): \Illuminate\Support\Collection
+    protected function localEvents(Site $site, int $limit = 500): \Illuminate\Support\Collection
     {
         return EdgeRequestLog::query()
             ->where('site_id', $site->id)
             ->where('event_at', '>=', now()->subDays(7))
             ->latest('event_at')
-            ->limit(500)
+            ->limit($limit)
             ->get()
             ->map(function (EdgeRequestLog $log): array {
                 return [
