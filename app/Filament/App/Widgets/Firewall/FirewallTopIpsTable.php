@@ -32,7 +32,7 @@ class FirewallTopIpsTable extends TableWidget
                         $label = $this->countryLabel($country);
 
                         return Blade::render(
-                            '<div class="flex items-center gap-2"><span>{{ $flag }}</span><div class="min-w-0"><div class="font-medium text-gray-950">{{ $ip }}</div><div class="text-xs text-gray-500">{{ $label }}</div></div></div>',
+                            '<div class="flex items-center gap-2" title="{{ $label }}"><span>{{ $flag }}</span><div class="min-w-0"><div class="font-medium text-gray-950">{{ $ip }}</div></div></div>',
                             [
                                 'flag' => $flag,
                                 'ip' => $state,
