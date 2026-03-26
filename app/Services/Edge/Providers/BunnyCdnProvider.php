@@ -105,7 +105,7 @@ class BunnyCdnProvider implements EdgeProviderInterface
             } elseif ($shieldZoneId) {
                 $planState = $this->shieldSecurity()->currentPlanState($shieldZoneId);
 
-                if ((bool) ($planState['premium_plan'] ?? false)) {
+                if ((int) ($planState['plan_type'] ?? 0) > 0 || (bool) ($planState['premium_plan'] ?? false) || (bool) ($planState['whitelabel_response_pages'] ?? false)) {
                     $planResult = $this->shieldSecurity()->downgradePlan($site, $shieldZoneId);
                     $shieldPlanStatus = ((bool) ($planResult['changed'] ?? false)) ? 'downgraded' : 'unchanged';
                     $shieldPlanMessage = (string) ($planResult['message'] ?? 'Bunny Shield is using the basic plan for this site.');
@@ -831,7 +831,14 @@ class BunnyCdnProvider implements EdgeProviderInterface
         foreach ($shieldZoneIds as $shieldZoneId) {
             $planState = $this->shieldSecurity()->currentPlanState($shieldZoneId);
 
-            if (! (bool) ($planState['exists'] ?? false) || ! (bool) ($planState['premium_plan'] ?? false)) {
+            if (
+                ! (bool) ($planState['exists'] ?? false)
+                || (
+                    ! (bool) ($planState['premium_plan'] ?? false)
+                    && ! (bool) ($planState['whitelabel_response_pages'] ?? false)
+                    && (int) ($planState['plan_type'] ?? 0) <= 0
+                )
+            ) {
                 $verifiedShieldZoneIds[] = $shieldZoneId;
 
                 continue;

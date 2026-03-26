@@ -170,8 +170,13 @@ class BunnyShieldSecurityService
             ?? Arr::get($current, 'PlanType')
             ?? 0
         );
+        $currentWhitelabel = (bool) (
+            Arr::get($current, 'whitelabelResponsePages')
+            ?? Arr::get($current, 'WhitelabelResponsePages')
+            ?? false
+        );
 
-        if ($premiumPlan && $currentPlanType === $planType) {
+        if ($this->isAdvancedPlanState($premiumPlan, $currentPlanType, $currentWhitelabel, $planType)) {
             return [
                 'shield_zone_id' => $shieldZoneId,
                 'changed' => false,
@@ -193,14 +198,20 @@ class BunnyShieldSecurityService
 
         $verified = $this->waitForAdvancedPlan($shieldZoneId, $planType);
 
-        if (! $verified['premium_plan'] || ! $verified['whitelabel_response_pages']) {
-            throw new \RuntimeException('Bunny Shield advanced plan is still being applied. Premium plan and white-label response pages are not active yet.');
+        if (! $this->isAdvancedPlanState(
+            (bool) ($verified['premium_plan'] ?? false),
+            (int) ($verified['plan_type'] ?? 0),
+            (bool) ($verified['whitelabel_response_pages'] ?? false),
+            $planType,
+        )) {
+            throw new \RuntimeException('Bunny Shield advanced plan is still being applied. The requested advanced plan type and white-label response pages are not active yet.');
         }
 
         $meta = is_array($site->provider_meta) ? $site->provider_meta : [];
         $meta['shield_plan'] = 'advanced';
         $meta['shield_premium_plan'] = true;
         $meta['shield_plan_type'] = $planType;
+        $meta['shield_whitelabel_response_pages'] = true;
         $meta['shield_plan_upgraded_at'] = now()->toIso8601String();
         $site->forceFill(['provider_meta' => $meta])->save();
 
@@ -245,7 +256,12 @@ class BunnyShieldSecurityService
                     ),
                 ];
 
-                if ($last['premium_plan'] && $last['whitelabel_response_pages'] && $last['plan_type'] === $planType) {
+                if ($this->isAdvancedPlanState(
+                    (bool) ($last['premium_plan'] ?? false),
+                    (int) ($last['plan_type'] ?? 0),
+                    (bool) ($last['whitelabel_response_pages'] ?? false),
+                    $planType,
+                )) {
                     return $last;
                 }
             }
@@ -362,8 +378,18 @@ class BunnyShieldSecurityService
             ?? Arr::get($current, 'PremiumPlan')
             ?? false
         );
+        $currentPlanType = (int) (
+            Arr::get($current, 'planType')
+            ?? Arr::get($current, 'PlanType')
+            ?? 0
+        );
+        $currentWhitelabel = (bool) (
+            Arr::get($current, 'whitelabelResponsePages')
+            ?? Arr::get($current, 'WhitelabelResponsePages')
+            ?? false
+        );
 
-        if (! $premiumPlan) {
+        if (! $this->isAnyAdvancedPlanState($premiumPlan, $currentPlanType, $currentWhitelabel)) {
             return [
                 'shield_zone_id' => $shieldZoneId,
                 'changed' => false,
@@ -434,6 +460,11 @@ class BunnyShieldSecurityService
                 ?? Arr::get($current, 'PremiumPlan')
                 ?? false
             ),
+            'whitelabel_response_pages' => (bool) (
+                Arr::get($current, 'whitelabelResponsePages')
+                ?? Arr::get($current, 'WhitelabelResponsePages')
+                ?? false
+            ),
             'plan_type' => (int) (
                 Arr::get($current, 'planType')
                 ?? Arr::get($current, 'PlanType')
@@ -441,6 +472,16 @@ class BunnyShieldSecurityService
             ),
             'raw' => $current,
         ];
+    }
+
+    protected function isAdvancedPlanState(bool $premiumPlan, int $planType, bool $whitelabelResponsePages, int $expectedPlanType): bool
+    {
+        return $planType === $expectedPlanType && $whitelabelResponsePages && ($premiumPlan || $planType > 0);
+    }
+
+    protected function isAnyAdvancedPlanState(bool $premiumPlan, int $planType, bool $whitelabelResponsePages): bool
+    {
+        return $whitelabelResponsePages && ($premiumPlan || $planType > 0);
     }
 
     /**
