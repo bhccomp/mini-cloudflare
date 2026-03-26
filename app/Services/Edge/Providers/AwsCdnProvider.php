@@ -110,6 +110,17 @@ class AwsCdnProvider implements EdgeProviderInterface
         ];
     }
 
+    public function applySiteControlSetting(Site $site, string $setting, mixed $value): array
+    {
+        return [
+            'changed' => false,
+            'message' => "Control [{$setting}] is not wired for this edge provider yet.",
+            'placeholder' => true,
+            'setting' => $setting,
+            'value' => $value,
+        ];
+    }
+
     public function deleteDeployment(Site $site): array
     {
         return [

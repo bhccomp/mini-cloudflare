@@ -779,6 +779,30 @@ class BunnyCdnProvider implements EdgeProviderInterface
         ];
     }
 
+    public function applySiteControlSetting(Site $site, string $setting, mixed $value): array
+    {
+        $normalized = strtolower(trim($setting));
+        $controls = $this->controlPanelState($site);
+
+        return match ($normalized) {
+            'cache_enabled' => $this->applyCacheControls($site, array_merge($controls, [
+                'cache_enabled' => (bool) $value,
+            ]), 'Cache setting updated.'),
+            'cache_mode' => $this->applyCacheControls($site, array_merge($controls, [
+                'cache_mode' => $this->normalizeCacheMode((string) $value),
+            ]), 'Cache mode updated.'),
+            'https_enforced', 'origin_lockdown', 'waf_preset' => $this->storeControlPanelOnly($site, array_merge($controls, [
+                $normalized => $value,
+            ]), "Control [{$normalized}] was saved, but this provider does not enforce it yet."),
+            default => [
+                'changed' => false,
+                'message' => "Unsupported control [{$normalized}] for Bunny.",
+                'setting' => $normalized,
+                'value' => $value,
+            ],
+        };
+    }
+
     public function deleteDeployment(Site $site): array
     {
         $zoneId = (int) ($site->provider_resource_id ?: data_get($site->provider_meta, 'zone_id', 0));
@@ -913,6 +937,149 @@ class BunnyCdnProvider implements EdgeProviderInterface
                 : 'Troubleshooting mode disabled. Bunny WAF and edge caching are restored.',
             'development_result' => $development,
             'shield_result' => $shield,
+        ];
+    }
+
+    /**
+     * @return array{cache_enabled:bool,cache_mode:string,https_enforced:bool,origin_lockdown:bool,waf_preset:string}
+     */
+    protected function controlPanelState(Site $site): array
+    {
+        $required = is_array($site->required_dns_records) ? $site->required_dns_records : [];
+        $meta = is_array($site->provider_meta) ? $site->provider_meta : [];
+
+        $controls = array_merge(
+            [
+                'cache_enabled' => true,
+                'cache_mode' => 'standard',
+                'https_enforced' => true,
+                'origin_lockdown' => false,
+                'waf_preset' => 'baseline',
+            ],
+            (array) data_get($required, 'control_panel', []),
+            (array) data_get($meta, 'control_panel', [])
+        );
+
+        $controls['cache_enabled'] = (bool) ($controls['cache_enabled'] ?? true);
+        $controls['cache_mode'] = $this->normalizeCacheMode((string) ($controls['cache_mode'] ?? 'standard'));
+        $controls['https_enforced'] = (bool) ($controls['https_enforced'] ?? true);
+        $controls['origin_lockdown'] = (bool) ($controls['origin_lockdown'] ?? false);
+        $controls['waf_preset'] = in_array((string) ($controls['waf_preset'] ?? 'baseline'), ['baseline', 'strict'], true)
+            ? (string) $controls['waf_preset']
+            : 'baseline';
+
+        return $controls;
+    }
+
+    protected function normalizeCacheMode(string $mode): string
+    {
+        return strtolower(trim($mode)) === 'aggressive' ? 'aggressive' : 'standard';
+    }
+
+    /**
+     * @param  array{cache_enabled:bool,cache_mode:string,https_enforced:bool,origin_lockdown:bool,waf_preset:string}  $controls
+     * @return array<string,mixed>
+     */
+    protected function applyCacheControls(Site $site, array $controls, string $message): array
+    {
+        $zoneId = (int) ($site->provider_resource_id ?: data_get($site->provider_meta, 'zone_id', 0));
+
+        if ($zoneId <= 0) {
+            return $this->storeControlPanelOnly($site, $controls, 'Cache settings were saved. They will apply after Bunny provisioning finishes.');
+        }
+
+        $zoneResponse = $this->client()->get("/pullzone/{$zoneId}");
+        if (! $zoneResponse->successful()) {
+            throw new \RuntimeException('Unable to load Bunny pull zone settings.');
+        }
+
+        $zone = (array) $zoneResponse->json();
+        $zoneName = (string) (Arr::get($zone, 'Name') ?: data_get($site->provider_meta, 'zone_name', $this->zoneNameFor($site)));
+        $originUrl = (string) (Arr::get($zone, 'OriginUrl') ?: data_get($site->provider_meta, 'origin_url', $this->resolvePreferredOriginUrl($site)));
+        $originHostHeader = (string) (Arr::get($zone, 'OriginHostHeader') ?: data_get($site->provider_meta, 'origin_host_header', strtolower((string) $site->apex_domain)));
+
+        $cacheEnabled = (bool) ($controls['cache_enabled'] ?? true);
+        $cacheMode = $this->normalizeCacheMode((string) ($controls['cache_mode'] ?? 'standard'));
+        $effectiveDevelopmentMode = (bool) $site->development_mode;
+
+        $disableCache = $effectiveDevelopmentMode ? true : ! $cacheEnabled;
+        $enableOptimizers = $effectiveDevelopmentMode ? false : $cacheEnabled;
+        $aggressive = $cacheEnabled && $cacheMode === 'aggressive' && ! $effectiveDevelopmentMode;
+
+        $overrides = [
+            'DisableCache' => $disableCache,
+            'EnableOptimizers' => $enableOptimizers,
+            'EnableQueryStringOrdering' => $aggressive,
+            'EnableSmartCache' => $aggressive,
+            'CacheControlMaxAgeOverride' => -1,
+        ];
+
+        $this->client()->post("/pullzone/{$zoneId}", $this->buildZoneUpdatePayload(
+            zoneId: $zoneId,
+            zoneName: $zoneName,
+            originUrl: $originUrl,
+            originHostHeader: $originHostHeader,
+            overrides: $overrides,
+        ))->throw();
+
+        $freshZone = (array) $this->client()->get("/pullzone/{$zoneId}")->throw()->json();
+
+        $finalMessage = $effectiveDevelopmentMode
+            ? 'Cache settings were saved. Development mode is still overriding edge cache and optimization right now.'
+            : $message;
+
+        return $this->persistControlPanelState($site, $controls, [
+            'zone_name' => $zoneName,
+            'origin_url' => $originUrl,
+            'origin_host_header' => $originHostHeader,
+            'zone_settings' => [
+                'DisableCache' => (bool) Arr::get($freshZone, 'DisableCache', $disableCache),
+                'EnableOptimizers' => (bool) Arr::get($freshZone, 'EnableOptimizers', $enableOptimizers),
+                'EnableQueryStringOrdering' => (bool) Arr::get($freshZone, 'EnableQueryStringOrdering', $aggressive),
+                'EnableSmartCache' => (bool) Arr::get($freshZone, 'EnableSmartCache', $aggressive),
+                'CacheControlMaxAgeOverride' => (int) Arr::get($freshZone, 'CacheControlMaxAgeOverride', -1),
+            ],
+        ], $finalMessage);
+    }
+
+    /**
+     * @param  array{cache_enabled:bool,cache_mode:string,https_enforced:bool,origin_lockdown:bool,waf_preset:string}  $controls
+     * @return array<string,mixed>
+     */
+    protected function storeControlPanelOnly(Site $site, array $controls, string $message): array
+    {
+        return $this->persistControlPanelState($site, $controls, [], $message, false);
+    }
+
+    /**
+     * @param  array{cache_enabled:bool,cache_mode:string,https_enforced:bool,origin_lockdown:bool,waf_preset:string}  $controls
+     * @param  array<string,mixed>  $providerMetaUpdates
+     * @return array<string,mixed>
+     */
+    protected function persistControlPanelState(
+        Site $site,
+        array $controls,
+        array $providerMetaUpdates,
+        string $message,
+        bool $changed = true,
+    ): array {
+        $required = is_array($site->required_dns_records) ? $site->required_dns_records : [];
+        $meta = is_array($site->provider_meta) ? $site->provider_meta : [];
+
+        data_set($required, 'control_panel', array_merge((array) data_get($required, 'control_panel', []), $controls));
+        $meta = array_merge($meta, $providerMetaUpdates);
+        $meta['control_panel'] = array_merge((array) data_get($meta, 'control_panel', []), $controls);
+
+        $site->forceFill([
+            'required_dns_records' => $required,
+            'provider_meta' => $meta,
+        ])->save();
+
+        return [
+            'changed' => $changed,
+            'message' => $message,
+            'control_panel' => data_get($required, 'control_panel', []),
+            'provider_meta' => $providerMetaUpdates,
         ];
     }
 

@@ -26,5 +26,7 @@ interface EdgeProviderInterface
 
     public function setDevelopmentMode(Site $site, bool $enabled): array;
 
+    public function applySiteControlSetting(Site $site, string $setting, mixed $value): array;
+
     public function deleteDeployment(Site $site): array;
 }
