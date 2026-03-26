@@ -607,6 +607,31 @@ class PluginSiteService
         ];
     }
 
+    public function toggleFirewallRule(PluginSiteConnection $connection, int $ruleId, bool $enabled): array
+    {
+        $site = $connection->site()->with('organization.users')->firstOrFail();
+        $this->ensurePluginProAccess($site);
+
+        $rule = SiteFirewallRule::query()
+            ->where('site_id', $site->id)
+            ->find($ruleId);
+
+        if (! $rule) {
+            throw new RuntimeException('Firewall rule not found.');
+        }
+
+        if ($enabled) {
+            $this->accessControl->enableRule($rule, $this->pluginActorId($site));
+        } else {
+            $this->accessControl->disableRule($rule, $this->pluginActorId($site));
+        }
+
+        return [
+            'changed' => true,
+            'message' => $enabled ? 'Firewall rule enabled.' : 'Firewall rule disabled.',
+        ];
+    }
+
     /**
      * @param array<string, mixed> $payload
      * @return array<string, mixed>
