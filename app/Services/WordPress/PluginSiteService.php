@@ -725,6 +725,7 @@ class PluginSiteService
                 'target' => (string) $rule->target,
                 'action' => (string) $rule->action,
                 'status' => (string) $rule->status,
+                'source' => str_contains(strtolower((string) ($rule->note ?? '')), 'wordpress plugin') ? 'Plugin' : 'Dashboard',
                 'note' => (string) ($rule->note ?? ''),
             ])
             ->all();
