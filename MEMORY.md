@@ -2230,3 +2230,6 @@
     - actual Bunny Shield/WAF block pages are still Bunny-owned response pages
     - public Bunny docs currently expose `whitelabelResponsePages`, but no confirmed public API for fully custom Shield block-page HTML/CSS
     - keep Bunny `Request ID` visible on any future custom Shield block-page path
+    - Bunny support later explicitly confirmed:
+      - only white-label block pages are available right now
+      - fully custom Shield block pages are on Bunny's roadmap, but not available yet
