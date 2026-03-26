@@ -70,7 +70,7 @@ class CachePage extends BaseProtectionPage
 
         return AuditLog::query()
             ->where('site_id', $this->site->id)
-            ->where('action', 'cloudfront.invalidate')
+            ->whereIn('action', ['edge.cache_purge', 'cloudfront.invalidate'])
             ->latest('id')
             ->limit(12)
             ->get()

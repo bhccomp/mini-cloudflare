@@ -4,6 +4,10 @@
     @php($trend = $this->cacheHitTrend())
     @php($misses = $this->topCacheMisses())
     @php($history = $this->purgeHistory())
+    @php($cacheEnabled = $this->isCacheEnabled())
+    @php($cacheMode = ucfirst($this->cacheMode()))
+    @php($developmentMode = $this->isDevelopmentMode())
+    @php($troubleshootingMode = $this->isTroubleshootingMode())
 
     <div class="fp-protection-shell">
         @if (! $this->site)
@@ -12,29 +16,90 @@
             @include('filament.app.pages.protection.edge-routing-warning')
             @include('filament.app.pages.protection.technical-details')
 
-            <x-filament::section heading="Cache Control" description="Edge caching state and cache efficiency." icon="heroicon-o-circle-stack">
-                <x-slot name="footer">
-                    <x-filament::actions alignment="end">
-                        <x-filament::button
-                            color="{{ $this->isDevelopmentMode() ? 'warning' : 'gray' }}"
-                            wire:click="toggleDevelopmentMode"
-                            wire:loading.attr="disabled"
-                            wire:target="toggleDevelopmentMode"
-                        >
-                            {{ $this->isDevelopmentMode() ? 'Disable Development Mode' : 'Enable Development Mode' }}
-                        </x-filament::button>
-                        <x-filament::button color="gray" wire:click="purgeCache" wire:loading.attr="disabled" wire:target="purgeCache" :disabled="$this->isDevelopmentMode()">Purge cache</x-filament::button>
-                    </x-filament::actions>
-                </x-slot>
+            <div class="fp-protection-grid">
+                <x-filament.app.settings.card
+                    title="Cache Control"
+                    description="Live cache settings that FirePhage now applies directly to the Bunny edge."
+                    icon="heroicon-o-circle-stack"
+                    :status="$developmentMode ? 'Development Mode' : ($cacheEnabled ? $cacheMode : 'Caching Off')"
+                    :status-color="$developmentMode ? 'warning' : ($cacheEnabled ? 'success' : 'gray')"
+                >
+                    <x-filament.app.settings.key-value-grid :rows="[
+                        ['label' => 'Caching', 'value' => $cacheEnabled ? 'Enabled' : 'Disabled'],
+                        ['label' => 'Mode', 'value' => $cacheMode],
+                        ['label' => 'Cache Hit Ratio', 'value' => $this->metricCacheHitRatio()],
+                        ['label' => 'Last Cache Change', 'value' => $this->lastAction(['site.control.cache_enabled', 'site.control.cache_mode'])],
+                        ['label' => 'Last Sync', 'value' => $this->site->syncFreshnessForHumans('Not synced yet')],
+                    ]" />
 
-                <x-filament.app.settings.key-value-grid :rows="[
-                    ['label' => 'Development Mode', 'value' => $this->isDevelopmentMode() ? 'Enabled (cache + acceleration disabled)' : 'Disabled'],
-                    ['label' => 'Cache Policy', 'value' => 'Managed by Edge Network'],
-                    ['label' => 'Cache Hit Ratio', 'value' => $this->metricCacheHitRatio()],
-                    ['label' => 'Last Action', 'value' => $this->lastAction('cloudfront.invalidate')],
-                    ['label' => 'Last Sync', 'value' => $this->site->syncFreshnessForHumans('Not synced yet')],
-                ]" />
-            </x-filament::section>
+                    <x-slot name="footer">
+                        <x-filament::actions alignment="end">
+                            <x-filament::button
+                                color="{{ $cacheEnabled ? 'gray' : 'primary' }}"
+                                wire:click="toggleCacheEnabled"
+                                wire:loading.attr="disabled"
+                                wire:target="toggleCacheEnabled"
+                            >
+                                {{ $cacheEnabled ? 'Disable Cache' : 'Enable Cache' }}
+                            </x-filament::button>
+                            <x-filament::button
+                                color="gray"
+                                wire:click="toggleCacheMode"
+                                wire:loading.attr="disabled"
+                                wire:target="toggleCacheMode"
+                                :disabled="! $cacheEnabled || $developmentMode"
+                            >
+                                Switch to {{ strtolower($cacheMode) === 'aggressive' ? 'Standard' : 'Aggressive' }}
+                            </x-filament::button>
+                            <x-filament::button
+                                color="gray"
+                                wire:click="purgeCache"
+                                wire:loading.attr="disabled"
+                                wire:target="purgeCache"
+                                :disabled="$developmentMode"
+                            >
+                                Purge Cache
+                            </x-filament::button>
+                        </x-filament::actions>
+                    </x-slot>
+                </x-filament.app.settings.card>
+
+                <x-filament.app.settings.card
+                    title="Testing & Safety"
+                    description="Use temporary bypass modes when you need to debug behavior without permanently changing your cache setup."
+                    icon="heroicon-o-beaker"
+                    :status="$troubleshootingMode ? 'Troubleshooting On' : ($developmentMode ? 'Development On' : 'Normal')"
+                    :status-color="$troubleshootingMode ? 'danger' : ($developmentMode ? 'warning' : 'success')"
+                >
+                    <x-filament.app.settings.key-value-grid :rows="[
+                        ['label' => 'Development Mode', 'value' => $developmentMode ? 'Enabled (cache + optimizers bypassed)' : 'Disabled'],
+                        ['label' => 'Troubleshooting Mode', 'value' => $troubleshootingMode ? 'Enabled (edge relaxed for testing)' : 'Disabled'],
+                        ['label' => 'Recent Purge', 'value' => $this->lastAction(['edge.cache_purge', 'cloudfront.invalidate'])],
+                        ['label' => 'Recent Mode Change', 'value' => $this->lastAction(['edge.development_mode', 'edge.troubleshooting_mode'])],
+                    ]" />
+
+                    <x-slot name="footer">
+                        <x-filament::actions alignment="end">
+                            <x-filament::button
+                                color="{{ $developmentMode ? 'warning' : 'gray' }}"
+                                wire:click="toggleDevelopmentMode"
+                                wire:loading.attr="disabled"
+                                wire:target="toggleDevelopmentMode"
+                            >
+                                {{ $developmentMode ? 'Disable Development Mode' : 'Enable Development Mode' }}
+                            </x-filament::button>
+                            <x-filament::button
+                                color="{{ $troubleshootingMode ? 'danger' : 'gray' }}"
+                                wire:click="toggleTroubleshootingMode"
+                                wire:loading.attr="disabled"
+                                wire:target="toggleTroubleshootingMode"
+                            >
+                                {{ $troubleshootingMode ? 'Disable Troubleshooting' : 'Enable Troubleshooting' }}
+                            </x-filament::button>
+                        </x-filament::actions>
+                    </x-slot>
+                </x-filament.app.settings.card>
+            </div>
 
             @if ($this->isSimpleMode())
                 <x-filament::section heading="Need More Cache Detail?" icon="heroicon-o-adjustments-horizontal">
@@ -47,7 +112,7 @@
                 </x-filament::section>
             @else
             <div class="fp-protection-grid">
-                <x-filament::section heading="Cache Hit Ratio Trend" description="Daily cache efficiency over the recent period." icon="heroicon-o-arrow-trending-up">
+                <x-filament.app.settings.card title="Cache Hit Ratio Trend" description="Daily cache efficiency over the recent period." icon="heroicon-o-arrow-trending-up">
                     @if (empty($trend))
                         <p class="text-sm opacity-75">No cache trend data yet.</p>
                     @else
@@ -65,9 +130,9 @@
                             @endforeach
                         </div>
                     @endif
-                </x-filament::section>
+                </x-filament.app.settings.card>
 
-                <x-filament::section heading="Top Cache Misses" description="Paths with highest miss/error activity." icon="heroicon-o-exclamation-triangle">
+                <x-filament.app.settings.card title="Top Cache Misses" description="Paths with highest miss or error activity." icon="heroicon-o-exclamation-triangle">
                     @if (empty($misses))
                         <p class="text-sm opacity-75">No cache miss telemetry yet.</p>
                     @else
@@ -90,10 +155,10 @@
                             </table>
                         </div>
                     @endif
-                </x-filament::section>
+                </x-filament.app.settings.card>
             </div>
 
-            <x-filament::section heading="Purge History" description="Recent edge cache purge requests." icon="heroicon-o-clock">
+            <x-filament.app.settings.card title="Purge History" description="Recent edge cache purge requests." icon="heroicon-o-clock">
                 @if (empty($history))
                     <p class="text-sm opacity-75">No purge history yet.</p>
                 @else
@@ -118,7 +183,7 @@
                         </table>
                     </div>
                 @endif
-            </x-filament::section>
+            </x-filament.app.settings.card>
             @endif
         @endif
     </div>

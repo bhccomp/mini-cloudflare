@@ -21,7 +21,7 @@
                     ['label' => 'Origin Exposure Status', 'value' => $status],
                     ['label' => 'Origin Host', 'value' => parse_url($this->site->origin_url, PHP_URL_HOST) ?: 'Not configured'],
                     ['label' => 'Origin Response Latency', 'value' => $this->originLatency()],
-                    ['label' => 'Last Origin Policy Change', 'value' => $this->lastAction('site.control.origin')],
+                    ['label' => 'Last Origin Policy Change', 'value' => $this->lastAction('site.control.origin_lockdown')],
                     ['label' => 'Policy', 'value' => 'Managed by Edge Network'],
                 ]" />
             </x-filament::section>

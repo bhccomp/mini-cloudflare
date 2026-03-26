@@ -543,6 +543,21 @@ abstract class BaseProtectionPage extends Page
         $this->notify('Cache mode saved');
     }
 
+    public function toggleCacheEnabled(): void
+    {
+        if (! $this->site) {
+            return;
+        }
+
+        if (! $this->ensureNotDemoReadOnly('Cache settings')) {
+            return;
+        }
+
+        $current = (bool) data_get($this->site->required_dns_records, 'control_panel.cache_enabled', true);
+        ApplySiteControlSettingJob::dispatch($this->site->id, 'cache_enabled', ! $current, auth()->id());
+        $this->notify(! $current ? 'Cache enabled' : 'Cache disabled');
+    }
+
     public function toggleOriginProtection(): void
     {
         if (! $this->site) {
@@ -589,6 +604,11 @@ abstract class BaseProtectionPage extends Page
         return (string) data_get($this->site?->required_dns_records, 'control_panel.cache_mode', 'standard');
     }
 
+    public function isCacheEnabled(): bool
+    {
+        return (bool) data_get($this->site?->required_dns_records, 'control_panel.cache_enabled', true);
+    }
+
     public function metricBlockedRequests(): string
     {
         $value = $this->site?->analyticsMetric?->blocked_requests_24h
@@ -605,15 +625,27 @@ abstract class BaseProtectionPage extends Page
         return $value !== null ? number_format((float) $value, 2).'%' : 'Coming soon';
     }
 
-    public function lastAction(string $startsWith): string
+    public function lastAction(string|array $startsWith): string
     {
         if (! $this->site) {
             return 'No recent actions';
         }
 
+        $prefixes = collect(is_array($startsWith) ? $startsWith : [$startsWith])
+            ->filter(fn (mixed $value): bool => is_string($value) && $value !== '')
+            ->values();
+
+        if ($prefixes->isEmpty()) {
+            return 'No recent actions';
+        }
+
         $log = AuditLog::query()
             ->where('site_id', $this->site->id)
-            ->where('action', 'like', $startsWith.'%')
+            ->where(function ($query) use ($prefixes): void {
+                foreach ($prefixes as $prefix) {
+                    $query->orWhere('action', 'like', $prefix.'%');
+                }
+            })
             ->latest('id')
             ->first();
 
@@ -621,7 +653,23 @@ abstract class BaseProtectionPage extends Page
             return 'No recent actions';
         }
 
-        return Str::of($log->action)->replace('.', ' ')->title().' · '.$log->status;
+        return $this->formatAuditActionLabel((string) $log->action).' · '.$log->status;
+    }
+
+    protected function formatAuditActionLabel(string $action): string
+    {
+        return match (true) {
+            Str::startsWith($action, 'edge.cache_purge'),
+            Str::startsWith($action, 'cloudfront.invalidate') => 'Cache purge',
+            Str::startsWith($action, 'edge.development_mode') => 'Development mode',
+            Str::startsWith($action, 'edge.troubleshooting_mode') => 'Troubleshooting mode',
+            Str::startsWith($action, 'site.control.cache_enabled') => 'Cache setting',
+            Str::startsWith($action, 'site.control.cache_mode') => 'Cache mode',
+            Str::startsWith($action, 'site.control.origin_lockdown') => 'Origin access policy',
+            Str::startsWith($action, 'site.control.https_enforced') => 'HTTPS policy',
+            Str::startsWith($action, 'site.control.waf_preset') => 'WAF preset',
+            default => Str::of($action)->replace('.', ' ')->title()->toString(),
+        };
     }
 
     public function badgeColor(?string $status = null, ?Site $site = null): string

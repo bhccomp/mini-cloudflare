@@ -22,4 +22,10 @@
     @endif
 
     {{ $slot }}
+
+    @isset($footer)
+        <x-slot name="footer">
+            {{ $footer }}
+        </x-slot>
+    @endisset
 </x-filament::section>

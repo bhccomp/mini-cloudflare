@@ -27,7 +27,7 @@ class InvalidateCloudFrontCacheJob implements ShouldQueue
             'actor_id' => $this->actorId,
             'organization_id' => $site->organization_id,
             'site_id' => $site->id,
-            'action' => 'cloudfront.invalidate',
+            'action' => 'edge.cache_purge',
             'status' => ($result['changed'] ?? false) ? 'success' : 'info',
             'message' => $result['message'] ?? 'Cache purge requested.',
             'meta' => $result + ['provider' => $provider->key()],
