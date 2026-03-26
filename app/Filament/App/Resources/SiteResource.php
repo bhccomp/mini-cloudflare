@@ -182,11 +182,11 @@ class SiteResource extends Resource
                                 return;
                             }
 
-                            static::queuePlaceholderControl(
+                            static::queueSiteControl(
                                 $record,
                                 'https_enforced',
                                 (bool) $state,
-                                'HTTPS enforcement update queued.'
+                                'HTTPS policy saved.'
                             );
                         }),
                     Forms\Components\Placeholder::make('ssl_expiry')
@@ -268,11 +268,11 @@ class SiteResource extends Resource
                                 return;
                             }
 
-                            static::queuePlaceholderControl(
+                            static::queueSiteControl(
                                 $record,
                                 'cache_enabled',
                                 (bool) $state,
-                                'Cache toggle queued.'
+                                'Cache setting saved.'
                             );
                         }),
                     Forms\Components\Select::make('cache_mode_control')
@@ -289,11 +289,11 @@ class SiteResource extends Resource
                                 return;
                             }
 
-                            static::queuePlaceholderControl(
+                            static::queueSiteControl(
                                 $record,
                                 'cache_mode',
                                 $state,
-                                'Cache mode update queued.'
+                                'Cache mode saved.'
                             );
                         }),
                 ])
@@ -336,11 +336,11 @@ class SiteResource extends Resource
                                 return;
                             }
 
-                            static::queuePlaceholderControl(
+                            static::queueSiteControl(
                                 $record,
                                 'waf_preset',
                                 $state,
-                                'Ruleset preset update queued.'
+                                'WAF preset saved in FirePhage.'
                             );
                         }),
                     Forms\Components\Placeholder::make('waf_blocked_metric')
@@ -367,7 +367,8 @@ class SiteResource extends Resource
                         ->label('Direct access warning')
                         ->content('Keep direct origin access restricted where possible so visitors pass through the protection layer.'),
                     Forms\Components\Toggle::make('origin_protection_control')
-                        ->label('Origin access lock (placeholder)')
+                        ->label('Origin access policy')
+                        ->helperText('Saved in FirePhage now. Direct-origin enforcement for Bunny-backed sites is still being rolled out.')
                         ->dehydrated(false)
                         ->default(fn (?Site $record): bool => (bool) static::controlValue($record, 'origin_lockdown', false))
                         ->live()
@@ -376,11 +377,11 @@ class SiteResource extends Resource
                                 return;
                             }
 
-                            static::queuePlaceholderControl(
+                            static::queueSiteControl(
                                 $record,
                                 'origin_lockdown',
                                 (bool) $state,
-                                'Origin protection update queued.'
+                                'Origin access policy saved in FirePhage.'
                             );
                         }),
                 ])
@@ -589,7 +590,7 @@ class SiteResource extends Resource
         }
     }
 
-    protected static function queuePlaceholderControl(Site $site, string $setting, mixed $value, string $message): void
+    protected static function queueSiteControl(Site $site, string $setting, mixed $value, string $message): void
     {
         static::throttle($site, 'control-'.$setting);
 

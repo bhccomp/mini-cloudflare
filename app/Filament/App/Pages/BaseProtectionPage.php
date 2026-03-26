@@ -525,7 +525,7 @@ abstract class BaseProtectionPage extends Page
 
         $current = (bool) data_get($this->site->required_dns_records, 'control_panel.https_enforced', true);
         ApplySiteControlSettingJob::dispatch($this->site->id, 'https_enforced', ! $current, auth()->id());
-        $this->notify('HTTPS enforcement update queued');
+        $this->notify('HTTPS policy saved');
     }
 
     public function toggleCacheMode(): void
@@ -540,7 +540,7 @@ abstract class BaseProtectionPage extends Page
 
         $mode = $this->cacheMode() === 'aggressive' ? 'standard' : 'aggressive';
         ApplySiteControlSettingJob::dispatch($this->site->id, 'cache_mode', $mode, auth()->id());
-        $this->notify('Cache mode update queued');
+        $this->notify('Cache mode saved');
     }
 
     public function toggleOriginProtection(): void
@@ -555,7 +555,7 @@ abstract class BaseProtectionPage extends Page
 
         $current = (bool) data_get($this->site->required_dns_records, 'control_panel.origin_lockdown', false);
         ApplySiteControlSettingJob::dispatch($this->site->id, 'origin_lockdown', ! $current, auth()->id());
-        $this->notify('Origin protection update queued');
+        $this->notify('Origin access policy saved in FirePhage');
     }
 
     public function certificateStatus(): string
