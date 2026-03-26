@@ -2214,3 +2214,19 @@
     - `tests/Feature/PluginWordPressIntegrationTest.php`
     - verifies unpaid sites do not receive live Pro telemetry
     - verifies covered paid sites do receive live Pro telemetry and malware findings
+- Bunny Shield advanced-plan follow-up:
+  - Bunny support confirmed the upgrade path should PATCH the Shield zone with `shieldZone.planType = 1`
+  - FirePhage now treats Bunny `planType = 1` plus `whitelabelResponsePages = true` as the real advanced Shield success signal
+  - `premiumPlan = true` is no longer treated as the only proof of advanced/white-label activation because Bunny did not flip that field for `nodesfoundry.com`
+  - production env/config now defaults Bunny advanced Shield plan type to `1`
+  - verified live on `nodesfoundry.com`:
+    - `shield_zone_id = 92219`
+    - `planType = 1`
+    - `whitelabelResponsePages = true`
+    - branded blocked-page script attached with `edge_error_script_id = 67220`
+  - important limitation:
+    - FirePhage middleware branded error pages run on Bunny `onOriginResponse`
+    - those templates can fully brand origin-driven `404` / `403` / `429` / `5xx` responses
+    - actual Bunny Shield/WAF block pages are still Bunny-owned response pages
+    - public Bunny docs currently expose `whitelabelResponsePages`, but no confirmed public API for fully custom Shield block-page HTML/CSS
+    - keep Bunny `Request ID` visible on any future custom Shield block-page path
