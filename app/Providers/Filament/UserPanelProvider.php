@@ -11,6 +11,7 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Enums\DatabaseNotificationsPosition;
 use Filament\Enums\ThemeMode;
 use Filament\Navigation\NavigationGroup;
 use Filament\Panel;
@@ -43,6 +44,8 @@ class UserPanelProvider extends PanelProvider
             ->brandLogo(asset('images/logo-shield-phage-wordmark.svg'))
             ->brandLogoHeight('2rem')
             ->brandName('FirePhage')
+            ->databaseNotifications(position: DatabaseNotificationsPosition::Topbar)
+            ->databaseNotificationsPolling('30s')
             ->discoverResources(in: app_path('Filament/App/Resources'), for: 'App\\Filament\\App\\Resources')
             ->discoverPages(in: app_path('Filament/App/Pages'), for: 'App\\Filament\\App\\Pages')
             ->pages([

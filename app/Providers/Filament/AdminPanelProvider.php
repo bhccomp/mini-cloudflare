@@ -9,6 +9,7 @@ use App\Filament\Admin\Widgets\RecentEarlyAccessLeadsTable;
 use App\Filament\Admin\Widgets\RecentTicketsTable;
 use App\Filament\Admin\Widgets\RecentUsersTable;
 use App\Filament\Admin\Widgets\RecentWordPressSubscribersTable;
+use Filament\Enums\DatabaseNotificationsPosition;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -40,6 +41,8 @@ class AdminPanelProvider extends PanelProvider
             ->brandLogo(asset('images/logo-shield-phage-wordmark.svg'))
             ->brandLogoHeight('2rem')
             ->brandName('FirePhage')
+            ->databaseNotifications(position: DatabaseNotificationsPosition::Topbar)
+            ->databaseNotificationsPolling('30s')
             ->discoverResources(in: app_path('Filament/Admin/Resources'), for: 'App\\Filament\\Admin\\Resources')
             ->discoverPages(in: app_path('Filament/Admin/Pages'), for: 'App\\Filament\\Admin\\Pages')
             ->pages([

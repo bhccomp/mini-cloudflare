@@ -20,6 +20,7 @@ use App\Services\Firewall\FirewallInsightsPresenter;
 use App\Services\SiteContext;
 use App\Services\Sites\SiteRoutingStatusService;
 use App\Services\UiModeManager;
+use Filament\Notifications\Notification as FilamentNotification;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Http\Request;
@@ -1351,6 +1352,13 @@ abstract class BaseProtectionPage extends Page
 
     protected function notify(string $message): void
     {
+        if ($user = auth()->user()) {
+            FilamentNotification::make()
+                ->title($message)
+                ->success()
+                ->sendToDatabase($user);
+        }
+
         Notification::make()->title($message)->success()->send();
 
         $this->refreshSite();
