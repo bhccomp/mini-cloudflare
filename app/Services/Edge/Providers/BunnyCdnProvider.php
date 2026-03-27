@@ -871,6 +871,42 @@ class BunnyCdnProvider implements EdgeProviderInterface
             'origin_ssl_verification' => $this->applySslControls($site, array_merge($controls, [
                 'origin_ssl_verification' => (bool) $value,
             ]), 'Origin certificate verification updated.'),
+            'origin_host_header' => $this->applyOriginControls($site, array_merge($controls, [
+                'origin_host_header' => $this->normalizeOriginHostHeader((string) $value, $site),
+            ]), 'Origin host header updated.'),
+            'request_coalescing_enabled' => $this->applyOriginControls($site, array_merge($controls, [
+                'request_coalescing_enabled' => (bool) $value,
+            ]), 'Request coalescing updated.'),
+            'request_coalescing_timeout' => $this->applyOriginControls($site, array_merge($controls, [
+                'request_coalescing_timeout' => $this->normalizeRequestCoalescingTimeout($value),
+            ]), 'Request coalescing timeout updated.'),
+            'origin_retries' => $this->applyOriginControls($site, array_merge($controls, [
+                'origin_retries' => $this->normalizeOriginRetries($value),
+            ]), 'Origin retry count updated.'),
+            'origin_connect_timeout' => $this->applyOriginControls($site, array_merge($controls, [
+                'origin_connect_timeout' => $this->normalizeOriginConnectTimeout($value),
+            ]), 'Origin connect timeout updated.'),
+            'origin_response_timeout' => $this->applyOriginControls($site, array_merge($controls, [
+                'origin_response_timeout' => $this->normalizeOriginResponseTimeout($value),
+            ]), 'Origin response timeout updated.'),
+            'origin_retry_delay' => $this->applyOriginControls($site, array_merge($controls, [
+                'origin_retry_delay' => $this->normalizeOriginRetryDelay($value),
+            ]), 'Origin retry delay updated.'),
+            'origin_retry_5xx' => $this->applyOriginControls($site, array_merge($controls, [
+                'origin_retry_5xx' => (bool) $value,
+            ]), '5xx retry policy updated.'),
+            'origin_retry_connection_timeout' => $this->applyOriginControls($site, array_merge($controls, [
+                'origin_retry_connection_timeout' => (bool) $value,
+            ]), 'Connection timeout retry policy updated.'),
+            'origin_retry_response_timeout' => $this->applyOriginControls($site, array_merge($controls, [
+                'origin_retry_response_timeout' => (bool) $value,
+            ]), 'Response timeout retry policy updated.'),
+            'stale_while_updating' => $this->applyOriginControls($site, array_merge($controls, [
+                'stale_while_updating' => (bool) $value,
+            ]), 'Stale-while-updating policy updated.'),
+            'stale_while_offline' => $this->applyOriginControls($site, array_merge($controls, [
+                'stale_while_offline' => (bool) $value,
+            ]), 'Stale-while-offline policy updated.'),
             'https_enforced' => $this->applyHttpsEnforcement($site, array_merge($controls, [
                 'https_enforced' => (bool) $value,
             ]), 'HTTPS enforcement updated.'),
@@ -1038,7 +1074,19 @@ class BunnyCdnProvider implements EdgeProviderInterface
      *   optimizer_images:bool,
      *   tls1_enabled:bool,
      *   tls1_1_enabled:bool,
-     *   origin_ssl_verification:bool
+     *   origin_ssl_verification:bool,
+     *   origin_host_header:string,
+     *   request_coalescing_enabled:bool,
+     *   request_coalescing_timeout:int,
+     *   origin_retries:int,
+     *   origin_connect_timeout:int,
+     *   origin_response_timeout:int,
+     *   origin_retry_delay:int,
+     *   origin_retry_5xx:bool,
+     *   origin_retry_connection_timeout:bool,
+     *   origin_retry_response_timeout:bool,
+     *   stale_while_updating:bool,
+     *   stale_while_offline:bool
      * }
      */
     protected function controlPanelState(Site $site): array
@@ -1063,6 +1111,18 @@ class BunnyCdnProvider implements EdgeProviderInterface
                 'tls1_enabled' => false,
                 'tls1_1_enabled' => false,
                 'origin_ssl_verification' => false,
+                'origin_host_header' => strtolower((string) $site->apex_domain),
+                'request_coalescing_enabled' => true,
+                'request_coalescing_timeout' => 30,
+                'origin_retries' => 1,
+                'origin_connect_timeout' => 10,
+                'origin_response_timeout' => 60,
+                'origin_retry_delay' => 1,
+                'origin_retry_5xx' => true,
+                'origin_retry_connection_timeout' => true,
+                'origin_retry_response_timeout' => false,
+                'stale_while_updating' => true,
+                'stale_while_offline' => true,
             ],
             (array) data_get($required, 'control_panel', []),
             (array) data_get($meta, 'control_panel', [])
@@ -1084,6 +1144,18 @@ class BunnyCdnProvider implements EdgeProviderInterface
         $controls['tls1_enabled'] = (bool) ($controls['tls1_enabled'] ?? false);
         $controls['tls1_1_enabled'] = (bool) ($controls['tls1_1_enabled'] ?? false);
         $controls['origin_ssl_verification'] = (bool) ($controls['origin_ssl_verification'] ?? false);
+        $controls['origin_host_header'] = $this->normalizeOriginHostHeader((string) ($controls['origin_host_header'] ?? strtolower((string) $site->apex_domain)), $site);
+        $controls['request_coalescing_enabled'] = (bool) ($controls['request_coalescing_enabled'] ?? true);
+        $controls['request_coalescing_timeout'] = $this->normalizeRequestCoalescingTimeout($controls['request_coalescing_timeout'] ?? 30);
+        $controls['origin_retries'] = $this->normalizeOriginRetries($controls['origin_retries'] ?? 1);
+        $controls['origin_connect_timeout'] = $this->normalizeOriginConnectTimeout($controls['origin_connect_timeout'] ?? 10);
+        $controls['origin_response_timeout'] = $this->normalizeOriginResponseTimeout($controls['origin_response_timeout'] ?? 60);
+        $controls['origin_retry_delay'] = $this->normalizeOriginRetryDelay($controls['origin_retry_delay'] ?? 1);
+        $controls['origin_retry_5xx'] = (bool) ($controls['origin_retry_5xx'] ?? true);
+        $controls['origin_retry_connection_timeout'] = (bool) ($controls['origin_retry_connection_timeout'] ?? true);
+        $controls['origin_retry_response_timeout'] = (bool) ($controls['origin_retry_response_timeout'] ?? false);
+        $controls['stale_while_updating'] = (bool) ($controls['stale_while_updating'] ?? true);
+        $controls['stale_while_offline'] = (bool) ($controls['stale_while_offline'] ?? true);
 
         return $controls;
     }
@@ -1106,6 +1178,52 @@ class BunnyCdnProvider implements EdgeProviderInterface
             'include', 'ignore' => strtolower(trim($policy)),
             default => 'ignore',
         };
+    }
+
+    protected function normalizeOriginHostHeader(string $host, Site $site): string
+    {
+        $normalized = strtolower(trim($host));
+
+        if ($normalized === '') {
+            return strtolower((string) $site->apex_domain);
+        }
+
+        return preg_replace('/[^a-z0-9.-]/', '', $normalized) ?: strtolower((string) $site->apex_domain);
+    }
+
+    protected function normalizeRequestCoalescingTimeout(mixed $value): int
+    {
+        $value = (int) $value;
+
+        return in_array($value, [5, 10, 15, 30, 60], true) ? $value : 30;
+    }
+
+    protected function normalizeOriginRetries(mixed $value): int
+    {
+        $value = (int) $value;
+
+        return max(0, min(5, $value));
+    }
+
+    protected function normalizeOriginConnectTimeout(mixed $value): int
+    {
+        $value = (int) $value;
+
+        return in_array($value, [5, 10, 15, 30, 60], true) ? $value : 10;
+    }
+
+    protected function normalizeOriginResponseTimeout(mixed $value): int
+    {
+        $value = (int) $value;
+
+        return in_array($value, [15, 30, 60, 120, 300], true) ? $value : 60;
+    }
+
+    protected function normalizeOriginRetryDelay(mixed $value): int
+    {
+        $value = (int) $value;
+
+        return in_array($value, [0, 1, 2, 5, 10], true) ? $value : 1;
     }
 
     /**
@@ -1217,6 +1335,110 @@ class BunnyCdnProvider implements EdgeProviderInterface
             ],
             'zone_settings' => [
                 'ForceSSL' => $this->allTrackedHostnamesForceSsl($site, $freshZone),
+            ],
+        ], $message);
+    }
+
+    /**
+     * @param  array{
+     *   cache_enabled:bool,
+     *   cache_mode:string,
+     *   https_enforced:bool,
+     *   origin_lockdown:bool,
+     *   waf_preset:string,
+     *   cache_exclusions:array<int, array{path_pattern:string,reason:string,enabled:bool}>,
+     *   browser_cache_ttl:int,
+     *   query_string_policy:string,
+     *   optimizer_minify_css:bool,
+     *   optimizer_minify_js:bool,
+     *   optimizer_images:bool,
+     *   tls1_enabled:bool,
+     *   tls1_1_enabled:bool,
+     *   origin_ssl_verification:bool,
+     *   origin_host_header:string,
+     *   request_coalescing_enabled:bool,
+     *   request_coalescing_timeout:int,
+     *   origin_retries:int,
+     *   origin_connect_timeout:int,
+     *   origin_response_timeout:int,
+     *   origin_retry_delay:int,
+     *   origin_retry_5xx:bool,
+     *   origin_retry_connection_timeout:bool,
+     *   origin_retry_response_timeout:bool,
+     *   stale_while_updating:bool,
+     *   stale_while_offline:bool
+     * }  $controls
+     * @return array<string,mixed>
+     */
+    protected function applyOriginControls(Site $site, array $controls, string $message): array
+    {
+        $zoneId = (int) ($site->provider_resource_id ?: data_get($site->provider_meta, 'zone_id', 0));
+
+        if ($zoneId <= 0) {
+            return $this->storeControlPanelOnly($site, $controls, 'Origin settings were saved. They will apply after Bunny provisioning finishes.');
+        }
+
+        $zone = (array) $this->client()->get("/pullzone/{$zoneId}")->throw()->json();
+        $zoneName = (string) (Arr::get($zone, 'Name') ?: data_get($site->provider_meta, 'zone_name', $this->zoneNameFor($site)));
+        $originUrl = (string) (Arr::get($zone, 'OriginUrl') ?: data_get($site->provider_meta, 'origin_url', $this->resolvePreferredOriginUrl($site)));
+        $originHostHeader = $this->normalizeOriginHostHeader(
+            (string) ($controls['origin_host_header'] ?? Arr::get($zone, 'OriginHostHeader', data_get($site->provider_meta, 'origin_host_header', strtolower((string) $site->apex_domain)))),
+            $site,
+        );
+
+        $this->client()->post("/pullzone/{$zoneId}", $this->buildZoneUpdatePayload(
+            zoneId: $zoneId,
+            zoneName: $zoneName,
+            originUrl: $originUrl,
+            originHostHeader: $originHostHeader,
+            overrides: [
+                'OriginHostHeader' => $originHostHeader,
+                'EnableRequestCoalescing' => (bool) ($controls['request_coalescing_enabled'] ?? true),
+                'RequestCoalescingTimeout' => (int) ($controls['request_coalescing_timeout'] ?? 30),
+                'OriginRetries' => (int) ($controls['origin_retries'] ?? 1),
+                'OriginConnectTimeout' => (int) ($controls['origin_connect_timeout'] ?? 10),
+                'OriginResponseTimeout' => (int) ($controls['origin_response_timeout'] ?? 60),
+                'OriginRetryDelay' => (int) ($controls['origin_retry_delay'] ?? 1),
+                'OriginRetry5XXResponses' => (bool) ($controls['origin_retry_5xx'] ?? true),
+                'OriginRetryConnectionTimeout' => (bool) ($controls['origin_retry_connection_timeout'] ?? true),
+                'OriginRetryResponseTimeout' => (bool) ($controls['origin_retry_response_timeout'] ?? false),
+                'UseStaleWhileUpdating' => (bool) ($controls['stale_while_updating'] ?? true),
+                'UseStaleWhileOffline' => (bool) ($controls['stale_while_offline'] ?? true),
+            ],
+        ))->throw();
+
+        $freshZone = (array) $this->client()->get("/pullzone/{$zoneId}")->throw()->json();
+
+        return $this->persistControlPanelState($site, $controls, [
+            'origin_url' => $originUrl,
+            'origin_host_header' => (string) Arr::get($freshZone, 'OriginHostHeader', $originHostHeader),
+            'origin' => [
+                'host_header' => (string) Arr::get($freshZone, 'OriginHostHeader', $originHostHeader),
+                'request_coalescing_enabled' => (bool) Arr::get($freshZone, 'EnableRequestCoalescing', true),
+                'request_coalescing_timeout' => (int) Arr::get($freshZone, 'RequestCoalescingTimeout', 30),
+                'origin_retries' => (int) Arr::get($freshZone, 'OriginRetries', 1),
+                'origin_connect_timeout' => (int) Arr::get($freshZone, 'OriginConnectTimeout', 10),
+                'origin_response_timeout' => (int) Arr::get($freshZone, 'OriginResponseTimeout', 60),
+                'origin_retry_delay' => (int) Arr::get($freshZone, 'OriginRetryDelay', 1),
+                'origin_retry_5xx' => (bool) Arr::get($freshZone, 'OriginRetry5XXResponses', true),
+                'origin_retry_connection_timeout' => (bool) Arr::get($freshZone, 'OriginRetryConnectionTimeout', true),
+                'origin_retry_response_timeout' => (bool) Arr::get($freshZone, 'OriginRetryResponseTimeout', false),
+                'stale_while_updating' => (bool) Arr::get($freshZone, 'UseStaleWhileUpdating', true),
+                'stale_while_offline' => (bool) Arr::get($freshZone, 'UseStaleWhileOffline', true),
+            ],
+            'zone_settings' => [
+                'OriginHostHeader' => (string) Arr::get($freshZone, 'OriginHostHeader', $originHostHeader),
+                'EnableRequestCoalescing' => (bool) Arr::get($freshZone, 'EnableRequestCoalescing', true),
+                'RequestCoalescingTimeout' => (int) Arr::get($freshZone, 'RequestCoalescingTimeout', 30),
+                'OriginRetries' => (int) Arr::get($freshZone, 'OriginRetries', 1),
+                'OriginConnectTimeout' => (int) Arr::get($freshZone, 'OriginConnectTimeout', 10),
+                'OriginResponseTimeout' => (int) Arr::get($freshZone, 'OriginResponseTimeout', 60),
+                'OriginRetryDelay' => (int) Arr::get($freshZone, 'OriginRetryDelay', 1),
+                'OriginRetry5XXResponses' => (bool) Arr::get($freshZone, 'OriginRetry5XXResponses', true),
+                'OriginRetryConnectionTimeout' => (bool) Arr::get($freshZone, 'OriginRetryConnectionTimeout', true),
+                'OriginRetryResponseTimeout' => (bool) Arr::get($freshZone, 'OriginRetryResponseTimeout', false),
+                'UseStaleWhileUpdating' => (bool) Arr::get($freshZone, 'UseStaleWhileUpdating', true),
+                'UseStaleWhileOffline' => (bool) Arr::get($freshZone, 'UseStaleWhileOffline', true),
             ],
         ], $message);
     }
