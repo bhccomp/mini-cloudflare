@@ -1,5 +1,99 @@
 # MEMORY
 
+## WAF Expansion + Rule Builder (Latest)
+- WAF page was rebuilt into the same two-column protection layout pattern used on Cache / CDN / DDoS:
+  - left stack now focuses on controls
+  - right stack now focuses on snapshots / explainers
+- Access Control tabs are now ordered:
+  - `Country`
+  - `Continent`
+  - `Advanced Rules`
+  - `IP / CIDR`
+  - `Bulk Import`
+  - `ASN`
+  - `Policy`
+- Access Control now supports full access-list actions everywhere they are valid:
+  - `Allow`
+  - `Block`
+  - `Challenge`
+  - `Log`
+- Optional rule naming was added to:
+  - country rules
+  - continent rules
+  - IP / CIDR rules
+  - ASN rules
+  - bulk-import rules
+- Friendly fallback rule names are now generated when the user does not provide one.
+- `Advanced Rules` is now part of the main Access Control tab set instead of a separate custom widget.
+- Advanced rule builder now supports:
+  - rule name
+  - request field
+  - comparison
+  - match value
+  - normalization
+  - response
+  - explanation / reason
+  - additional `AND` conditions via chained conditions
+- Important advanced-rule availability rule:
+  - `Advanced Rules` must stay disabled for sites that do not actually have advanced Shield / advanced WAF support
+  - UI now hides advanced-rule rows too when a site is downgraded / basic-only
+- Advanced rules are mirrored into local `site_firewall_rules` records so they can appear inside the shared `Configured Access Rules` table.
+- `Configured Access Rules` now includes:
+  - standard access rules
+  - advanced rules
+  - friendly rule labels
+  - Filament action dropdowns instead of scattered inline buttons
+- Advanced rules now have working:
+  - `Edit`
+  - `Enable`
+  - `Disable`
+  - `Remove`
+- `Configured Access Rules` page-specific styling was fixed:
+  - footer table widget sits outside the inner WAF shell
+  - styling now targets the actual Filament table widget wrapper (`.fi-wi-table`)
+  - widget is no longer lazy-loaded because the `View Rules` jump link needs the target to exist immediately on first load
+- `View Rules` button now jumps directly to the `Configured Access Rules` heading anchor.
+
+## Origin Controls for Bunny (Latest)
+- Origin page was rebuilt from a placeholder exposure card into a real Bunny-backed control surface.
+- New live Origin controls now available in FirePhage:
+  - `origin_host_header`
+  - `origin_ssl_verification` (mirrored here, still also conceptually related to SSL)
+  - `request_coalescing_enabled`
+  - `request_coalescing_timeout`
+  - `origin_retries`
+  - `origin_connect_timeout`
+  - `origin_response_timeout`
+  - `origin_retry_delay`
+  - `origin_retry_5xx`
+  - `origin_retry_connection_timeout`
+  - `origin_retry_response_timeout`
+  - `stale_while_updating`
+  - `stale_while_offline`
+- Origin page now follows the same row-based settings design as Cache / SSL rather than the older key-value placeholder layout.
+- Provider-side Bunny support for the above settings now persists live values back into:
+  - `provider_meta.origin.*`
+  - `provider_meta.zone_settings.*`
+  - `required_dns_records.control_panel.*`
+- Important limitation remains:
+  - `origin_lockdown` / direct-origin enforcement is still not a real Bunny-enforced feature on the FirePhage side yet
+  - do not present it as fully implemented
+
+## Filament Database Notifications (Latest)
+- Laravel `notifications` table is now present via:
+  - `database/migrations/2026_03_27_210000_create_notifications_table.php`
+- Filament database notifications are now enabled in both panels:
+  - `UserPanelProvider`
+  - `AdminPanelProvider`
+- Polling is currently enabled at:
+  - `30s`
+- Current implementation detail:
+  - common success notifications that flow through `BaseProtectionPage::notify()` are now also persisted to the database using Filament database notifications
+  - these still also show the normal toast notification
+- Important limitation:
+  - many direct `Notification::make()->send()` calls across the app are still toast-only until they are explicitly converted
+  - current database bell activity is strongest for the common protection-page actions that already use `BaseProtectionPage::notify()`
+
 ## Bunny Cache/CDN/SSL Control Surface (Latest)
 - Cache page was rebuilt into a cleaner control surface with Cloudflare-style setting rows instead of a generic button footer cluster.
 - New real Bunny-backed cache controls are now available in FirePhage:
