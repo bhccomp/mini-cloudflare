@@ -1,4 +1,6 @@
 <x-filament-panels::page>
+    <x-filament.app.settings.layout-styles />
+
     <x-filament::section
         heading="Billing Profile"
         description="Keep billing contact details current so invoices and Stripe receipts go to the right person."

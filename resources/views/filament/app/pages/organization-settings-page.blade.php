@@ -1,4 +1,6 @@
 <x-filament-panels::page>
+    <x-filament.app.settings.layout-styles />
+
     <x-filament::section
         heading="Team Access"
         description="Invite team members and assign read/write/admin access for this organization."

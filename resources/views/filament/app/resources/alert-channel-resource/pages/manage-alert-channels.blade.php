@@ -1,4 +1,6 @@
 <x-filament-panels::page>
+    <x-filament.app.settings.layout-styles />
+
     <x-filament::section
         heading="Alert Delivery Settings"
         description="Configure where security alerts are sent for your organization."

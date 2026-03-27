@@ -1,5 +1,51 @@
 @once
     <style>
+        .dark .fi-page .fi-section {
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(15, 23, 42, 0.82));
+            border-color: rgba(96, 165, 250, 0.16);
+            box-shadow: 0 24px 50px rgba(2, 6, 23, 0.34);
+        }
+
+        .dark .fi-page .fi-section-content-ctn,
+        .dark .fi-page .fi-section-content,
+        .dark .fi-page .fi-section-footer {
+            background: transparent;
+        }
+
+        .dark .fi-page .fi-section-header {
+            border-bottom-color: rgba(255, 255, 255, 0.08);
+        }
+
+        .dark .fi-page .fi-wi-stats-overview .fi-section,
+        .dark .fi-page .fi-wi-stats-overview .fi-section-content-ctn,
+        .dark .fi-page .fi-wi-stats-overview .fi-section-content,
+        .dark .fi-page .fi-wi-stats-overview .fi-section-footer,
+        .dark .fi-page .fi-wi-stats-overview .fi-section-header {
+            background: transparent;
+            box-shadow: none;
+        }
+
+        .dark .fi-page .fi-wi-stats-overview .fi-section {
+            border-color: transparent;
+        }
+
+        .dark .fi-page .fi-section-header-heading {
+            color: rgb(248 250 252);
+        }
+
+        .dark .fi-page .fi-section-header-description,
+        .dark .fi-page .fi-section-content,
+        .dark .fi-page .fi-ta-header-cell,
+        .dark .fi-page .fi-ta-cell {
+            color: rgb(203 213 225);
+        }
+
+        .dark .fi-page .fi-ta-ctn,
+        .dark .fi-page .fi-ta-content-ctn {
+            background: rgba(15, 23, 42, 0.52);
+            border-color: rgba(255, 255, 255, 0.08);
+        }
+
         .fp-protection-shell {
             width: 100%;
             display: grid;
