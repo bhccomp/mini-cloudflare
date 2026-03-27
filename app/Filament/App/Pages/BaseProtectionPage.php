@@ -36,6 +36,8 @@ abstract class BaseProtectionPage extends Page
 
     public ?int $selectedSiteId = null;
 
+    public string $purgePath = '';
+
     public bool $hasAnySites = false;
 
     public bool $pollingEnabled = false;
@@ -376,6 +378,32 @@ abstract class BaseProtectionPage extends Page
         $this->notify('Cache purge queued');
     }
 
+    public function purgeCachePath(): void
+    {
+        if (! $this->site) {
+            return;
+        }
+
+        if (! $this->ensureNotDemoReadOnly('Path cache purge')) {
+            return;
+        }
+
+        $path = trim($this->purgePath);
+        if ($path === '') {
+            Notification::make()->title('Enter a path to purge.')->warning()->send();
+
+            return;
+        }
+
+        if (! str_starts_with($path, '/')) {
+            $path = '/'.$path;
+        }
+
+        InvalidateCloudFrontCacheJob::dispatch($this->site->id, [$path], auth()->id());
+        $this->purgePath = '';
+        $this->notify('Path purge queued');
+    }
+
     public function toggleUnderAttack(): void
     {
         if (! $this->site) {
@@ -647,6 +675,128 @@ abstract class BaseProtectionPage extends Page
     public function isCacheEnabled(): bool
     {
         return (bool) data_get($this->site?->required_dns_records, 'control_panel.cache_enabled', true);
+    }
+
+    public function browserCacheTtl(): int
+    {
+        return (int) data_get($this->site?->required_dns_records, 'control_panel.browser_cache_ttl', -1);
+    }
+
+    public function browserCacheTtlLabel(): string
+    {
+        return match ($this->browserCacheTtl()) {
+            -1 => 'Respect origin',
+            0 => 'Disabled',
+            300 => '5 minutes',
+            3600 => '1 hour',
+            14400 => '4 hours',
+            86400 => '1 day',
+            604800 => '7 days',
+            default => 'Custom',
+        };
+    }
+
+    public function cycleBrowserCacheTtl(): void
+    {
+        if (! $this->site) {
+            return;
+        }
+
+        if (! $this->ensureNotDemoReadOnly('Browser cache policy')) {
+            return;
+        }
+
+        $options = [-1, 300, 3600, 14400, 86400, 604800, 0];
+        $current = $this->browserCacheTtl();
+        $index = array_search($current, $options, true);
+        $next = $options[$index === false ? 0 : (($index + 1) % count($options))];
+
+        ApplySiteControlSettingJob::dispatch($this->site->id, 'browser_cache_ttl', $next, auth()->id());
+        $this->notify('Browser cache policy saved');
+    }
+
+    public function queryStringPolicy(): string
+    {
+        return (string) data_get($this->site?->required_dns_records, 'control_panel.query_string_policy', 'ignore');
+    }
+
+    public function queryStringPolicyLabel(): string
+    {
+        return $this->queryStringPolicy() === 'include'
+            ? 'Include query strings'
+            : 'Ignore query strings';
+    }
+
+    public function toggleQueryStringPolicy(): void
+    {
+        if (! $this->site) {
+            return;
+        }
+
+        if (! $this->ensureNotDemoReadOnly('Query string policy')) {
+            return;
+        }
+
+        $next = $this->queryStringPolicy() === 'include' ? 'ignore' : 'include';
+        ApplySiteControlSettingJob::dispatch($this->site->id, 'query_string_policy', $next, auth()->id());
+        $this->notify('Query string cache policy saved');
+    }
+
+    public function optimizerMinifyCssEnabled(): bool
+    {
+        return (bool) data_get($this->site?->required_dns_records, 'control_panel.optimizer_minify_css', true);
+    }
+
+    public function optimizerMinifyJsEnabled(): bool
+    {
+        return (bool) data_get($this->site?->required_dns_records, 'control_panel.optimizer_minify_js', true);
+    }
+
+    public function optimizerImagesEnabled(): bool
+    {
+        return (bool) data_get($this->site?->required_dns_records, 'control_panel.optimizer_images', true);
+    }
+
+    public function toggleOptimizerMinifyCss(): void
+    {
+        if (! $this->site) {
+            return;
+        }
+
+        if (! $this->ensureNotDemoReadOnly('CSS optimization')) {
+            return;
+        }
+
+        ApplySiteControlSettingJob::dispatch($this->site->id, 'optimizer_minify_css', ! $this->optimizerMinifyCssEnabled(), auth()->id());
+        $this->notify('CSS minification saved');
+    }
+
+    public function toggleOptimizerMinifyJs(): void
+    {
+        if (! $this->site) {
+            return;
+        }
+
+        if (! $this->ensureNotDemoReadOnly('JavaScript optimization')) {
+            return;
+        }
+
+        ApplySiteControlSettingJob::dispatch($this->site->id, 'optimizer_minify_js', ! $this->optimizerMinifyJsEnabled(), auth()->id());
+        $this->notify('JavaScript minification saved');
+    }
+
+    public function toggleOptimizerImages(): void
+    {
+        if (! $this->site) {
+            return;
+        }
+
+        if (! $this->ensureNotDemoReadOnly('Image optimization')) {
+            return;
+        }
+
+        ApplySiteControlSettingJob::dispatch($this->site->id, 'optimizer_images', ! $this->optimizerImagesEnabled(), auth()->id());
+        $this->notify('Image optimization saved');
     }
 
     public function metricBlockedRequests(): string

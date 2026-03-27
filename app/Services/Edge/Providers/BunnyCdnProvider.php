@@ -793,6 +793,21 @@ class BunnyCdnProvider implements EdgeProviderInterface
             'cache_mode' => $this->applyCacheControls($site, array_merge($controls, [
                 'cache_mode' => $this->normalizeCacheMode((string) $value),
             ]), 'Cache mode updated.'),
+            'browser_cache_ttl' => $this->applyCacheControls($site, array_merge($controls, [
+                'browser_cache_ttl' => $this->normalizeBrowserCacheTtl($value),
+            ]), 'Browser cache policy updated.'),
+            'query_string_policy' => $this->applyCacheControls($site, array_merge($controls, [
+                'query_string_policy' => $this->normalizeQueryStringPolicy((string) $value),
+            ]), 'Query string cache policy updated.'),
+            'optimizer_minify_css' => $this->applyCacheControls($site, array_merge($controls, [
+                'optimizer_minify_css' => (bool) $value,
+            ]), 'CSS minification setting updated.'),
+            'optimizer_minify_js' => $this->applyCacheControls($site, array_merge($controls, [
+                'optimizer_minify_js' => (bool) $value,
+            ]), 'JavaScript minification setting updated.'),
+            'optimizer_images' => $this->applyCacheControls($site, array_merge($controls, [
+                'optimizer_images' => (bool) $value,
+            ]), 'Image optimization setting updated.'),
             'cache_exclusions' => $this->applyManagedCacheExclusions(
                 $site,
                 array_merge($controls, [
@@ -950,7 +965,19 @@ class BunnyCdnProvider implements EdgeProviderInterface
     }
 
     /**
-     * @return array{cache_enabled:bool,cache_mode:string,https_enforced:bool,origin_lockdown:bool,waf_preset:string,cache_exclusions:array<int, array{path_pattern:string,reason:string,enabled:bool}>}
+     * @return array{
+     *   cache_enabled:bool,
+     *   cache_mode:string,
+     *   https_enforced:bool,
+     *   origin_lockdown:bool,
+     *   waf_preset:string,
+     *   cache_exclusions:array<int, array{path_pattern:string,reason:string,enabled:bool}>,
+     *   browser_cache_ttl:int,
+     *   query_string_policy:string,
+     *   optimizer_minify_css:bool,
+     *   optimizer_minify_js:bool,
+     *   optimizer_images:bool
+     * }
      */
     protected function controlPanelState(Site $site): array
     {
@@ -966,6 +993,11 @@ class BunnyCdnProvider implements EdgeProviderInterface
                 'origin_lockdown' => false,
                 'waf_preset' => 'baseline',
                 'cache_exclusions' => $defaultCacheExclusions,
+                'browser_cache_ttl' => -1,
+                'query_string_policy' => 'ignore',
+                'optimizer_minify_css' => true,
+                'optimizer_minify_js' => true,
+                'optimizer_images' => true,
             ],
             (array) data_get($required, 'control_panel', []),
             (array) data_get($meta, 'control_panel', [])
@@ -979,6 +1011,11 @@ class BunnyCdnProvider implements EdgeProviderInterface
             ? (string) $controls['waf_preset']
             : 'baseline';
         $controls['cache_exclusions'] = $this->normalizeCacheExclusions((array) ($controls['cache_exclusions'] ?? $defaultCacheExclusions));
+        $controls['browser_cache_ttl'] = $this->normalizeBrowserCacheTtl($controls['browser_cache_ttl'] ?? -1);
+        $controls['query_string_policy'] = $this->normalizeQueryStringPolicy((string) ($controls['query_string_policy'] ?? 'ignore'));
+        $controls['optimizer_minify_css'] = (bool) ($controls['optimizer_minify_css'] ?? true);
+        $controls['optimizer_minify_js'] = (bool) ($controls['optimizer_minify_js'] ?? true);
+        $controls['optimizer_images'] = (bool) ($controls['optimizer_images'] ?? true);
 
         return $controls;
     }
@@ -986,6 +1023,21 @@ class BunnyCdnProvider implements EdgeProviderInterface
     protected function normalizeCacheMode(string $mode): string
     {
         return strtolower(trim($mode)) === 'aggressive' ? 'aggressive' : 'standard';
+    }
+
+    protected function normalizeBrowserCacheTtl(mixed $ttl): int
+    {
+        $value = (int) $ttl;
+
+        return in_array($value, [-1, 0, 300, 3600, 14400, 86400, 604800], true) ? $value : -1;
+    }
+
+    protected function normalizeQueryStringPolicy(string $policy): string
+    {
+        return match (strtolower(trim($policy))) {
+            'include', 'ignore' => strtolower(trim($policy)),
+            default => 'ignore',
+        };
     }
 
     /**
@@ -1008,7 +1060,19 @@ class BunnyCdnProvider implements EdgeProviderInterface
     }
 
     /**
-     * @param  array{cache_enabled:bool,cache_mode:string,https_enforced:bool,origin_lockdown:bool,waf_preset:string,cache_exclusions:array<int, array{path_pattern:string,reason:string,enabled:bool}>}  $controls
+     * @param  array{
+     *   cache_enabled:bool,
+     *   cache_mode:string,
+     *   https_enforced:bool,
+     *   origin_lockdown:bool,
+     *   waf_preset:string,
+     *   cache_exclusions:array<int, array{path_pattern:string,reason:string,enabled:bool}>,
+     *   browser_cache_ttl:int,
+     *   query_string_policy:string,
+     *   optimizer_minify_css:bool,
+     *   optimizer_minify_js:bool,
+     *   optimizer_images:bool
+     * }  $controls
      * @return array<string,mixed>
      */
     protected function applyCacheControls(Site $site, array $controls, string $message): array
@@ -1036,13 +1100,24 @@ class BunnyCdnProvider implements EdgeProviderInterface
         $disableCache = $effectiveDevelopmentMode ? true : ! $cacheEnabled;
         $enableOptimizers = $effectiveDevelopmentMode ? false : $cacheEnabled;
         $aggressive = $cacheEnabled && $cacheMode === 'aggressive' && ! $effectiveDevelopmentMode;
+        $ignoreQueryStrings = ($controls['query_string_policy'] ?? 'ignore') === 'ignore';
+        $browserCacheTtl = (int) ($controls['browser_cache_ttl'] ?? -1);
+        $optimizerImages = $effectiveDevelopmentMode ? false : (bool) ($controls['optimizer_images'] ?? true);
+        $optimizerMinifyCss = $effectiveDevelopmentMode ? false : (bool) ($controls['optimizer_minify_css'] ?? true);
+        $optimizerMinifyJs = $effectiveDevelopmentMode ? false : (bool) ($controls['optimizer_minify_js'] ?? true);
 
         $overrides = [
             'DisableCache' => $disableCache,
             'EnableOptimizers' => $enableOptimizers,
             'EnableQueryStringOrdering' => $aggressive,
             'EnableSmartCache' => $aggressive,
+            'IgnoreQueryStrings' => $ignoreQueryStrings,
             'CacheControlMaxAgeOverride' => -1,
+            'CacheControlPublicMaxAgeOverride' => $browserCacheTtl,
+            'OptimizerEnabled' => $optimizerImages,
+            'OptimizerAutomaticOptimizationEnabled' => $optimizerImages,
+            'OptimizerMinifyCSS' => $optimizerMinifyCss,
+            'OptimizerMinifyJavaScript' => $optimizerMinifyJs,
         ];
 
         $this->client()->post("/pullzone/{$zoneId}", $this->buildZoneUpdatePayload(
@@ -1068,7 +1143,13 @@ class BunnyCdnProvider implements EdgeProviderInterface
                 'EnableOptimizers' => (bool) Arr::get($freshZone, 'EnableOptimizers', $enableOptimizers),
                 'EnableQueryStringOrdering' => (bool) Arr::get($freshZone, 'EnableQueryStringOrdering', $aggressive),
                 'EnableSmartCache' => (bool) Arr::get($freshZone, 'EnableSmartCache', $aggressive),
+                'IgnoreQueryStrings' => (bool) Arr::get($freshZone, 'IgnoreQueryStrings', $ignoreQueryStrings),
                 'CacheControlMaxAgeOverride' => (int) Arr::get($freshZone, 'CacheControlMaxAgeOverride', -1),
+                'CacheControlPublicMaxAgeOverride' => (int) Arr::get($freshZone, 'CacheControlPublicMaxAgeOverride', $browserCacheTtl),
+                'OptimizerEnabled' => (bool) Arr::get($freshZone, 'OptimizerEnabled', $optimizerImages),
+                'OptimizerAutomaticOptimizationEnabled' => (bool) Arr::get($freshZone, 'OptimizerAutomaticOptimizationEnabled', $optimizerImages),
+                'OptimizerMinifyCSS' => (bool) Arr::get($freshZone, 'OptimizerMinifyCSS', $optimizerMinifyCss),
+                'OptimizerMinifyJavaScript' => (bool) Arr::get($freshZone, 'OptimizerMinifyJavaScript', $optimizerMinifyJs),
             ],
         ], $finalMessage);
     }

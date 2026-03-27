@@ -9,6 +9,8 @@
     @php($developmentMode = $this->isDevelopmentMode())
     @php($troubleshootingMode = $this->isTroubleshootingMode())
     @php($cacheExclusions = $this->cacheExclusions())
+    @php($browserCacheLabel = $this->browserCacheTtlLabel())
+    @php($queryStringLabel = $this->queryStringPolicyLabel())
 
     <div class="fp-protection-shell">
         @if (! $this->site)
@@ -28,6 +30,8 @@
                     <x-filament.app.settings.key-value-grid :rows="[
                         ['label' => 'Caching', 'value' => $cacheEnabled ? 'Enabled' : 'Disabled'],
                         ['label' => 'Mode', 'value' => $cacheMode],
+                        ['label' => 'Browser Cache', 'value' => $browserCacheLabel],
+                        ['label' => 'Query Strings', 'value' => $queryStringLabel],
                         ['label' => 'Cache Hit Ratio', 'value' => $this->metricCacheHitRatio()],
                         ['label' => 'Last Cache Change', 'value' => $this->lastAction(['site.control.cache_enabled', 'site.control.cache_mode'])],
                         ['label' => 'Last Sync', 'value' => $this->site->syncFreshnessForHumans('Not synced yet')],
@@ -54,6 +58,24 @@
                             </x-filament::button>
                             <x-filament::button
                                 color="gray"
+                                wire:click="cycleBrowserCacheTtl"
+                                wire:loading.attr="disabled"
+                                wire:target="cycleBrowserCacheTtl"
+                                :disabled="! $cacheEnabled || $developmentMode"
+                            >
+                                Browser Cache: {{ $browserCacheLabel }}
+                            </x-filament::button>
+                            <x-filament::button
+                                color="gray"
+                                wire:click="toggleQueryStringPolicy"
+                                wire:loading.attr="disabled"
+                                wire:target="toggleQueryStringPolicy"
+                                :disabled="! $cacheEnabled || $developmentMode"
+                            >
+                                {{ $queryStringLabel }}
+                            </x-filament::button>
+                            <x-filament::button
+                                color="gray"
                                 wire:click="purgeCache"
                                 wire:loading.attr="disabled"
                                 wire:target="purgeCache"
@@ -74,7 +96,9 @@
                 >
                     <x-filament.app.settings.key-value-grid :rows="[
                         ['label' => 'Development Mode', 'value' => $developmentMode ? 'Enabled (cache + optimizers bypassed)' : 'Disabled'],
-                        ['label' => 'Troubleshooting Mode', 'value' => $troubleshootingMode ? 'Enabled (edge relaxed for testing)' : 'Disabled'],
+                        ['label' => 'Troubleshooting Mode', 'value' => $troubleshootingMode ? 'Enabled (cache bypass + edge protection relaxed)' : 'Disabled'],
+                        ['label' => 'Development Mode Does', 'value' => 'Bypasses cache and optimization only'],
+                        ['label' => 'Troubleshooting Does', 'value' => 'Bypasses cache and relaxes edge protection for deeper debugging'],
                         ['label' => 'Recent Purge', 'value' => $this->lastAction(['edge.cache_purge', 'cloudfront.invalidate'])],
                         ['label' => 'Recent Mode Change', 'value' => $this->lastAction(['edge.development_mode', 'edge.troubleshooting_mode'])],
                     ]" />
@@ -96,6 +120,95 @@
                                 wire:target="toggleTroubleshootingMode"
                             >
                                 {{ $troubleshootingMode ? 'Disable Troubleshooting' : 'Enable Troubleshooting' }}
+                            </x-filament::button>
+                        </x-filament::actions>
+                    </x-slot>
+                </x-filament.app.settings.card>
+            </div>
+
+            <div class="fp-protection-grid">
+                <x-filament.app.settings.card
+                    title="Optimization Controls"
+                    description="These controls map to Bunny optimizer settings. Development mode temporarily bypasses them."
+                    icon="heroicon-o-sparkles"
+                    :status="collect([
+                        $this->optimizerMinifyCssEnabled(),
+                        $this->optimizerMinifyJsEnabled(),
+                        $this->optimizerImagesEnabled(),
+                    ])->filter()->count().' enabled'"
+                    status-color="primary"
+                >
+                    <x-filament.app.settings.key-value-grid :rows="[
+                        ['label' => 'CSS Minification', 'value' => $this->optimizerMinifyCssEnabled() ? 'Enabled' : 'Disabled'],
+                        ['label' => 'JavaScript Minification', 'value' => $this->optimizerMinifyJsEnabled() ? 'Enabled' : 'Disabled'],
+                        ['label' => 'Image Optimization', 'value' => $this->optimizerImagesEnabled() ? 'Enabled' : 'Disabled'],
+                        ['label' => 'Recent Optimizer Change', 'value' => $this->lastAction(['site.control.optimizer_minify_css', 'site.control.optimizer_minify_js', 'site.control.optimizer_images'])],
+                    ]" />
+
+                    <x-slot name="footer">
+                        <x-filament::actions alignment="end">
+                            <x-filament::button
+                                color="{{ $this->optimizerMinifyCssEnabled() ? 'gray' : 'primary' }}"
+                                wire:click="toggleOptimizerMinifyCss"
+                                wire:loading.attr="disabled"
+                                wire:target="toggleOptimizerMinifyCss"
+                                :disabled="$developmentMode"
+                            >
+                                {{ $this->optimizerMinifyCssEnabled() ? 'Disable CSS Minify' : 'Enable CSS Minify' }}
+                            </x-filament::button>
+                            <x-filament::button
+                                color="{{ $this->optimizerMinifyJsEnabled() ? 'gray' : 'primary' }}"
+                                wire:click="toggleOptimizerMinifyJs"
+                                wire:loading.attr="disabled"
+                                wire:target="toggleOptimizerMinifyJs"
+                                :disabled="$developmentMode"
+                            >
+                                {{ $this->optimizerMinifyJsEnabled() ? 'Disable JS Minify' : 'Enable JS Minify' }}
+                            </x-filament::button>
+                            <x-filament::button
+                                color="{{ $this->optimizerImagesEnabled() ? 'gray' : 'primary' }}"
+                                wire:click="toggleOptimizerImages"
+                                wire:loading.attr="disabled"
+                                wire:target="toggleOptimizerImages"
+                                :disabled="$developmentMode"
+                            >
+                                {{ $this->optimizerImagesEnabled() ? 'Disable Image Opt.' : 'Enable Image Opt.' }}
+                            </x-filament::button>
+                        </x-filament::actions>
+                    </x-slot>
+                </x-filament.app.settings.card>
+
+                <x-filament.app.settings.card
+                    title="Purge Scope"
+                    description="Purge everything or target a single path when you only need one URL family refreshed."
+                    icon="heroicon-o-arrow-path"
+                    :status="$this->purgePath !== '' ? 'Path Ready' : 'Full Site Purge'"
+                    status-color="gray"
+                >
+                    <div class="grid gap-3">
+                        <label class="grid gap-2">
+                            <span class="text-sm font-medium text-gray-900 dark:text-gray-100">Specific path</span>
+                            <input
+                                type="text"
+                                wire:model.live.defer="purgePath"
+                                placeholder="/wp-content/uploads/*"
+                                class="fi-input block w-full rounded-xl border-none bg-white/70 px-3 py-2 text-sm text-gray-950 shadow-sm ring-1 ring-gray-950/10 outline-none transition focus:ring-2 focus:ring-primary-500 dark:bg-white/5 dark:text-white dark:ring-white/10"
+                            >
+                        </label>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">
+                            Use a path like <code>/about-us</code> or a wildcard like <code>/wp-content/uploads/*</code>.
+                        </p>
+                    </div>
+
+                    <x-slot name="footer">
+                        <x-filament::actions alignment="end">
+                            <x-filament::button
+                                color="gray"
+                                wire:click="purgeCachePath"
+                                wire:loading.attr="disabled"
+                                wire:target="purgeCachePath"
+                            >
+                                Purge Path
                             </x-filament::button>
                         </x-filament::actions>
                     </x-slot>
