@@ -580,16 +580,20 @@ class BunnyCdnProvider implements EdgeProviderInterface
         $dns['traffic'] = $traffic;
 
         $message = $allValid
-            ? 'Traffic DNS is pointed to Bunny edge target.'
-            : 'Point your domain to the Bunny edge target and retry.';
+            ? 'Traffic DNS is pointed to the edge target.'
+            : 'Point your domain to the edge target and retry.';
 
-        if (! $allValid) {
-            $ssl = $this->checkSsl($site);
+        $ssl = $this->checkSsl($site);
 
-            if (in_array(($ssl['status'] ?? ''), ['pending', 'active'], true)) {
-                $allValid = true;
-                $message = 'Bunny detected your hostname. DNS is accepted and SSL is provisioning.';
-            }
+        if (! $allValid && in_array(($ssl['status'] ?? ''), ['pending', 'active'], true)) {
+            $allValid = true;
+            $message = 'The edge detected your hostname. DNS is accepted and SSL is provisioning.';
+        }
+
+        if ($allValid && ($ssl['status'] ?? null) === 'active') {
+            $message = 'Traffic DNS is pointed correctly and SSL is active.';
+        } elseif ($allValid && ($ssl['status'] ?? null) === 'pending') {
+            $message = 'Traffic DNS is pointed correctly and SSL is still provisioning.';
         }
 
         return [
@@ -639,6 +643,40 @@ class BunnyCdnProvider implements EdgeProviderInterface
             $tracked = $hostnames;
         }
 
+        $trackedDetails = $tracked
+            ->map(function ($row): array {
+                $hostname = (string) Arr::get($row, 'Value', Arr::get($row, 'value', Arr::get($row, 'Hostname', Arr::get($row, 'hostname', ''))));
+                $certificateStatus = strtolower((string) Arr::get($row, 'CertificateStatus', Arr::get($row, 'certificateStatus', 'pending')));
+                $isValid = Arr::get($row, 'IsCertificateValid', Arr::get($row, 'isCertificateValid'));
+                $hasCertificate = Arr::get($row, 'HasCertificate', Arr::get($row, 'hasCertificate'));
+
+                $active = is_bool($isValid)
+                    ? $isValid
+                    : (is_bool($hasCertificate) && $hasCertificate === true
+                        ? true
+                        : in_array($certificateStatus, ['active', 'valid', 'issued', 'enabled'], true));
+
+                return [
+                    'hostname' => strtolower($hostname),
+                    'certificate_status' => $certificateStatus !== '' ? $certificateStatus : 'pending',
+                    'is_valid' => (bool) $active,
+                    'has_certificate' => is_bool($hasCertificate) ? $hasCertificate : (bool) $active,
+                ];
+            })
+            ->values()
+            ->all();
+
+        $meta = is_array($site->provider_meta) ? $site->provider_meta : [];
+        $meta['ssl'] = array_merge((array) ($meta['ssl'] ?? []), [
+            'enable_auto_ssl' => (bool) Arr::get($payload, 'EnableAutoSSL', true),
+            'enable_tls1' => (bool) Arr::get($payload, 'EnableTLS1', false),
+            'enable_tls1_1' => (bool) Arr::get($payload, 'EnableTLS1_1', false),
+            'verify_origin_ssl' => (bool) Arr::get($payload, 'VerifyOriginSSL', false),
+            'hostnames' => $trackedDetails,
+            'checked_at' => now()->toIso8601String(),
+        ]);
+        $site->forceFill(['provider_meta' => $meta])->save();
+
         $allActive = $tracked->every(function ($row) {
             $status = strtolower((string) Arr::get($row, 'CertificateStatus', Arr::get($row, 'certificateStatus', '')));
             $isValid = Arr::get($row, 'IsCertificateValid', Arr::get($row, 'isCertificateValid'));
@@ -656,10 +694,10 @@ class BunnyCdnProvider implements EdgeProviderInterface
         });
 
         if ($allActive) {
-            return ['status' => 'active', 'message' => 'Bunny SSL certificate is active.'];
+            return ['status' => 'active', 'message' => 'Bunny SSL certificate is active.', 'hostnames' => $trackedDetails];
         }
 
-        return ['status' => 'pending', 'message' => 'DNS is detected. Waiting for Bunny SSL certificate issuance.'];
+        return ['status' => 'pending', 'message' => 'DNS is detected. Waiting for Bunny SSL certificate issuance.', 'hostnames' => $trackedDetails];
     }
 
     protected function requestCertificatesForSiteHostnames(Site $site): void
@@ -815,6 +853,15 @@ class BunnyCdnProvider implements EdgeProviderInterface
                 ]),
                 'WordPress cache bypass rules updated.'
             ),
+            'tls1_enabled' => $this->applySslControls($site, array_merge($controls, [
+                'tls1_enabled' => (bool) $value,
+            ]), 'TLS 1.0 support updated.'),
+            'tls1_1_enabled' => $this->applySslControls($site, array_merge($controls, [
+                'tls1_1_enabled' => (bool) $value,
+            ]), 'TLS 1.1 support updated.'),
+            'origin_ssl_verification' => $this->applySslControls($site, array_merge($controls, [
+                'origin_ssl_verification' => (bool) $value,
+            ]), 'Origin certificate verification updated.'),
             'https_enforced', 'origin_lockdown', 'waf_preset' => $this->storeControlPanelOnly($site, array_merge($controls, [
                 $normalized => $value,
             ]), "Control [{$normalized}] was saved, but this provider does not enforce it yet."),
@@ -976,7 +1023,10 @@ class BunnyCdnProvider implements EdgeProviderInterface
      *   query_string_policy:string,
      *   optimizer_minify_css:bool,
      *   optimizer_minify_js:bool,
-     *   optimizer_images:bool
+     *   optimizer_images:bool,
+     *   tls1_enabled:bool,
+     *   tls1_1_enabled:bool,
+     *   origin_ssl_verification:bool
      * }
      */
     protected function controlPanelState(Site $site): array
@@ -998,6 +1048,9 @@ class BunnyCdnProvider implements EdgeProviderInterface
                 'optimizer_minify_css' => true,
                 'optimizer_minify_js' => true,
                 'optimizer_images' => true,
+                'tls1_enabled' => false,
+                'tls1_1_enabled' => false,
+                'origin_ssl_verification' => false,
             ],
             (array) data_get($required, 'control_panel', []),
             (array) data_get($meta, 'control_panel', [])
@@ -1016,6 +1069,9 @@ class BunnyCdnProvider implements EdgeProviderInterface
         $controls['optimizer_minify_css'] = (bool) ($controls['optimizer_minify_css'] ?? true);
         $controls['optimizer_minify_js'] = (bool) ($controls['optimizer_minify_js'] ?? true);
         $controls['optimizer_images'] = (bool) ($controls['optimizer_images'] ?? true);
+        $controls['tls1_enabled'] = (bool) ($controls['tls1_enabled'] ?? false);
+        $controls['tls1_1_enabled'] = (bool) ($controls['tls1_1_enabled'] ?? false);
+        $controls['origin_ssl_verification'] = (bool) ($controls['origin_ssl_verification'] ?? false);
 
         return $controls;
     }
@@ -1038,6 +1094,68 @@ class BunnyCdnProvider implements EdgeProviderInterface
             'include', 'ignore' => strtolower(trim($policy)),
             default => 'ignore',
         };
+    }
+
+    /**
+     * @param  array{
+     *   cache_enabled:bool,
+     *   cache_mode:string,
+     *   https_enforced:bool,
+     *   origin_lockdown:bool,
+     *   waf_preset:string,
+     *   cache_exclusions:array<int, array{path_pattern:string,reason:string,enabled:bool}>,
+     *   browser_cache_ttl:int,
+     *   query_string_policy:string,
+     *   optimizer_minify_css:bool,
+     *   optimizer_minify_js:bool,
+     *   optimizer_images:bool,
+     *   tls1_enabled:bool,
+     *   tls1_1_enabled:bool,
+     *   origin_ssl_verification:bool
+     * }  $controls
+     * @return array<string,mixed>
+     */
+    protected function applySslControls(Site $site, array $controls, string $message): array
+    {
+        $zoneId = (int) ($site->provider_resource_id ?: data_get($site->provider_meta, 'zone_id', 0));
+
+        if ($zoneId <= 0) {
+            return $this->storeControlPanelOnly($site, $controls, 'SSL settings were saved. They will apply after Bunny provisioning finishes.');
+        }
+
+        $zone = (array) $this->client()->get("/pullzone/{$zoneId}")->throw()->json();
+        $zoneName = (string) (Arr::get($zone, 'Name') ?: data_get($site->provider_meta, 'zone_name', $this->zoneNameFor($site)));
+        $originUrl = (string) (Arr::get($zone, 'OriginUrl') ?: data_get($site->provider_meta, 'origin_url', $this->resolvePreferredOriginUrl($site)));
+        $originHostHeader = (string) (Arr::get($zone, 'OriginHostHeader') ?: data_get($site->provider_meta, 'origin_host_header', strtolower((string) $site->apex_domain)));
+
+        $this->client()->post("/pullzone/{$zoneId}", $this->buildZoneUpdatePayload(
+            zoneId: $zoneId,
+            zoneName: $zoneName,
+            originUrl: $originUrl,
+            originHostHeader: $originHostHeader,
+            overrides: [
+                'EnableTLS1' => (bool) ($controls['tls1_enabled'] ?? false),
+                'EnableTLS1_1' => (bool) ($controls['tls1_1_enabled'] ?? false),
+                'VerifyOriginSSL' => (bool) ($controls['origin_ssl_verification'] ?? false),
+            ],
+        ))->throw();
+
+        $freshZone = (array) $this->client()->get("/pullzone/{$zoneId}")->throw()->json();
+
+        return $this->persistControlPanelState($site, $controls, [
+            'ssl' => [
+                'enable_auto_ssl' => (bool) Arr::get($freshZone, 'EnableAutoSSL', true),
+                'enable_tls1' => (bool) Arr::get($freshZone, 'EnableTLS1', false),
+                'enable_tls1_1' => (bool) Arr::get($freshZone, 'EnableTLS1_1', false),
+                'verify_origin_ssl' => (bool) Arr::get($freshZone, 'VerifyOriginSSL', false),
+            ],
+            'zone_settings' => [
+                'EnableAutoSSL' => (bool) Arr::get($freshZone, 'EnableAutoSSL', true),
+                'EnableTLS1' => (bool) Arr::get($freshZone, 'EnableTLS1', false),
+                'EnableTLS1_1' => (bool) Arr::get($freshZone, 'EnableTLS1_1', false),
+                'VerifyOriginSSL' => (bool) Arr::get($freshZone, 'VerifyOriginSSL', false),
+            ],
+        ], $message);
     }
 
     /**

@@ -286,6 +286,19 @@ abstract class BaseProtectionPage extends Page
         }
 
         if ($this->site->provider === Site::PROVIDER_BUNNY) {
+            if ((int) ($this->site->provider_resource_id ?: data_get($this->site->provider_meta, 'zone_id', 0)) > 0) {
+                try {
+                    $result = app(EdgeProviderManager::class)->forSite($this->site)->checkSsl($this->site);
+                    $this->refreshSite();
+                    $this->notify((string) ($result['message'] ?? 'SSL status refreshed.'));
+                } catch (\Throwable $exception) {
+                    report($exception);
+                    $this->notify('SSL refresh failed');
+                }
+
+                return;
+            }
+
             $this->site->update([
                 'status' => Site::STATUS_DEPLOYING,
                 'onboarding_status' => Site::ONBOARDING_PROVISIONING_EDGE,
@@ -304,6 +317,26 @@ abstract class BaseProtectionPage extends Page
 
         RequestAcmCertificateJob::dispatch($this->site->id, auth()->id());
         $this->notify('Provision request queued');
+    }
+
+    public function refreshSslStatus(): void
+    {
+        if (! $this->site) {
+            return;
+        }
+
+        if (! $this->ensureNotDemoReadOnly('SSL status refresh')) {
+            return;
+        }
+
+        try {
+            $result = app(EdgeProviderManager::class)->forSite($this->site)->checkSsl($this->site);
+            $this->refreshSite();
+            $this->notify((string) ($result['message'] ?? 'SSL status refreshed.'));
+        } catch (\Throwable $exception) {
+            report($exception);
+            $this->notify('SSL refresh failed');
+        }
     }
 
     public function checkDnsValidation(): void
@@ -644,6 +677,12 @@ abstract class BaseProtectionPage extends Page
     public function certificateStatus(): string
     {
         if ($this->site?->provider === Site::PROVIDER_BUNNY) {
+            $hostnames = $this->sslHostnames();
+
+            if ($hostnames !== [] && collect($hostnames)->every(fn (array $row): bool => (bool) ($row['is_valid'] ?? false))) {
+                return 'Active';
+            }
+
             return match ($this->site->onboarding_status) {
                 Site::ONBOARDING_DNS_VERIFIED_SSL_PENDING => 'DNS OK, SSL pending',
                 Site::ONBOARDING_LIVE => 'Active',
@@ -665,6 +704,129 @@ abstract class BaseProtectionPage extends Page
         }
 
         return $this->site->status === Site::STATUS_ACTIVE ? 'Healthy' : 'Provisioning';
+    }
+
+    public function sslHostnames(): array
+    {
+        return collect((array) data_get($this->site?->provider_meta, 'ssl.hostnames', []))
+            ->map(function (array $row): array {
+                return [
+                    'hostname' => (string) ($row['hostname'] ?? ''),
+                    'certificate_status' => (string) ($row['certificate_status'] ?? 'pending'),
+                    'is_valid' => (bool) ($row['is_valid'] ?? false),
+                    'has_certificate' => (bool) ($row['has_certificate'] ?? false),
+                ];
+            })
+            ->filter(fn (array $row): bool => $row['hostname'] !== '')
+            ->values()
+            ->all();
+    }
+
+    public function tls10Enabled(): bool
+    {
+        return (bool) data_get($this->site?->required_dns_records, 'control_panel.tls1_enabled', data_get($this->site?->provider_meta, 'ssl.enable_tls1', false));
+    }
+
+    public function tls11Enabled(): bool
+    {
+        return (bool) data_get($this->site?->required_dns_records, 'control_panel.tls1_1_enabled', data_get($this->site?->provider_meta, 'ssl.enable_tls1_1', false));
+    }
+
+    public function toggleTls10(): void
+    {
+        if (! $this->site) {
+            return;
+        }
+
+        if (! $this->ensureNotDemoReadOnly('TLS 1.0 compatibility')) {
+            return;
+        }
+
+        $this->applySiteControlImmediately(
+            'tls1_enabled',
+            ! $this->tls10Enabled(),
+            'TLS 1.0 compatibility saved'
+        );
+    }
+
+    public function toggleTls11(): void
+    {
+        if (! $this->site) {
+            return;
+        }
+
+        if (! $this->ensureNotDemoReadOnly('TLS 1.1 compatibility')) {
+            return;
+        }
+
+        $this->applySiteControlImmediately(
+            'tls1_1_enabled',
+            ! $this->tls11Enabled(),
+            'TLS 1.1 compatibility saved'
+        );
+    }
+
+    public function sslManagedBy(): string
+    {
+        return $this->site?->provider === Site::PROVIDER_BUNNY ? 'Edge-managed SSL' : 'FirePhage managed SSL';
+    }
+
+    public function sslAutoModeLabel(): string
+    {
+        return (bool) data_get($this->site?->provider_meta, 'ssl.enable_auto_ssl', $this->site?->provider === Site::PROVIDER_BUNNY)
+            ? 'Automatic'
+            : 'Manual';
+    }
+
+    public function sslOriginVerificationLabel(): string
+    {
+        return $this->originSslVerificationEnabled()
+            ? 'Enabled'
+            : 'Disabled';
+    }
+
+    public function originSslVerificationEnabled(): bool
+    {
+        return (bool) data_get(
+            $this->site?->required_dns_records,
+            'control_panel.origin_ssl_verification',
+            data_get($this->site?->provider_meta, 'ssl.verify_origin_ssl', false)
+        );
+    }
+
+    public function toggleOriginSslVerification(): void
+    {
+        if (! $this->site) {
+            return;
+        }
+
+        if (! $this->ensureNotDemoReadOnly('Origin certificate verification')) {
+            return;
+        }
+
+        $this->applySiteControlImmediately(
+            'origin_ssl_verification',
+            ! $this->originSslVerificationEnabled(),
+            'Origin certificate verification saved'
+        );
+    }
+
+    protected function applySiteControlImmediately(string $setting, mixed $value, string $successMessage): void
+    {
+        if (! $this->site) {
+            return;
+        }
+
+        try {
+            (new ApplySiteControlSettingJob($this->site->id, $setting, $value, auth()->id()))
+                ->handle(app(EdgeProviderManager::class));
+
+            $this->refreshSite();
+            $this->notify($successMessage);
+        } catch (\Throwable $exception) {
+            report($exception);
+            $this->notify('Setting update failed');
+        }
     }
 
     public function cacheMode(): string
@@ -712,6 +874,26 @@ abstract class BaseProtectionPage extends Page
         $next = $options[$index === false ? 0 : (($index + 1) % count($options))];
 
         ApplySiteControlSettingJob::dispatch($this->site->id, 'browser_cache_ttl', $next, auth()->id());
+        $this->notify('Browser cache policy saved');
+    }
+
+    public function setBrowserCacheTtl(int $ttl): void
+    {
+        if (! $this->site) {
+            return;
+        }
+
+        if (! $this->ensureNotDemoReadOnly('Browser cache policy')) {
+            return;
+        }
+
+        $allowed = [-1, 0, 300, 3600, 14400, 86400, 604800];
+
+        if (! in_array($ttl, $allowed, true)) {
+            return;
+        }
+
+        ApplySiteControlSettingJob::dispatch($this->site->id, 'browser_cache_ttl', $ttl, auth()->id());
         $this->notify('Browser cache policy saved');
     }
 
@@ -855,6 +1037,9 @@ abstract class BaseProtectionPage extends Page
             Str::startsWith($action, 'edge.troubleshooting_mode') => 'Troubleshooting mode',
             Str::startsWith($action, 'site.control.cache_enabled') => 'Cache setting',
             Str::startsWith($action, 'site.control.cache_mode') => 'Cache mode',
+            Str::startsWith($action, 'site.control.tls1_enabled') => 'TLS 1.0 compatibility',
+            Str::startsWith($action, 'site.control.tls1_1_enabled') => 'TLS 1.1 compatibility',
+            Str::startsWith($action, 'site.control.origin_ssl_verification') => 'Origin certificate verification',
             Str::startsWith($action, 'site.control.origin_lockdown') => 'Origin access policy',
             Str::startsWith($action, 'site.control.https_enforced') => 'HTTPS policy',
             Str::startsWith($action, 'site.control.waf_preset') => 'WAF preset',

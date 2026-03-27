@@ -1,5 +1,44 @@
 # MEMORY
 
+## Bunny Cache/CDN/SSL Control Surface (Latest)
+- Cache page was rebuilt into a cleaner control surface with Cloudflare-style setting rows instead of a generic button footer cluster.
+- New real Bunny-backed cache controls are now available in FirePhage:
+  - `cache_enabled`
+  - `cache_mode`
+  - `browser_cache_ttl`
+  - `query_string_policy`
+  - `optimizer_minify_css`
+  - `optimizer_minify_js`
+  - `optimizer_images`
+  - path purge
+- Cache page layout is now split into clearer sections:
+  - `Cache Control`
+  - `Optimization Controls`
+  - `WordPress Cache Bypass`
+  - `Testing & Safety`
+  - `Purge Scope`
+  - trend / miss / history blocks
+- CDN page was rebalanced visually:
+  - top row pairs `Edge Delivery` with `Acceleration Snapshot`
+  - lower row pairs `Top Cached Paths` with `7-Day Trend`
+  - paired cards now stretch to the same height within each row
+- SSL/TLS page was rebuilt to be Bunny-native instead of AWS/ACM-shaped:
+  - no customer-facing Bunny branding in page copy
+  - hostname certificate table now reads from stored SSL hostname metadata
+  - Bunny SSL refresh now populates `provider_meta.ssl.hostnames`
+  - Bunny DNS validation now also runs SSL checks so future sites should populate hostname certificate rows automatically during onboarding
+  - TLS compatibility controls are now real and Bunny-backed:
+    - `tls1_enabled`
+    - `tls1_1_enabled`
+  - origin certificate verification is now a real Bunny-backed control using:
+    - `VerifyOriginSSL`
+  - SSL-specific controls were changed to apply immediately in-process instead of waiting on the queued site-control job, so the page reflects TLS/strict-origin changes without multiple manual refreshes
+- Current SSL limitation still remaining:
+  - visitor-side HTTPS enforcement is still not truly implemented on Bunny because the exact redirect/enforcement field/path has not been confirmed yet
+- Practical note from testing on `nodesfoundry.com`:
+  - Bunny may return `certificate_status = pending` while also reporting `has_certificate = true` and `is_valid = true`
+  - UI should treat that as effectively active instead of blindly surfacing raw `pending`
+
 ## Bunny Global Defaults + WordPress Edge Safeguards (Latest)
 - Added an admin-only hidden defaults surface for Bunny-backed sites:
   - `/admin/edge-defaults-page`
