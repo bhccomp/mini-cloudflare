@@ -15,11 +15,17 @@ class SiteFirewallRule extends Model
 
     public const TYPE_CONTINENT = 'continent';
 
+    public const TYPE_ASN = 'asn';
+
+    public const TYPE_ADVANCED = 'advanced';
+
     public const ACTION_BLOCK = 'block';
 
     public const ACTION_ALLOW = 'allow';
 
     public const ACTION_CHALLENGE = 'challenge';
+
+    public const ACTION_LOG = 'log';
 
     public const MODE_STAGED = 'staged';
 
@@ -78,6 +84,7 @@ class SiteFirewallRule extends Model
             self::ACTION_BLOCK => 'Block',
             self::ACTION_ALLOW => 'Allow',
             self::ACTION_CHALLENGE => 'Challenge',
+            self::ACTION_LOG => 'Log',
         ];
     }
 
@@ -88,6 +95,8 @@ class SiteFirewallRule extends Model
             self::TYPE_CIDR => 'CIDR Range',
             self::TYPE_COUNTRY => 'Country',
             self::TYPE_CONTINENT => 'Continent',
+            self::TYPE_ASN => 'ASN',
+            self::TYPE_ADVANCED => 'Advanced Rule',
         ];
     }
 }

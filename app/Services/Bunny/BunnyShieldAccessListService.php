@@ -322,6 +322,7 @@ class BunnyShieldAccessListService
             // 0 = bypass, 1 = allow, 2 = block, 3 = challenge, 4 = log
             'allow' => 1,
             'challenge' => 3,
+            'log' => 4,
             default => 2,
         };
     }

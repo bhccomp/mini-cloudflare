@@ -68,6 +68,7 @@ class FirewallAccessControlService
         string $mode = SiteFirewallRule::MODE_ENFORCED,
         ?CarbonInterface $expiresAt = null,
         ?string $note = null,
+        ?string $displayName = null,
     ): array {
         $targets = collect($targets)
             ->map(fn (mixed $value): string => strtoupper(trim((string) $value)))
@@ -82,6 +83,8 @@ class FirewallAccessControlService
         $created = [];
 
         foreach ($targets as $target) {
+            $resolvedDisplayName = $displayName ?: $this->singleRuleLabel($ruleType, $target, $action);
+
             $rule = SiteFirewallRule::query()->create([
                 'site_id' => $site->id,
                 'created_by_user_id' => $actorId,
@@ -93,6 +96,9 @@ class FirewallAccessControlService
                 'status' => SiteFirewallRule::STATUS_PENDING,
                 'expires_at' => $expiresAt,
                 'note' => $note,
+                'meta' => [
+                    'display_name' => $resolvedDisplayName,
+                ],
             ]);
 
             if ($mode === SiteFirewallRule::MODE_ENFORCED) {
@@ -181,6 +187,7 @@ class FirewallAccessControlService
         string $mode = SiteFirewallRule::MODE_ENFORCED,
         ?CarbonInterface $expiresAt = null,
         ?string $note = null,
+        ?string $displayName = null,
     ): array {
         $targets = collect($targets)
             ->map(fn (mixed $value): string => strtoupper(trim((string) $value)))
@@ -193,12 +200,13 @@ class FirewallAccessControlService
         }
 
         $count = $targets->count();
-        $summary = $this->ruleSetLabel($ruleType, $action);
+        $summary = $displayName ?: $this->ruleSetLabel($ruleType, $action);
 
         $meta = [
             'targets' => $targets->all(),
             'content' => $targets->implode("\n"),
             'entry_count' => $count,
+            'display_name' => $summary,
         ];
 
         $rule = SiteFirewallRule::query()->create([
@@ -220,6 +228,30 @@ class FirewallAccessControlService
         }
 
         return [$rule->fresh()];
+    }
+
+    public function singleRuleLabel(string $ruleType, string $target, string $action): string
+    {
+        $target = trim($target);
+
+        return match ($ruleType) {
+            SiteFirewallRule::TYPE_IP => 'IP '.$this->actionVerb($action).' '.$target,
+            SiteFirewallRule::TYPE_CIDR => 'Network '.$this->actionVerb($action).' '.$target,
+            SiteFirewallRule::TYPE_ASN => 'ASN '.$this->actionVerb($action).' '.$target,
+            SiteFirewallRule::TYPE_COUNTRY => 'Country '.$this->actionVerb($action).' '.$target,
+            SiteFirewallRule::TYPE_CONTINENT => 'Continent '.$this->actionVerb($action).' '.$target,
+            default => $target,
+        };
+    }
+
+    protected function actionVerb(string $action): string
+    {
+        return match (strtolower($action)) {
+            SiteFirewallRule::ACTION_ALLOW => 'allow',
+            SiteFirewallRule::ACTION_CHALLENGE => 'challenge',
+            SiteFirewallRule::ACTION_LOG => 'log',
+            default => 'block',
+        };
     }
 
     public function removeRule(SiteFirewallRule $rule, ?int $actorId): void
@@ -309,6 +341,7 @@ class FirewallAccessControlService
         $ruleType = $rule->rule_type;
         $target = trim((string) Arr::get($data, 'target', $rule->target));
         $action = strtolower((string) Arr::get($data, 'action', $rule->action));
+        $displayName = trim((string) Arr::get($data, 'display_name', (string) ($meta['display_name'] ?? '')));
 
         if ($ruleType === SiteFirewallRule::TYPE_COUNTRY) {
             $codes = collect(preg_split('/\r\n|\r|\n/', (string) Arr::get($data, 'countries_content', '')) ?: [])
@@ -326,6 +359,12 @@ class FirewallAccessControlService
         } else {
             unset($meta['targets'], $meta['content'], $meta['entry_count']);
         }
+
+        $meta['display_name'] = $displayName !== ''
+            ? $displayName
+            : ($ruleType === SiteFirewallRule::TYPE_COUNTRY && ! empty($meta['entry_count'])
+                ? $this->ruleSetLabel($ruleType, $action)
+                : $this->singleRuleLabel($ruleType, $target, $action));
 
         unset($meta['error'], $meta['provider_response']);
 
@@ -458,12 +497,14 @@ class FirewallAccessControlService
             SiteFirewallRule::TYPE_CONTINENT => 'Continent',
             SiteFirewallRule::TYPE_IP => 'IP',
             SiteFirewallRule::TYPE_CIDR => 'CIDR',
+            SiteFirewallRule::TYPE_ASN => 'ASN',
             default => 'Access',
         };
 
         $suffix = match (strtolower($action)) {
             SiteFirewallRule::ACTION_ALLOW => 'Allowlist',
             SiteFirewallRule::ACTION_CHALLENGE => 'Challenges',
+            SiteFirewallRule::ACTION_LOG => 'Logs',
             default => 'Blocks',
         };
 
