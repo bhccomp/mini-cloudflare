@@ -177,14 +177,14 @@
         }
 
         .fp-waf-page .fi-page-content .fi-wi-table > .fi-section {
-            background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
+            background: rgb(255 255 255);
             border: 1px solid rgba(15, 23, 42, 0.06);
             box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
         }
 
         .fp-waf-page .fi-page-content .fi-wi-table .fi-ta-ctn,
         .fp-waf-page .fi-page-content .fi-wi-table .fi-ta-content-ctn {
-            background: rgba(248, 250, 252, 0.82);
+            background: rgb(255 255 255);
             border-color: rgba(15, 23, 42, 0.06);
             box-shadow: none;
         }
