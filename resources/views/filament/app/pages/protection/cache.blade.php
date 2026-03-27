@@ -11,9 +11,6 @@
     @php($cacheExclusions = $this->cacheExclusions())
     @php($browserCacheLabel = $this->browserCacheTtlLabel())
     @php($queryStringLabel = $this->queryStringPolicyLabel())
-    @php($nextCacheMode = strtolower($cacheMode) === 'aggressive' ? 'Standard' : 'Aggressive')
-    @php($nextQueryStringPolicy = $this->queryStringPolicy() === 'include' ? 'Ignore query strings' : 'Include query strings')
-
     <style>
         .fp-setting-stack {
             display: grid;
@@ -27,6 +24,8 @@
             gap: 1rem;
             padding: 1rem 0;
             border-top: 1px solid rgba(15, 23, 42, 0.08);
+            position: relative;
+            z-index: 0;
         }
 
         .dark .fp-setting-row {
@@ -72,6 +71,8 @@
             gap: 0.75rem;
             flex: 0 0 auto;
             text-align: right;
+            position: relative;
+            z-index: 1;
         }
 
         .fp-setting-state {
@@ -85,6 +86,13 @@
             color: rgb(148 163 184);
         }
 
+        .fp-setting-action .fi-btn-group {
+            display: inline-flex;
+            flex-wrap: nowrap;
+            position: relative;
+            isolation: isolate;
+        }
+
         .fp-cache-layout {
             display: grid;
             gap: 1.5rem;
@@ -94,6 +102,21 @@
             display: grid;
             gap: 1.5rem;
             align-content: start;
+        }
+
+        .fp-cache-bypass-table th,
+        .fp-cache-bypass-table td {
+            padding-top: 0.9rem;
+            padding-bottom: 0.9rem;
+        }
+
+        .fp-cache-bypass-actions {
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .fp-cache-bypass-actions .fi-btn-group {
+            flex-wrap: nowrap;
         }
 
         @media (min-width: 1280px) {
@@ -133,44 +156,75 @@
                         :status-color="$developmentMode ? 'warning' : ($cacheEnabled ? 'success' : 'gray')"
                     >
                         <div class="fp-setting-stack">
-                            <div class="fp-setting-row">
+                            <div class="fp-setting-row" wire:key="cache-row-enabled">
                                 <div class="fp-setting-copy">
                                     <div class="fp-setting-label">Caching</div>
                                     <div class="fp-setting-description">Turn edge caching on or off for this site. This is the main cache switch for protected delivery.</div>
                                 </div>
-                                <div class="fp-setting-action">
-                                    <span class="fp-setting-state">{{ $cacheEnabled ? 'Enabled' : 'Disabled' }}</span>
-                                    <x-filament::button
-                                        color="{{ $cacheEnabled ? 'gray' : 'primary' }}"
-                                        wire:click="toggleCacheEnabled"
-                                        wire:loading.attr="disabled"
-                                        wire:target="toggleCacheEnabled"
-                                    >
-                                        {{ $cacheEnabled ? 'Disable' : 'Enable' }}
-                                    </x-filament::button>
+                                <div class="fp-setting-action" wire:key="cache-enabled-toggle">
+                                    <x-filament::button.group>
+                                        <x-filament::button
+                                            type="button"
+                                            size="xs"
+                                            wire:key="cache-enabled-true"
+                                            color="{{ $cacheEnabled ? 'primary' : 'gray' }}"
+                                            wire:click.prevent="setCacheEnabledState(true)"
+                                            wire:loading.attr="disabled"
+                                            wire:target="setCacheEnabledState"
+                                        >
+                                            Enabled
+                                        </x-filament::button>
+                                        <x-filament::button
+                                            type="button"
+                                            size="xs"
+                                            wire:key="cache-enabled-false"
+                                            color="{{ $cacheEnabled ? 'gray' : 'danger' }}"
+                                            wire:click.prevent="setCacheEnabledState(false)"
+                                            wire:loading.attr="disabled"
+                                            wire:target="setCacheEnabledState"
+                                        >
+                                            Disabled
+                                        </x-filament::button>
+                                    </x-filament::button.group>
                                 </div>
                             </div>
 
-                            <div class="fp-setting-row">
+                            <div class="fp-setting-row" wire:key="cache-row-mode">
                                 <div class="fp-setting-copy">
                                     <div class="fp-setting-label">Cache Mode</div>
                                     <div class="fp-setting-description">Choose how aggressively FirePhage should keep cached content at the edge before returning to origin.</div>
                                 </div>
-                                <div class="fp-setting-action">
-                                    <span class="fp-setting-state">{{ $cacheMode }}</span>
-                                    <x-filament::button
-                                        color="gray"
-                                        wire:click="toggleCacheMode"
-                                        wire:loading.attr="disabled"
-                                        wire:target="toggleCacheMode"
-                                        :disabled="! $cacheEnabled || $developmentMode"
-                                    >
-                                        Switch to {{ $nextCacheMode }}
-                                    </x-filament::button>
+                                <div class="fp-setting-action" wire:key="cache-mode-toggle">
+                                    <x-filament::button.group>
+                                        <x-filament::button
+                                            type="button"
+                                            size="xs"
+                                            wire:key="cache-mode-standard"
+                                            color="{{ strtolower($cacheMode) === 'standard' ? 'primary' : 'gray' }}"
+                                            wire:click.prevent="setCacheModeState('standard')"
+                                            wire:loading.attr="disabled"
+                                            wire:target="setCacheModeState"
+                                            :disabled="! $cacheEnabled || $developmentMode"
+                                        >
+                                            Standard
+                                        </x-filament::button>
+                                        <x-filament::button
+                                            type="button"
+                                            size="xs"
+                                            wire:key="cache-mode-aggressive"
+                                            color="{{ strtolower($cacheMode) === 'aggressive' ? 'danger' : 'gray' }}"
+                                            wire:click.prevent="setCacheModeState('aggressive')"
+                                            wire:loading.attr="disabled"
+                                            wire:target="setCacheModeState"
+                                            :disabled="! $cacheEnabled || $developmentMode"
+                                        >
+                                            Aggressive
+                                        </x-filament::button>
+                                    </x-filament::button.group>
                                 </div>
                             </div>
 
-                            <div class="fp-setting-row">
+                            <div class="fp-setting-row" wire:key="cache-row-query">
                                 <div class="fp-setting-copy">
                                     <div class="fp-setting-label">Browser Cache</div>
                                     <div class="fp-setting-description">Control how long visitor browsers keep assets locally before checking again with the edge.</div>
@@ -219,21 +273,37 @@
                                     <div class="fp-setting-label">Query Strings</div>
                                     <div class="fp-setting-description">Decide whether URLs with different query parameters should reuse the same cached response or be treated separately.</div>
                                 </div>
-                                <div class="fp-setting-action">
-                                    <span class="fp-setting-state">{{ $queryStringLabel }}</span>
-                                    <x-filament::button
-                                        color="gray"
-                                        wire:click="toggleQueryStringPolicy"
-                                        wire:loading.attr="disabled"
-                                        wire:target="toggleQueryStringPolicy"
-                                        :disabled="! $cacheEnabled || $developmentMode"
-                                    >
-                                        {{ $nextQueryStringPolicy }}
-                                    </x-filament::button>
+                                <div class="fp-setting-action" wire:key="query-string-toggle">
+                                    <x-filament::button.group>
+                                        <x-filament::button
+                                            type="button"
+                                            size="xs"
+                                            wire:key="query-policy-include"
+                                            color="{{ $this->queryStringPolicy() === 'include' ? 'primary' : 'gray' }}"
+                                            wire:click.prevent="setQueryStringPolicyState('include')"
+                                            wire:loading.attr="disabled"
+                                            wire:target="setQueryStringPolicyState"
+                                            :disabled="! $cacheEnabled || $developmentMode"
+                                        >
+                                            Include
+                                        </x-filament::button>
+                                        <x-filament::button
+                                            type="button"
+                                            size="xs"
+                                            wire:key="query-policy-ignore"
+                                            color="{{ $this->queryStringPolicy() === 'ignore' ? 'danger' : 'gray' }}"
+                                            wire:click.prevent="setQueryStringPolicyState('ignore')"
+                                            wire:loading.attr="disabled"
+                                            wire:target="setQueryStringPolicyState"
+                                            :disabled="! $cacheEnabled || $developmentMode"
+                                        >
+                                            Ignore
+                                        </x-filament::button>
+                                    </x-filament::button.group>
                                 </div>
                             </div>
 
-                            <div class="fp-setting-row">
+                            <div class="fp-setting-row" wire:key="cache-row-css">
                                 <div class="fp-setting-copy">
                                     <div class="fp-setting-label">Purge Cache</div>
                                     <div class="fp-setting-description">Flush cached content across the edge when you need content changes to appear immediately.</div>
@@ -271,55 +341,103 @@
                                     <div class="fp-setting-label">CSS Minification</div>
                                     <div class="fp-setting-description">Reduce CSS payload size at the edge to improve delivery without changing the origin files.</div>
                                 </div>
-                                <div class="fp-setting-action">
-                                    <span class="fp-setting-state">{{ $this->optimizerMinifyCssEnabled() ? 'Enabled' : 'Disabled' }}</span>
-                                    <x-filament::button
-                                        color="{{ $this->optimizerMinifyCssEnabled() ? 'gray' : 'primary' }}"
-                                        wire:click="toggleOptimizerMinifyCss"
-                                        wire:loading.attr="disabled"
-                                        wire:target="toggleOptimizerMinifyCss"
-                                        :disabled="$developmentMode"
-                                    >
-                                        {{ $this->optimizerMinifyCssEnabled() ? 'Disable' : 'Enable' }}
-                                    </x-filament::button>
+                                <div class="fp-setting-action" wire:key="optimizer-css-toggle">
+                                    <x-filament::button.group>
+                                        <x-filament::button
+                                            type="button"
+                                            size="xs"
+                                            wire:key="optimizer-css-true"
+                                            color="{{ $this->optimizerMinifyCssEnabled() ? 'primary' : 'gray' }}"
+                                            wire:click.prevent="setOptimizerMinifyCssState(true)"
+                                            wire:loading.attr="disabled"
+                                            wire:target="setOptimizerMinifyCssState"
+                                            :disabled="$developmentMode"
+                                        >
+                                            Enabled
+                                        </x-filament::button>
+                                        <x-filament::button
+                                            type="button"
+                                            size="xs"
+                                            wire:key="optimizer-css-false"
+                                            color="{{ $this->optimizerMinifyCssEnabled() ? 'gray' : 'danger' }}"
+                                            wire:click.prevent="setOptimizerMinifyCssState(false)"
+                                            wire:loading.attr="disabled"
+                                            wire:target="setOptimizerMinifyCssState"
+                                            :disabled="$developmentMode"
+                                        >
+                                            Disabled
+                                        </x-filament::button>
+                                    </x-filament::button.group>
                                 </div>
                             </div>
 
-                            <div class="fp-setting-row">
+                            <div class="fp-setting-row" wire:key="cache-row-js">
                                 <div class="fp-setting-copy">
                                     <div class="fp-setting-label">JavaScript Minification</div>
                                     <div class="fp-setting-description">Compress JavaScript responses at the edge for faster transfer while keeping the same origin assets.</div>
                                 </div>
-                                <div class="fp-setting-action">
-                                    <span class="fp-setting-state">{{ $this->optimizerMinifyJsEnabled() ? 'Enabled' : 'Disabled' }}</span>
-                                    <x-filament::button
-                                        color="{{ $this->optimizerMinifyJsEnabled() ? 'gray' : 'primary' }}"
-                                        wire:click="toggleOptimizerMinifyJs"
-                                        wire:loading.attr="disabled"
-                                        wire:target="toggleOptimizerMinifyJs"
-                                        :disabled="$developmentMode"
-                                    >
-                                        {{ $this->optimizerMinifyJsEnabled() ? 'Disable' : 'Enable' }}
-                                    </x-filament::button>
+                                <div class="fp-setting-action" wire:key="optimizer-js-toggle">
+                                    <x-filament::button.group>
+                                        <x-filament::button
+                                            type="button"
+                                            size="xs"
+                                            wire:key="optimizer-js-true"
+                                            color="{{ $this->optimizerMinifyJsEnabled() ? 'primary' : 'gray' }}"
+                                            wire:click.prevent="setOptimizerMinifyJsState(true)"
+                                            wire:loading.attr="disabled"
+                                            wire:target="setOptimizerMinifyJsState"
+                                            :disabled="$developmentMode"
+                                        >
+                                            Enabled
+                                        </x-filament::button>
+                                        <x-filament::button
+                                            type="button"
+                                            size="xs"
+                                            wire:key="optimizer-js-false"
+                                            color="{{ $this->optimizerMinifyJsEnabled() ? 'gray' : 'danger' }}"
+                                            wire:click.prevent="setOptimizerMinifyJsState(false)"
+                                            wire:loading.attr="disabled"
+                                            wire:target="setOptimizerMinifyJsState"
+                                            :disabled="$developmentMode"
+                                        >
+                                            Disabled
+                                        </x-filament::button>
+                                    </x-filament::button.group>
                                 </div>
                             </div>
 
-                            <div class="fp-setting-row">
+                            <div class="fp-setting-row" wire:key="cache-row-images">
                                 <div class="fp-setting-copy">
                                     <div class="fp-setting-label">Image Optimization</div>
                                     <div class="fp-setting-description">Let the edge optimize supported images automatically instead of always serving the raw origin files.</div>
                                 </div>
-                                <div class="fp-setting-action">
-                                    <span class="fp-setting-state">{{ $this->optimizerImagesEnabled() ? 'Enabled' : 'Disabled' }}</span>
-                                    <x-filament::button
-                                        color="{{ $this->optimizerImagesEnabled() ? 'gray' : 'primary' }}"
-                                        wire:click="toggleOptimizerImages"
-                                        wire:loading.attr="disabled"
-                                        wire:target="toggleOptimizerImages"
-                                        :disabled="$developmentMode"
-                                    >
-                                        {{ $this->optimizerImagesEnabled() ? 'Disable' : 'Enable' }}
-                                    </x-filament::button>
+                                <div class="fp-setting-action" wire:key="optimizer-images-toggle">
+                                    <x-filament::button.group>
+                                        <x-filament::button
+                                            type="button"
+                                            size="xs"
+                                            wire:key="optimizer-images-true"
+                                            color="{{ $this->optimizerImagesEnabled() ? 'primary' : 'gray' }}"
+                                            wire:click.prevent="setOptimizerImagesState(true)"
+                                            wire:loading.attr="disabled"
+                                            wire:target="setOptimizerImagesState"
+                                            :disabled="$developmentMode"
+                                        >
+                                            Enabled
+                                        </x-filament::button>
+                                        <x-filament::button
+                                            type="button"
+                                            size="xs"
+                                            wire:key="optimizer-images-false"
+                                            color="{{ $this->optimizerImagesEnabled() ? 'gray' : 'danger' }}"
+                                            wire:click.prevent="setOptimizerImagesState(false)"
+                                            wire:loading.attr="disabled"
+                                            wire:target="setOptimizerImagesState"
+                                            :disabled="$developmentMode"
+                                        >
+                                            Disabled
+                                        </x-filament::button>
+                                    </x-filament::button.group>
                                 </div>
                             </div>
                         </div>
@@ -333,12 +451,11 @@
                         status-color="primary"
                     >
                         <div class="fi-ta-content-ctn overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800">
-                            <table class="fi-ta-table w-full text-sm">
+                            <table class="fi-ta-table fp-cache-bypass-table w-full text-sm">
                                 <thead>
                                     <tr class="fi-ta-header-row">
                                         <th class="fi-ta-header-cell">Path</th>
                                         <th class="fi-ta-header-cell">Purpose</th>
-                                        <th class="fi-ta-header-cell">State</th>
                                         <th class="fi-ta-header-cell fi-align-end">Action</th>
                                     </tr>
                                 </thead>
@@ -347,21 +464,33 @@
                                         <tr class="fi-ta-row">
                                             <td class="fi-ta-cell font-mono">{{ $rule['path_pattern'] }}</td>
                                             <td class="fi-ta-cell">{{ $rule['reason'] !== '' ? $rule['reason'] : 'Managed WordPress bypass rule' }}</td>
-                                            <td class="fi-ta-cell">
-                                                <x-filament::badge :color="$rule['enabled'] ? 'success' : 'gray'">
-                                                    {{ $rule['enabled'] ? 'Enabled' : 'Disabled' }}
-                                                </x-filament::badge>
-                                            </td>
                                             <td class="fi-ta-cell fi-align-end">
-                                                <x-filament::button
-                                                    size="sm"
-                                                    color="{{ $rule['enabled'] ? 'gray' : 'primary' }}"
-                                                    wire:click="toggleCacheExclusion('{{ $rule['path_pattern'] }}')"
-                                                    wire:loading.attr="disabled"
-                                                    wire:target="toggleCacheExclusion('{{ $rule['path_pattern'] }}')"
-                                                >
-                                                    {{ $rule['enabled'] ? 'Disable' : 'Enable' }}
-                                                </x-filament::button>
+                                                <div class="fp-cache-bypass-actions" wire:key="cache-bypass-toggle-{{ md5($rule['path_pattern']) }}">
+                                                    <x-filament::button.group>
+                                                        <x-filament::button
+                                                            type="button"
+                                                            size="xs"
+                                                            wire:key="cache-bypass-{{ md5($rule['path_pattern']) }}-true"
+                                                            color="{{ $rule['enabled'] ? 'primary' : 'gray' }}"
+                                                            wire:click.prevent="setCacheExclusionState('{{ $rule['path_pattern'] }}', true)"
+                                                            wire:loading.attr="disabled"
+                                                            wire:target="setCacheExclusionState"
+                                                        >
+                                                            Enabled
+                                                        </x-filament::button>
+                                                        <x-filament::button
+                                                            type="button"
+                                                            size="xs"
+                                                            wire:key="cache-bypass-{{ md5($rule['path_pattern']) }}-false"
+                                                            color="{{ $rule['enabled'] ? 'gray' : 'danger' }}"
+                                                            wire:click.prevent="setCacheExclusionState('{{ $rule['path_pattern'] }}', false)"
+                                                            wire:loading.attr="disabled"
+                                                            wire:target="setCacheExclusionState"
+                                                        >
+                                                            Disabled
+                                                        </x-filament::button>
+                                                    </x-filament::button.group>
+                                                </div>
                                             </td>
                                         </tr>
                                     @endforeach
@@ -411,39 +540,69 @@
                         :status-color="$troubleshootingMode ? 'danger' : ($developmentMode ? 'warning' : 'success')"
                     >
                         <div class="fp-setting-stack">
-                            <div class="fp-setting-row">
+                            <div class="fp-setting-row" wire:key="cache-row-development">
                                 <div class="fp-setting-copy">
                                     <div class="fp-setting-label">Development Mode</div>
                                     <div class="fp-setting-description">Temporarily bypass cache and optimizer behavior while you test fresh origin responses and content changes.</div>
                                 </div>
-                                <div class="fp-setting-action">
-                                    <span class="fp-setting-state">{{ $developmentMode ? 'Enabled' : 'Disabled' }}</span>
-                                    <x-filament::button
-                                        color="{{ $developmentMode ? 'warning' : 'gray' }}"
-                                        wire:click="toggleDevelopmentMode"
-                                        wire:loading.attr="disabled"
-                                        wire:target="toggleDevelopmentMode"
-                                    >
-                                        {{ $developmentMode ? 'Disable Development Mode' : 'Enable Development Mode' }}
-                                    </x-filament::button>
+                                <div class="fp-setting-action" wire:key="development-mode-toggle">
+                                    <x-filament::button.group>
+                                        <x-filament::button
+                                            type="button"
+                                            size="xs"
+                                            wire:key="development-mode-true"
+                                            color="{{ $developmentMode ? 'warning' : 'gray' }}"
+                                            wire:click.prevent="setDevelopmentModeState(true)"
+                                            wire:loading.attr="disabled"
+                                            wire:target="setDevelopmentModeState"
+                                        >
+                                            Enabled
+                                        </x-filament::button>
+                                        <x-filament::button
+                                            type="button"
+                                            size="xs"
+                                            wire:key="development-mode-false"
+                                            color="{{ $developmentMode ? 'gray' : 'warning' }}"
+                                            wire:click.prevent="setDevelopmentModeState(false)"
+                                            wire:loading.attr="disabled"
+                                            wire:target="setDevelopmentModeState"
+                                        >
+                                            Disabled
+                                        </x-filament::button>
+                                    </x-filament::button.group>
                                 </div>
                             </div>
 
-                            <div class="fp-setting-row">
+                            <div class="fp-setting-row" wire:key="cache-row-troubleshooting">
                                 <div class="fp-setting-copy">
                                     <div class="fp-setting-label">Troubleshooting Mode</div>
                                     <div class="fp-setting-description">Use the broader debug mode when cache bypass alone is not enough and you need edge protection to stand down temporarily too.</div>
                                 </div>
-                                <div class="fp-setting-action">
-                                    <span class="fp-setting-state">{{ $troubleshootingMode ? 'Enabled' : 'Disabled' }}</span>
-                                    <x-filament::button
-                                        color="{{ $troubleshootingMode ? 'danger' : 'gray' }}"
-                                        wire:click="toggleTroubleshootingMode"
-                                        wire:loading.attr="disabled"
-                                        wire:target="toggleTroubleshootingMode"
-                                    >
-                                        {{ $troubleshootingMode ? 'Disable Troubleshooting Mode' : 'Enable Troubleshooting Mode' }}
-                                    </x-filament::button>
+                                <div class="fp-setting-action" wire:key="troubleshooting-mode-toggle">
+                                    <x-filament::button.group>
+                                        <x-filament::button
+                                            type="button"
+                                            size="xs"
+                                            wire:key="troubleshooting-mode-true"
+                                            color="{{ $troubleshootingMode ? 'danger' : 'gray' }}"
+                                            wire:click.prevent="setTroubleshootingModeState(true)"
+                                            wire:loading.attr="disabled"
+                                            wire:target="setTroubleshootingModeState"
+                                        >
+                                            Enabled
+                                        </x-filament::button>
+                                        <x-filament::button
+                                            type="button"
+                                            size="xs"
+                                            wire:key="troubleshooting-mode-false"
+                                            color="{{ $troubleshootingMode ? 'gray' : 'danger' }}"
+                                            wire:click.prevent="setTroubleshootingModeState(false)"
+                                            wire:loading.attr="disabled"
+                                            wire:target="setTroubleshootingModeState"
+                                        >
+                                            Disabled
+                                        </x-filament::button>
+                                    </x-filament::button.group>
                                 </div>
                             </div>
                         </div>

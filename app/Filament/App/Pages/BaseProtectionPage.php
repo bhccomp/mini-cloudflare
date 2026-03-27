@@ -477,6 +477,36 @@ abstract class BaseProtectionPage extends Page
         }
     }
 
+    public function setDevelopmentModeState(bool $enabled): void
+    {
+        if (! $this->site) {
+            return;
+        }
+
+        if ($this->isDevelopmentMode() === $enabled) {
+            return;
+        }
+
+        if (! $this->ensureNotDemoReadOnly('Development mode')) {
+            return;
+        }
+
+        if (! $this->throttle('toggle-development-mode')) {
+            return;
+        }
+
+        try {
+            (new ToggleDevelopmentModeJob($this->site->id, $enabled, auth()->id()))
+                ->handle(app(\App\Services\Edge\EdgeProviderManager::class));
+
+            $this->refreshSite();
+            $this->notify($enabled ? 'Development mode enabled' : 'Development mode disabled');
+        } catch (\Throwable $exception) {
+            report($exception);
+            $this->notify('Development mode update failed');
+        }
+    }
+
     public function toggleTroubleshootingMode(): void
     {
         if (! $this->site) {
@@ -497,6 +527,38 @@ abstract class BaseProtectionPage extends Page
 
             $this->refreshSite();
             $this->notify($this->isTroubleshootingMode()
+                ? 'Troubleshooting mode enabled'
+                : 'Troubleshooting mode disabled');
+        } catch (\Throwable $exception) {
+            report($exception);
+            $this->notify('Troubleshooting mode update failed');
+        }
+    }
+
+    public function setTroubleshootingModeState(bool $enabled): void
+    {
+        if (! $this->site) {
+            return;
+        }
+
+        if ($this->isTroubleshootingMode() === $enabled) {
+            return;
+        }
+
+        if (! $this->ensureNotDemoReadOnly('Troubleshooting mode')) {
+            return;
+        }
+
+        if (! $this->throttle('toggle-troubleshooting-mode')) {
+            return;
+        }
+
+        try {
+            (new ToggleTroubleshootingModeJob($this->site->id, $enabled, auth()->id()))
+                ->handle(app(\App\Services\Edge\EdgeProviderManager::class));
+
+            $this->refreshSite();
+            $this->notify($enabled
                 ? 'Troubleshooting mode enabled'
                 : 'Troubleshooting mode disabled');
         } catch (\Throwable $exception) {
@@ -606,6 +668,29 @@ abstract class BaseProtectionPage extends Page
         $this->notify('Cache mode saved');
     }
 
+    public function setCacheModeState(string $mode): void
+    {
+        if (! $this->site) {
+            return;
+        }
+
+        $mode = strtolower(trim($mode));
+
+        if (! in_array($mode, ['standard', 'aggressive'], true)) {
+            return;
+        }
+
+        if ($this->cacheMode() === $mode) {
+            return;
+        }
+
+        if (! $this->ensureNotDemoReadOnly('Cache mode')) {
+            return;
+        }
+
+        $this->applySiteControlImmediately('cache_mode', $mode, 'Cache mode saved');
+    }
+
     public function toggleCacheEnabled(): void
     {
         if (! $this->site) {
@@ -619,6 +704,23 @@ abstract class BaseProtectionPage extends Page
         $current = (bool) data_get($this->site->required_dns_records, 'control_panel.cache_enabled', true);
         ApplySiteControlSettingJob::dispatch($this->site->id, 'cache_enabled', ! $current, auth()->id());
         $this->notify(! $current ? 'Cache enabled' : 'Cache disabled');
+    }
+
+    public function setCacheEnabledState(bool $enabled): void
+    {
+        if (! $this->site) {
+            return;
+        }
+
+        if ($this->isCacheEnabled() === $enabled) {
+            return;
+        }
+
+        if (! $this->ensureNotDemoReadOnly('Cache settings')) {
+            return;
+        }
+
+        $this->applySiteControlImmediately('cache_enabled', $enabled, $enabled ? 'Cache enabled' : 'Cache disabled');
     }
 
     /**
@@ -659,6 +761,37 @@ abstract class BaseProtectionPage extends Page
 
         ApplySiteControlSettingJob::dispatch($this->site->id, 'cache_exclusions', $updated, auth()->id());
         $this->notify('Cache bypass rules saved');
+    }
+
+    public function setCacheExclusionState(string $pathPattern, bool $enabled): void
+    {
+        if (! $this->site) {
+            return;
+        }
+
+        if (! $this->ensureNotDemoReadOnly('Cache bypass rules')) {
+            return;
+        }
+
+        $pathPattern = trim($pathPattern);
+        if ($pathPattern === '') {
+            return;
+        }
+
+        $updated = collect($this->cacheExclusions())
+            ->map(function (array $row) use ($pathPattern, $enabled): array {
+                if ((string) ($row['path_pattern'] ?? '') !== $pathPattern) {
+                    return $row;
+                }
+
+                $row['enabled'] = $enabled;
+
+                return $row;
+            })
+            ->values()
+            ->all();
+
+        $this->applySiteControlImmediately('cache_exclusions', $updated, 'Cache bypass rules saved');
     }
 
     public function toggleOriginProtection(): void
@@ -942,6 +1075,29 @@ abstract class BaseProtectionPage extends Page
         $this->notify('Query string cache policy saved');
     }
 
+    public function setQueryStringPolicyState(string $policy): void
+    {
+        if (! $this->site) {
+            return;
+        }
+
+        $policy = strtolower(trim($policy));
+
+        if (! in_array($policy, ['include', 'ignore'], true)) {
+            return;
+        }
+
+        if ($this->queryStringPolicy() === $policy) {
+            return;
+        }
+
+        if (! $this->ensureNotDemoReadOnly('Query string policy')) {
+            return;
+        }
+
+        $this->applySiteControlImmediately('query_string_policy', $policy, 'Query string cache policy saved');
+    }
+
     public function optimizerMinifyCssEnabled(): bool
     {
         return (bool) data_get($this->site?->required_dns_records, 'control_panel.optimizer_minify_css', true);
@@ -971,6 +1127,23 @@ abstract class BaseProtectionPage extends Page
         $this->notify('CSS minification saved');
     }
 
+    public function setOptimizerMinifyCssState(bool $enabled): void
+    {
+        if (! $this->site) {
+            return;
+        }
+
+        if ($this->optimizerMinifyCssEnabled() === $enabled) {
+            return;
+        }
+
+        if (! $this->ensureNotDemoReadOnly('CSS optimization')) {
+            return;
+        }
+
+        $this->applySiteControlImmediately('optimizer_minify_css', $enabled, 'CSS minification saved');
+    }
+
     public function toggleOptimizerMinifyJs(): void
     {
         if (! $this->site) {
@@ -985,6 +1158,23 @@ abstract class BaseProtectionPage extends Page
         $this->notify('JavaScript minification saved');
     }
 
+    public function setOptimizerMinifyJsState(bool $enabled): void
+    {
+        if (! $this->site) {
+            return;
+        }
+
+        if ($this->optimizerMinifyJsEnabled() === $enabled) {
+            return;
+        }
+
+        if (! $this->ensureNotDemoReadOnly('JavaScript optimization')) {
+            return;
+        }
+
+        $this->applySiteControlImmediately('optimizer_minify_js', $enabled, 'JavaScript minification saved');
+    }
+
     public function toggleOptimizerImages(): void
     {
         if (! $this->site) {
@@ -997,6 +1187,23 @@ abstract class BaseProtectionPage extends Page
 
         ApplySiteControlSettingJob::dispatch($this->site->id, 'optimizer_images', ! $this->optimizerImagesEnabled(), auth()->id());
         $this->notify('Image optimization saved');
+    }
+
+    public function setOptimizerImagesState(bool $enabled): void
+    {
+        if (! $this->site) {
+            return;
+        }
+
+        if ($this->optimizerImagesEnabled() === $enabled) {
+            return;
+        }
+
+        if (! $this->ensureNotDemoReadOnly('Image optimization')) {
+            return;
+        }
+
+        $this->applySiteControlImmediately('optimizer_images', $enabled, 'Image optimization saved');
     }
 
     public function metricBlockedRequests(): string
