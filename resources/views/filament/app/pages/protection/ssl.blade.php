@@ -161,6 +161,24 @@
 
                             <div class="fp-setting-row">
                                 <div class="fp-setting-copy">
+                                    <div class="fp-setting-label">HTTPS Enforcement</div>
+                                    <div class="fp-setting-description">Redirects visitors to the secure HTTPS version of your site at the edge before content is served.</div>
+                                </div>
+                                <div class="fp-setting-action">
+                                    <span class="fp-setting-state">{{ $this->httpsEnforcementLabel() }}</span>
+                                    <x-filament::button
+                                        color="{{ $this->httpsEnforcementEnabled() ? 'warning' : 'gray' }}"
+                                        wire:click="toggleHttpsEnforcement"
+                                        wire:loading.attr="disabled"
+                                        wire:target="toggleHttpsEnforcement"
+                                    >
+                                        {{ $this->httpsEnforcementEnabled() ? 'Disable HTTPS Redirect' : 'Enable HTTPS Redirect' }}
+                                    </x-filament::button>
+                                </div>
+                            </div>
+
+                            <div class="fp-setting-row">
+                                <div class="fp-setting-copy">
                                     <div class="fp-setting-label">Origin Certificate Verification</div>
                                     <div class="fp-setting-description">When enabled, the edge requires a valid SSL certificate on your origin before it will fetch over HTTPS. When disabled, HTTPS to origin is still allowed, but certificate trust is relaxed.</div>
                                 </div>

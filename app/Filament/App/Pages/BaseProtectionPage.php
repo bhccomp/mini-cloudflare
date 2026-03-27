@@ -584,9 +584,11 @@ abstract class BaseProtectionPage extends Page
             return;
         }
 
-        $current = (bool) data_get($this->site->required_dns_records, 'control_panel.https_enforced', true);
-        ApplySiteControlSettingJob::dispatch($this->site->id, 'https_enforced', ! $current, auth()->id());
-        $this->notify('HTTPS policy saved');
+        $this->applySiteControlImmediately(
+            'https_enforced',
+            ! $this->httpsEnforcementEnabled(),
+            'HTTPS enforcement saved'
+        );
     }
 
     public function toggleCacheMode(): void
@@ -783,6 +785,22 @@ abstract class BaseProtectionPage extends Page
         return $this->originSslVerificationEnabled()
             ? 'Enabled'
             : 'Disabled';
+    }
+
+    public function httpsEnforcementLabel(): string
+    {
+        return $this->httpsEnforcementEnabled()
+            ? 'Enabled'
+            : 'Disabled';
+    }
+
+    public function httpsEnforcementEnabled(): bool
+    {
+        return (bool) data_get(
+            $this->site?->required_dns_records,
+            'control_panel.https_enforced',
+            data_get($this->site?->provider_meta, 'ssl.force_ssl_enabled', true)
+        );
     }
 
     public function originSslVerificationEnabled(): bool
@@ -1041,7 +1059,7 @@ abstract class BaseProtectionPage extends Page
             Str::startsWith($action, 'site.control.tls1_1_enabled') => 'TLS 1.1 compatibility',
             Str::startsWith($action, 'site.control.origin_ssl_verification') => 'Origin certificate verification',
             Str::startsWith($action, 'site.control.origin_lockdown') => 'Origin access policy',
-            Str::startsWith($action, 'site.control.https_enforced') => 'HTTPS policy',
+            Str::startsWith($action, 'site.control.https_enforced') => 'HTTPS enforcement',
             Str::startsWith($action, 'site.control.waf_preset') => 'WAF preset',
             default => Str::of($action)->replace('.', ' ')->title()->toString(),
         };

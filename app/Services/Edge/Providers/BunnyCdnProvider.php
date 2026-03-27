@@ -661,6 +661,7 @@ class BunnyCdnProvider implements EdgeProviderInterface
                     'certificate_status' => $certificateStatus !== '' ? $certificateStatus : 'pending',
                     'is_valid' => (bool) $active,
                     'has_certificate' => is_bool($hasCertificate) ? $hasCertificate : (bool) $active,
+                    'force_ssl' => (bool) Arr::get($row, 'ForceSSL', Arr::get($row, 'forceSSL', false)),
                 ];
             })
             ->values()
@@ -672,6 +673,14 @@ class BunnyCdnProvider implements EdgeProviderInterface
             'enable_tls1' => (bool) Arr::get($payload, 'EnableTLS1', false),
             'enable_tls1_1' => (bool) Arr::get($payload, 'EnableTLS1_1', false),
             'verify_origin_ssl' => (bool) Arr::get($payload, 'VerifyOriginSSL', false),
+            'force_ssl_enabled' => $trackedDetails !== [] && collect($trackedDetails)->every(fn (array $row): bool => (bool) ($row['force_ssl'] ?? false)),
+            'force_ssl_hostnames' => collect($trackedDetails)
+                ->map(fn (array $row): array => [
+                    'hostname' => (string) ($row['hostname'] ?? ''),
+                    'force_ssl' => (bool) ($row['force_ssl'] ?? false),
+                ])
+                ->values()
+                ->all(),
             'hostnames' => $trackedDetails,
             'checked_at' => now()->toIso8601String(),
         ]);
@@ -862,7 +871,10 @@ class BunnyCdnProvider implements EdgeProviderInterface
             'origin_ssl_verification' => $this->applySslControls($site, array_merge($controls, [
                 'origin_ssl_verification' => (bool) $value,
             ]), 'Origin certificate verification updated.'),
-            'https_enforced', 'origin_lockdown', 'waf_preset' => $this->storeControlPanelOnly($site, array_merge($controls, [
+            'https_enforced' => $this->applyHttpsEnforcement($site, array_merge($controls, [
+                'https_enforced' => (bool) $value,
+            ]), 'HTTPS enforcement updated.'),
+            'origin_lockdown', 'waf_preset' => $this->storeControlPanelOnly($site, array_merge($controls, [
                 $normalized => $value,
             ]), "Control [{$normalized}] was saved, but this provider does not enforce it yet."),
             default => [
@@ -1148,12 +1160,63 @@ class BunnyCdnProvider implements EdgeProviderInterface
                 'enable_tls1' => (bool) Arr::get($freshZone, 'EnableTLS1', false),
                 'enable_tls1_1' => (bool) Arr::get($freshZone, 'EnableTLS1_1', false),
                 'verify_origin_ssl' => (bool) Arr::get($freshZone, 'VerifyOriginSSL', false),
+                'force_ssl_enabled' => $this->allTrackedHostnamesForceSsl($site, $freshZone),
+                'force_ssl_hostnames' => $this->trackedHostnameForceSslStates($site, $freshZone),
             ],
             'zone_settings' => [
                 'EnableAutoSSL' => (bool) Arr::get($freshZone, 'EnableAutoSSL', true),
                 'EnableTLS1' => (bool) Arr::get($freshZone, 'EnableTLS1', false),
                 'EnableTLS1_1' => (bool) Arr::get($freshZone, 'EnableTLS1_1', false),
                 'VerifyOriginSSL' => (bool) Arr::get($freshZone, 'VerifyOriginSSL', false),
+            ],
+        ], $message);
+    }
+
+    /**
+     * @param  array{
+     *   cache_enabled:bool,
+     *   cache_mode:string,
+     *   https_enforced:bool,
+     *   origin_lockdown:bool,
+     *   waf_preset:string,
+     *   cache_exclusions:array<int, array{path_pattern:string,reason:string,enabled:bool}>,
+     *   browser_cache_ttl:int,
+     *   query_string_policy:string,
+     *   optimizer_minify_css:bool,
+     *   optimizer_minify_js:bool,
+     *   optimizer_images:bool,
+     *   tls1_enabled:bool,
+     *   tls1_1_enabled:bool,
+     *   origin_ssl_verification:bool
+     * }  $controls
+     * @return array<string,mixed>
+     */
+    protected function applyHttpsEnforcement(Site $site, array $controls, string $message): array
+    {
+        $zoneId = (int) ($site->provider_resource_id ?: data_get($site->provider_meta, 'zone_id', 0));
+
+        if ($zoneId <= 0) {
+            return $this->storeControlPanelOnly($site, $controls, 'HTTPS enforcement was saved. It will apply after edge provisioning finishes.');
+        }
+
+        $targetEnabled = (bool) ($controls['https_enforced'] ?? true);
+
+        foreach ($this->trackedHostnamesForSite($site) as $hostname) {
+            $this->client()->post("/pullzone/{$zoneId}/setForceSSL", [
+                'Hostname' => $hostname,
+                'ForceSSL' => $targetEnabled,
+            ])->throw();
+        }
+
+        $freshZone = (array) $this->client()->get("/pullzone/{$zoneId}")->throw()->json();
+
+        return $this->persistControlPanelState($site, $controls, [
+            'ssl' => [
+                'force_ssl_enabled' => $this->allTrackedHostnamesForceSsl($site, $freshZone),
+                'force_ssl_hostnames' => $this->trackedHostnameForceSslStates($site, $freshZone),
+            ],
+            'zone_settings' => [
+                'ForceSSL' => $this->allTrackedHostnamesForceSsl($site, $freshZone),
             ],
         ], $message);
     }
@@ -1175,6 +1238,56 @@ class BunnyCdnProvider implements EdgeProviderInterface
             ->filter(fn (array $row): bool => $row['path_pattern'] !== '')
             ->values()
             ->all();
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function trackedHostnamesForSite(Site $site): array
+    {
+        return collect([
+            strtolower((string) $site->apex_domain),
+            strtolower((string) ($site->www_enabled ? $site->www_domain : '')),
+        ])
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<string,mixed>  $zone
+     * @return list<array{hostname:string,force_ssl:bool}>
+     */
+    protected function trackedHostnameForceSslStates(Site $site, array $zone): array
+    {
+        $tracked = $this->trackedHostnamesForSite($site);
+
+        return collect((array) Arr::get($zone, 'Hostnames', []))
+            ->map(function (array $row): array {
+                return [
+                    'hostname' => strtolower((string) Arr::get($row, 'Value', Arr::get($row, 'Hostname', ''))),
+                    'force_ssl' => (bool) Arr::get($row, 'ForceSSL', false),
+                ];
+            })
+            ->filter(fn (array $row): bool => $row['hostname'] !== '' && in_array($row['hostname'], $tracked, true))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<string,mixed>  $zone
+     */
+    protected function allTrackedHostnamesForceSsl(Site $site, array $zone): bool
+    {
+        $states = $this->trackedHostnameForceSslStates($site, $zone);
+        $tracked = $this->trackedHostnamesForSite($site);
+
+        if ($tracked === [] || $states === [] || count($states) < count($tracked)) {
+            return false;
+        }
+
+        return collect($states)->every(fn (array $row): bool => (bool) ($row['force_ssl'] ?? false));
     }
 
     /**

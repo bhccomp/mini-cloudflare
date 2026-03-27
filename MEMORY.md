@@ -32,12 +32,18 @@
     - `tls1_1_enabled`
   - origin certificate verification is now a real Bunny-backed control using:
     - `VerifyOriginSSL`
+  - visitor-side HTTPS enforcement is now a real Bunny-backed control using:
+    - `POST /pullzone/{id}/setForceSSL`
+    - FirePhage applies it per tracked hostname on the site
+    - live state is persisted under:
+      - `provider_meta.ssl.force_ssl_enabled`
+      - `provider_meta.ssl.force_ssl_hostnames`
   - SSL-specific controls were changed to apply immediately in-process instead of waiting on the queued site-control job, so the page reflects TLS/strict-origin changes without multiple manual refreshes
-- Current SSL limitation still remaining:
-  - visitor-side HTTPS enforcement is still not truly implemented on Bunny because the exact redirect/enforcement field/path has not been confirmed yet
 - Practical note from testing on `nodesfoundry.com`:
   - Bunny may return `certificate_status = pending` while also reporting `has_certificate = true` and `is_valid = true`
   - UI should treat that as effectively active instead of blindly surfacing raw `pending`
+  - live HTTPS enforcement was verified on `nodesfoundry.com`:
+    - both `nodesfoundry.com` and `www.nodesfoundry.com` returned `ForceSSL = true`
 
 ## Bunny Global Defaults + WordPress Edge Safeguards (Latest)
 - Added an admin-only hidden defaults surface for Bunny-backed sites:
