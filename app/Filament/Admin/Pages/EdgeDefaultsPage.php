@@ -55,7 +55,7 @@ class EdgeDefaultsPage extends Page implements HasForms
         return $schema
             ->schema([
                 Section::make('Global Cache Exclusions')
-                    ->description('Admin-only defaults for paths that should bypass cache and optimization. These are stored centrally now and are ready for edge-rule rollout.')
+                    ->description('Admin-only default templates for paths that should bypass cache and optimization on new Bunny-backed sites. Site-level cache settings can override these defaults later.')
                     ->schema([
                         Repeater::make('cache_exclusions')
                             ->addActionLabel('Add exclusion')
@@ -154,6 +154,17 @@ class EdgeDefaultsPage extends Page implements HasForms
         foreach ($sites as $site) {
             try {
                 $service->syncSecurityDefaults($site);
+                $required = is_array($site->required_dns_records) ? $site->required_dns_records : [];
+                $meta = is_array($site->provider_meta) ? $site->provider_meta : [];
+                $hasCustomCacheExclusions = data_get($required, 'control_panel.cache_exclusions') !== null
+                    || data_get($meta, 'control_panel.cache_exclusions') !== null;
+
+                if (! $hasCustomCacheExclusions) {
+                    app(\App\Services\Edge\EdgeProviderManager::class)
+                        ->forSite($site)
+                        ->applySiteControlSetting($site, 'cache_exclusions', $service->cacheExclusionsForSite($site));
+                }
+
                 $applied++;
             } catch (\Throwable $e) {
                 report($e);
@@ -161,7 +172,7 @@ class EdgeDefaultsPage extends Page implements HasForms
         }
 
         Notification::make()
-            ->title("Applied hidden security defaults to {$applied} Bunny site(s).")
+            ->title("Applied default security and cache templates to {$applied} Bunny site(s).")
             ->success()
             ->send();
     }

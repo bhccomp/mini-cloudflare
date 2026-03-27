@@ -12,6 +12,7 @@ use App\Services\Billing\OrganizationEntitlementService;
 use App\Services\Edge\EdgeProviderInterface;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Symfony\Component\Process\Process;
@@ -116,6 +117,7 @@ class BunnyCdnProvider implements EdgeProviderInterface
             }
 
             app(BunnyGlobalDefaultsService::class)->syncSecurityDefaults($site);
+            $this->syncManagedCacheExclusions($site);
         } catch (\Throwable $e) {
             $shieldMessage = $e->getMessage();
             $shieldPlanStatus = 'failed';
@@ -791,6 +793,13 @@ class BunnyCdnProvider implements EdgeProviderInterface
             'cache_mode' => $this->applyCacheControls($site, array_merge($controls, [
                 'cache_mode' => $this->normalizeCacheMode((string) $value),
             ]), 'Cache mode updated.'),
+            'cache_exclusions' => $this->applyManagedCacheExclusions(
+                $site,
+                array_merge($controls, [
+                    'cache_exclusions' => $this->normalizeCacheExclusions((array) $value),
+                ]),
+                'WordPress cache bypass rules updated.'
+            ),
             'https_enforced', 'origin_lockdown', 'waf_preset' => $this->storeControlPanelOnly($site, array_merge($controls, [
                 $normalized => $value,
             ]), "Control [{$normalized}] was saved, but this provider does not enforce it yet."),
@@ -941,12 +950,13 @@ class BunnyCdnProvider implements EdgeProviderInterface
     }
 
     /**
-     * @return array{cache_enabled:bool,cache_mode:string,https_enforced:bool,origin_lockdown:bool,waf_preset:string}
+     * @return array{cache_enabled:bool,cache_mode:string,https_enforced:bool,origin_lockdown:bool,waf_preset:string,cache_exclusions:array<int, array{path_pattern:string,reason:string,enabled:bool}>}
      */
     protected function controlPanelState(Site $site): array
     {
         $required = is_array($site->required_dns_records) ? $site->required_dns_records : [];
         $meta = is_array($site->provider_meta) ? $site->provider_meta : [];
+        $defaultCacheExclusions = app(BunnyGlobalDefaultsService::class)->cacheExclusionsForSite($site);
 
         $controls = array_merge(
             [
@@ -955,6 +965,7 @@ class BunnyCdnProvider implements EdgeProviderInterface
                 'https_enforced' => true,
                 'origin_lockdown' => false,
                 'waf_preset' => 'baseline',
+                'cache_exclusions' => $defaultCacheExclusions,
             ],
             (array) data_get($required, 'control_panel', []),
             (array) data_get($meta, 'control_panel', [])
@@ -967,6 +978,7 @@ class BunnyCdnProvider implements EdgeProviderInterface
         $controls['waf_preset'] = in_array((string) ($controls['waf_preset'] ?? 'baseline'), ['baseline', 'strict'], true)
             ? (string) $controls['waf_preset']
             : 'baseline';
+        $controls['cache_exclusions'] = $this->normalizeCacheExclusions((array) ($controls['cache_exclusions'] ?? $defaultCacheExclusions));
 
         return $controls;
     }
@@ -977,7 +989,26 @@ class BunnyCdnProvider implements EdgeProviderInterface
     }
 
     /**
-     * @param  array{cache_enabled:bool,cache_mode:string,https_enforced:bool,origin_lockdown:bool,waf_preset:string}  $controls
+     * @param  array<int, array<string, mixed>>  $rules
+     * @return array<int, array{path_pattern:string,reason:string,enabled:bool}>
+     */
+    protected function normalizeCacheExclusions(array $rules): array
+    {
+        return collect($rules)
+            ->map(function (array $row): array {
+                return [
+                    'path_pattern' => trim((string) ($row['path_pattern'] ?? '')),
+                    'reason' => trim((string) ($row['reason'] ?? '')),
+                    'enabled' => (bool) ($row['enabled'] ?? true),
+                ];
+            })
+            ->filter(fn (array $row): bool => $row['path_pattern'] !== '')
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array{cache_enabled:bool,cache_mode:string,https_enforced:bool,origin_lockdown:bool,waf_preset:string,cache_exclusions:array<int, array{path_pattern:string,reason:string,enabled:bool}>}  $controls
      * @return array<string,mixed>
      */
     protected function applyCacheControls(Site $site, array $controls, string $message): array
@@ -1043,7 +1074,118 @@ class BunnyCdnProvider implements EdgeProviderInterface
     }
 
     /**
-     * @param  array{cache_enabled:bool,cache_mode:string,https_enforced:bool,origin_lockdown:bool,waf_preset:string}  $controls
+     * @param  array{cache_enabled:bool,cache_mode:string,https_enforced:bool,origin_lockdown:bool,waf_preset:string,cache_exclusions:array<int, array{path_pattern:string,reason:string,enabled:bool}>}  $controls
+     * @return array<string,mixed>
+     */
+    protected function applyManagedCacheExclusions(Site $site, array $controls, string $message): array
+    {
+        $sync = $this->syncManagedCacheExclusions($site, $controls['cache_exclusions'] ?? []);
+
+        return $this->persistControlPanelState($site, $controls, [
+            'cache_exclusion_rules' => [
+                'count' => (int) ($sync['count'] ?? 0),
+                'rules' => (array) ($sync['rules'] ?? []),
+            ],
+        ], $message, (bool) ($sync['changed'] ?? true));
+    }
+
+    /**
+     * @param  array<int, array{path_pattern:string,reason:string,enabled:bool}>|null  $rules
+     * @return array{changed:bool,count:int,rules:array<int,array<string,mixed>>}
+     */
+    protected function syncManagedCacheExclusions(Site $site, ?array $rules = null): array
+    {
+        $zoneId = (int) ($site->provider_resource_id ?: data_get($site->provider_meta, 'zone_id', 0));
+
+        if ($zoneId <= 0) {
+            return [
+                'changed' => false,
+                'count' => 0,
+                'rules' => [],
+            ];
+        }
+
+        $desiredRules = $this->normalizeCacheExclusions($rules ?? $this->controlPanelState($site)['cache_exclusions']);
+        $zone = (array) $this->client()->get("/pullzone/{$zoneId}")->throw()->json();
+        $existingRules = collect((array) Arr::get($zone, 'EdgeRules', []));
+        $managedRules = $existingRules
+            ->filter(fn (array $row): bool => $this->isManagedCacheExclusionRule($row))
+            ->values();
+
+        foreach ($managedRules as $row) {
+            $ruleId = (string) ($row['Guid'] ?? $row['Id'] ?? '');
+
+            if ($ruleId !== '') {
+                $this->client()->delete("/pullzone/{$zoneId}/edgerules/{$ruleId}")->throw();
+            }
+        }
+
+        $created = [];
+        $orderIndex = 0;
+
+        foreach (collect($desiredRules)->where('enabled', true)->values() as $rule) {
+            $payload = $this->buildCacheExclusionEdgeRulePayload($rule, $orderIndex++);
+
+            $this->client()
+                ->post("/pullzone/{$zoneId}/edgerules/addOrUpdate", $payload)
+                ->throw();
+
+            $created[] = [
+                'path_pattern' => (string) $rule['path_pattern'],
+                'reason' => (string) $rule['reason'],
+                'enabled' => true,
+            ];
+        }
+
+        return [
+            'changed' => true,
+            'count' => count($created),
+            'rules' => $created,
+        ];
+    }
+
+    protected function isManagedCacheExclusionRule(array $rule): bool
+    {
+        $description = (string) ($rule['Description'] ?? '');
+
+        return Str::startsWith($description, '[FP_CACHE_EXCLUSION]');
+    }
+
+    /**
+     * @param  array{path_pattern:string,reason:string,enabled:bool}  $rule
+     * @return array<string,mixed>
+     */
+    protected function buildCacheExclusionEdgeRulePayload(array $rule, int $orderIndex): array
+    {
+        $description = trim('[FP_CACHE_EXCLUSION] '.($rule['reason'] !== '' ? $rule['reason'] : $rule['path_pattern']));
+
+        return [
+            'Guid' => null,
+            'ActionType' => 3,
+            'ActionParameter1' => '0',
+            'ActionParameter2' => null,
+            'ActionParameter3' => null,
+            'Triggers' => [[
+                'Type' => 0,
+                'PatternMatches' => [(string) $rule['path_pattern']],
+                'PatternMatchingType' => 0,
+                'Parameter1' => null,
+            ]],
+            'ExtraActions' => [[
+                'ActionType' => 12,
+                'ActionParameter1' => null,
+                'ActionParameter2' => null,
+                'ActionParameter3' => null,
+            ]],
+            'TriggerMatchingType' => 0,
+            'Description' => $description,
+            'Enabled' => true,
+            'OrderIndex' => $orderIndex,
+        ];
+    }
+
+    /**
+     * @param  array{cache_enabled:bool,cache_mode:string,https_enforced:bool,origin_lockdown:bool,waf_preset:string,cache_exclusions:array<int, array{path_pattern:string,reason:string,enabled:bool}>}  $controls
      * @return array<string,mixed>
      */
     protected function storeControlPanelOnly(Site $site, array $controls, string $message): array
@@ -1052,7 +1194,7 @@ class BunnyCdnProvider implements EdgeProviderInterface
     }
 
     /**
-     * @param  array{cache_enabled:bool,cache_mode:string,https_enforced:bool,origin_lockdown:bool,waf_preset:string}  $controls
+     * @param  array{cache_enabled:bool,cache_mode:string,https_enforced:bool,origin_lockdown:bool,waf_preset:string,cache_exclusions:array<int, array{path_pattern:string,reason:string,enabled:bool}>}  $controls
      * @param  array<string,mixed>  $providerMetaUpdates
      * @return array<string,mixed>
      */

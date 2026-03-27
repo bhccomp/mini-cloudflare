@@ -558,6 +558,46 @@ abstract class BaseProtectionPage extends Page
         $this->notify(! $current ? 'Cache enabled' : 'Cache disabled');
     }
 
+    /**
+     * @return array<int, array{path_pattern:string,reason:string,enabled:bool}>
+     */
+    public function cacheExclusions(): array
+    {
+        return app(\App\Services\Bunny\BunnyGlobalDefaultsService::class)->cacheExclusionsForSite($this->site);
+    }
+
+    public function toggleCacheExclusion(string $pathPattern): void
+    {
+        if (! $this->site) {
+            return;
+        }
+
+        if (! $this->ensureNotDemoReadOnly('Cache bypass rules')) {
+            return;
+        }
+
+        $pathPattern = trim($pathPattern);
+        if ($pathPattern === '') {
+            return;
+        }
+
+        $updated = collect($this->cacheExclusions())
+            ->map(function (array $row) use ($pathPattern): array {
+                if ((string) ($row['path_pattern'] ?? '') !== $pathPattern) {
+                    return $row;
+                }
+
+                $row['enabled'] = ! (bool) ($row['enabled'] ?? false);
+
+                return $row;
+            })
+            ->values()
+            ->all();
+
+        ApplySiteControlSettingJob::dispatch($this->site->id, 'cache_exclusions', $updated, auth()->id());
+        $this->notify('Cache bypass rules saved');
+    }
+
     public function toggleOriginProtection(): void
     {
         if (! $this->site) {

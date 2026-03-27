@@ -8,6 +8,7 @@
     @php($cacheMode = ucfirst($this->cacheMode()))
     @php($developmentMode = $this->isDevelopmentMode())
     @php($troubleshootingMode = $this->isTroubleshootingMode())
+    @php($cacheExclusions = $this->cacheExclusions())
 
     <div class="fp-protection-shell">
         @if (! $this->site)
@@ -100,6 +101,51 @@
                     </x-slot>
                 </x-filament.app.settings.card>
             </div>
+
+            <x-filament.app.settings.card
+                title="WordPress Cache Bypass"
+                description="These path rules keep sensitive WordPress traffic uncached and unoptimized at the edge. Admin defaults seed new sites, but this site can change them here."
+                icon="heroicon-o-shield-exclamation"
+                :status="collect($cacheExclusions)->where('enabled', true)->count().' active'"
+                status-color="primary"
+            >
+                <div class="fi-ta-content-ctn overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800">
+                    <table class="fi-ta-table w-full text-sm">
+                        <thead>
+                            <tr class="fi-ta-header-row">
+                                <th class="fi-ta-header-cell">Path</th>
+                                <th class="fi-ta-header-cell">Purpose</th>
+                                <th class="fi-ta-header-cell">State</th>
+                                <th class="fi-ta-header-cell fi-align-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($cacheExclusions as $rule)
+                                <tr class="fi-ta-row">
+                                    <td class="fi-ta-cell font-mono">{{ $rule['path_pattern'] }}</td>
+                                    <td class="fi-ta-cell">{{ $rule['reason'] !== '' ? $rule['reason'] : 'Managed WordPress bypass rule' }}</td>
+                                    <td class="fi-ta-cell">
+                                        <x-filament::badge :color="$rule['enabled'] ? 'success' : 'gray'">
+                                            {{ $rule['enabled'] ? 'Enabled' : 'Disabled' }}
+                                        </x-filament::badge>
+                                    </td>
+                                    <td class="fi-ta-cell fi-align-end">
+                                        <x-filament::button
+                                            size="sm"
+                                            color="{{ $rule['enabled'] ? 'gray' : 'primary' }}"
+                                            wire:click="toggleCacheExclusion('{{ $rule['path_pattern'] }}')"
+                                            wire:loading.attr="disabled"
+                                            wire:target="toggleCacheExclusion('{{ $rule['path_pattern'] }}')"
+                                        >
+                                            {{ $rule['enabled'] ? 'Disable' : 'Enable' }}
+                                        </x-filament::button>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </x-filament.app.settings.card>
 
             @if ($this->isSimpleMode())
                 <x-filament::section heading="Need More Cache Detail?" icon="heroicon-o-adjustments-horizontal">

@@ -93,6 +93,40 @@ class BunnyGlobalDefaultsService
     }
 
     /**
+     * @return array<int, array{path_pattern:string,reason:string,enabled:bool}>
+     */
+    public function activeCacheExclusions(): array
+    {
+        return collect($this->defaults()['cache_exclusions'])
+            ->where('enabled', true)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int, array{path_pattern:string,reason:string,enabled:bool}>
+     */
+    public function cacheExclusionsForSite(?Site $site): array
+    {
+        $defaults = $this->defaults()['cache_exclusions'];
+
+        if (! $site) {
+            return $defaults;
+        }
+
+        $required = is_array($site->required_dns_records) ? $site->required_dns_records : [];
+        $meta = is_array($site->provider_meta) ? $site->provider_meta : [];
+
+        $siteRules = (array) data_get($required, 'control_panel.cache_exclusions', data_get($meta, 'control_panel.cache_exclusions', []));
+
+        if ($siteRules === []) {
+            return $defaults;
+        }
+
+        return $this->normalizeCacheExclusions($siteRules);
+    }
+
+    /**
      * @param  array<int, array<string, mixed>>  $rows
      * @return array<int, array<string, mixed>>
      */
