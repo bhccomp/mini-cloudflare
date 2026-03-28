@@ -65,6 +65,8 @@ class FirewallAccessControlPage extends BaseProtectionPage implements HasForms
 
     public bool $advancedWafAvailable = false;
 
+    public bool $wafStateLoaded = false;
+
     /**
      * @var array<string, string>
      */
@@ -80,6 +82,8 @@ class FirewallAccessControlPage extends BaseProtectionPage implements HasForms
         parent::mount($request, $siteContext, $uiMode);
 
         $this->syncOptions();
+        $this->advancedWafAvailable = $this->hasAdvancedWafSupport();
+        $this->botData = $this->initialBotData();
 
         $policy = $this->policyFlags();
         $this->form->fill([
@@ -107,8 +111,6 @@ class FirewallAccessControlPage extends BaseProtectionPage implements HasForms
         if ($this->site) {
             app(FirewallAccessControlService::class)->expireTemporaryRules($this->site, (int) auth()->id());
         }
-
-        $this->reloadWafState();
     }
 
     public function form(Schema $schema): Schema
@@ -587,11 +589,10 @@ class FirewallAccessControlPage extends BaseProtectionPage implements HasForms
 
             $this->wafMetrics = $service->overviewMetrics($this->site);
             $this->botMetrics = $service->botDetectionMetrics($this->site);
-            $this->wafEventLogs = $service->eventLogs($this->site);
-            $this->wafTriggeredRules = $service->triggeredRules($this->site);
             $this->customWafRules = $service->customRules($this->site);
             $this->syncAdvancedRuleRecords();
             $this->advancedWafAvailable = $this->hasAdvancedWafSupport();
+            $this->wafStateLoaded = true;
         } catch (Throwable $exception) {
             report($exception);
 
@@ -601,6 +602,15 @@ class FirewallAccessControlPage extends BaseProtectionPage implements HasForms
                 ->warning()
                 ->send();
         }
+    }
+
+    public function loadDeferredWafState(): void
+    {
+        if ($this->wafStateLoaded) {
+            return;
+        }
+
+        $this->reloadWafState();
     }
 
     public function botSensitivityOptions(): array
@@ -630,6 +640,23 @@ class FirewallAccessControlPage extends BaseProtectionPage implements HasForms
         }
 
         return (bool) ($meta['shield_premium_plan'] ?? false);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function initialBotData(): array
+    {
+        $saved = is_array($this->site?->provider_meta) ? (array) data_get($this->site?->provider_meta, 'bot_detection', []) : [];
+
+        return [
+            'enabled' => (bool) ($saved['enabled'] ?? false),
+            'request_integrity_sensitivity' => (int) ($saved['request_integrity_sensitivity'] ?? 1),
+            'ip_reputation_sensitivity' => (int) ($saved['ip_reputation_sensitivity'] ?? 1),
+            'browser_fingerprint_sensitivity' => (int) ($saved['browser_fingerprint_sensitivity'] ?? 1),
+            'browser_fingerprint_aggression' => (int) ($saved['browser_fingerprint_aggression'] ?? 1),
+            'complex_fingerprinting' => (bool) ($saved['complex_fingerprinting'] ?? false),
+        ];
     }
 
     protected function syncAdvancedRuleRecords(): void
@@ -810,7 +837,7 @@ class FirewallAccessControlPage extends BaseProtectionPage implements HasForms
         }
 
         try {
-            app(BunnyShieldWafService::class)->deleteCustomRule($ruleId);
+            app(BunnyShieldWafService::class)->deleteCustomRule($this->site, $ruleId);
             SiteFirewallRule::query()
                 ->where('site_id', $this->site->id)
                 ->where('rule_type', SiteFirewallRule::TYPE_ADVANCED)

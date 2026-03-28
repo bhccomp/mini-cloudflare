@@ -6,6 +6,7 @@ use App\Models\Site;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 
 class BunnyShieldAccessListService
 {
@@ -176,26 +177,28 @@ class BunnyShieldAccessListService
      */
     public function countries(): array
     {
-        foreach (['/countries', '/country/list', '/country'] as $endpoint) {
-            try {
-                $response = $this->api->client()->get($endpoint);
+        return Cache::remember('bunny:shield:countries', now()->addDay(), function (): array {
+            foreach (['/countries', '/country/list', '/country'] as $endpoint) {
+                try {
+                    $response = $this->api->client()->get($endpoint);
 
-                if (! $response->successful()) {
-                    continue;
+                    if (! $response->successful()) {
+                        continue;
+                    }
+
+                    $mapped = $this->mapCountriesFromPayload($response->json());
+                    if ($mapped !== []) {
+                        asort($mapped);
+
+                        return $mapped;
+                    }
+                } catch (\Throwable) {
+                    // Ignore API/runtime errors and use local fallback.
                 }
-
-                $mapped = $this->mapCountriesFromPayload($response->json());
-                if ($mapped !== []) {
-                    asort($mapped);
-
-                    return $mapped;
-                }
-            } catch (\Throwable) {
-                // Ignore API/runtime errors and use local fallback.
             }
-        }
 
-        return $this->fallbackCountries();
+            return $this->fallbackCountries();
+        });
     }
 
     /**
@@ -203,43 +206,45 @@ class BunnyShieldAccessListService
      */
     public function continentCountries(): array
     {
-        foreach (['/region/list', '/region'] as $endpoint) {
-            $response = $this->api->client()->get($endpoint);
+        return Cache::remember('bunny:shield:continent-countries', now()->addDay(), function (): array {
+            foreach (['/region/list', '/region'] as $endpoint) {
+                $response = $this->api->client()->get($endpoint);
 
-            if (! $response->successful()) {
-                continue;
-            }
-
-            $rows = $this->extractRows($response->json());
-            if ($rows === []) {
-                continue;
-            }
-
-            /** @var array<string, array<int, string>> $map */
-            $map = [];
-
-            foreach ($rows as $row) {
-                $continent = strtoupper((string) (Arr::get($row, 'ContinentCode') ?? Arr::get($row, 'continentCode') ?? ''));
-                $country = strtoupper((string) (Arr::get($row, 'CountryCode') ?? Arr::get($row, 'countryCode') ?? ''));
-
-                if ($continent === '' || $country === '' || strlen($continent) > 2 || strlen($country) !== 2) {
+                if (! $response->successful()) {
                     continue;
                 }
 
-                $map[$continent] ??= [];
-                $map[$continent][] = $country;
-            }
-
-            if ($map !== []) {
-                foreach ($map as $key => $codes) {
-                    $map[$key] = array_values(array_unique($codes));
+                $rows = $this->extractRows($response->json());
+                if ($rows === []) {
+                    continue;
                 }
 
-                return $map;
-            }
-        }
+                /** @var array<string, array<int, string>> $map */
+                $map = [];
 
-        return [];
+                foreach ($rows as $row) {
+                    $continent = strtoupper((string) (Arr::get($row, 'ContinentCode') ?? Arr::get($row, 'continentCode') ?? ''));
+                    $country = strtoupper((string) (Arr::get($row, 'CountryCode') ?? Arr::get($row, 'countryCode') ?? ''));
+
+                    if ($continent === '' || $country === '' || strlen($continent) > 2 || strlen($country) !== 2) {
+                        continue;
+                    }
+
+                    $map[$continent] ??= [];
+                    $map[$continent][] = $country;
+                }
+
+                if ($map !== []) {
+                    foreach ($map as $key => $codes) {
+                        $map[$key] = array_values(array_unique($codes));
+                    }
+
+                    return $map;
+                }
+            }
+
+            return [];
+        });
     }
 
     public function resolveShieldZoneId(Site $site): int

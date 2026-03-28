@@ -237,7 +237,7 @@
         }
     </style>
 
-    <div class="fp-protection-shell">
+    <div class="fp-protection-shell" wire:init="loadDeferredWafState">
         @if (! $this->site)
             @include('filament.app.pages.protection.empty-state')
         @else

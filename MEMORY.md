@@ -1,6 +1,16 @@
 # MEMORY
 
 ## WAF Expansion + Rule Builder (Latest)
+- WAF page load was optimized after it became too heavy from synchronous Bunny API calls on first render.
+- Current WAF performance approach:
+  - country options are cached
+  - continent mappings are cached
+  - WAF enums are cached
+  - overview metrics, bot metrics, custom rules, and event logs use short per-site cache TTLs
+  - the heavy WAF refresh now runs after first paint via deferred `wire:init`, instead of blocking `mount()`
+- Important cleanup:
+  - removed now-unused WAF event-log / review-trigger fetches from the visible WAF page load path
+  - `Configured Access Rules` is still local DB-backed, so that table itself is not the slow part
 - WAF page was rebuilt into the same two-column protection layout pattern used on Cache / CDN / DDoS:
   - left stack now focuses on controls
   - right stack now focuses on snapshots / explainers

@@ -493,7 +493,7 @@ class FirewallAccessRulesTable extends TableWidget
                     ->requiresConfirmation()
                     ->action(function (SiteFirewallRule $record): void {
                         if ($record->rule_type === SiteFirewallRule::TYPE_ADVANCED) {
-                            app(BunnyShieldWafService::class)->deleteCustomRule((string) $record->provider_rule_id);
+                            app(BunnyShieldWafService::class)->deleteCustomRule($record->site, (string) $record->provider_rule_id);
                             $meta = is_array($record->meta) ? $record->meta : [];
                             $record->update([
                                 'provider_rule_id' => null,
@@ -551,7 +551,7 @@ class FirewallAccessRulesTable extends TableWidget
                     ->requiresConfirmation()
                     ->action(function (SiteFirewallRule $record): void {
                         if ($record->rule_type === SiteFirewallRule::TYPE_ADVANCED) {
-                            app(BunnyShieldWafService::class)->deleteCustomRule((string) $record->provider_rule_id);
+                            app(BunnyShieldWafService::class)->deleteCustomRule($record->site, (string) $record->provider_rule_id);
                             $record->delete();
                         } else {
                             app(FirewallAccessControlService::class)->removeRule($record, (int) auth()->id());

@@ -7,6 +7,7 @@ use App\Services\Bunny\BunnyApiService;
 use App\Services\Bunny\BunnyShieldAccessListService;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 class BunnyShieldWafService
@@ -93,6 +94,7 @@ class BunnyShieldWafService
             'updated_at' => now()->toIso8601String(),
         ];
         $site->forceFill(['provider_meta' => $meta])->save();
+        $this->flushSiteCache($site);
 
         return ['updated' => true, 'shield_zone_id' => $shieldZoneId];
     }
@@ -103,13 +105,16 @@ class BunnyShieldWafService
     public function botDetectionMetrics(Site $site): array
     {
         $shieldZoneId = $this->accessLists->ensureShieldZone($site);
-        $response = $this->api->client()->get("/shield/metrics/shield-zone/{$shieldZoneId}/bot-detection");
 
-        if (! $response->successful()) {
-            return [];
-        }
+        return Cache::remember($this->siteCacheKey($shieldZoneId, 'bot-metrics'), now()->addSeconds(30), function () use ($shieldZoneId): array {
+            $response = $this->api->client()->get("/shield/metrics/shield-zone/{$shieldZoneId}/bot-detection");
 
-        return (array) (Arr::get($response->json(), 'data') ?? []);
+            if (! $response->successful()) {
+                return [];
+            }
+
+            return (array) (Arr::get($response->json(), 'data') ?? []);
+        });
     }
 
     /**
@@ -118,13 +123,16 @@ class BunnyShieldWafService
     public function overviewMetrics(Site $site): array
     {
         $shieldZoneId = $this->accessLists->ensureShieldZone($site);
-        $response = $this->api->client()->get("/shield/metrics/overview/{$shieldZoneId}");
 
-        if (! $response->successful()) {
-            return [];
-        }
+        return Cache::remember($this->siteCacheKey($shieldZoneId, 'overview-metrics'), now()->addSeconds(30), function () use ($shieldZoneId): array {
+            $response = $this->api->client()->get("/shield/metrics/overview/{$shieldZoneId}");
 
-        return (array) (Arr::get($response->json(), 'data') ?? []);
+            if (! $response->successful()) {
+                return [];
+            }
+
+            return (array) (Arr::get($response->json(), 'data') ?? []);
+        });
     }
 
     /**
@@ -133,35 +141,38 @@ class BunnyShieldWafService
     public function eventLogs(Site $site, int $limit = 20): array
     {
         $shieldZoneId = $this->accessLists->ensureShieldZone($site);
-        $dates = [now()->format('m-d-Y'), now()->subDay()->format('m-d-Y')];
 
-        foreach ($dates as $date) {
-            foreach (['start', ''] as $token) {
-                $path = "/shield/event-logs/{$shieldZoneId}/{$date}";
-                if ($token !== '') {
-                    $path .= "/{$token}";
-                }
+        return Cache::remember($this->siteCacheKey($shieldZoneId, 'event-logs', ['limit' => $limit]), now()->addSeconds(30), function () use ($shieldZoneId, $limit): array {
+            $dates = [now()->format('m-d-Y'), now()->subDay()->format('m-d-Y')];
 
-                $response = $this->api->client()->get($path);
+            foreach ($dates as $date) {
+                foreach (['start', ''] as $token) {
+                    $path = "/shield/event-logs/{$shieldZoneId}/{$date}";
+                    if ($token !== '') {
+                        $path .= "/{$token}";
+                    }
 
-                if (! $response->successful()) {
-                    continue;
-                }
+                    $response = $this->api->client()->get($path);
 
-                $logs = collect((array) (Arr::get($response->json(), 'logs') ?? Arr::get($response->json(), 'data.logs') ?? []))
-                    ->filter(fn ($row) => is_array($row))
-                    ->map(fn (array $row): array => $this->normalizeEventLog($row))
-                    ->take($limit)
-                    ->values()
-                    ->all();
+                    if (! $response->successful()) {
+                        continue;
+                    }
 
-                if ($logs !== []) {
-                    return $logs;
+                    $logs = collect((array) (Arr::get($response->json(), 'logs') ?? Arr::get($response->json(), 'data.logs') ?? []))
+                        ->filter(fn ($row) => is_array($row))
+                        ->map(fn (array $row): array => $this->normalizeEventLog($row))
+                        ->take($limit)
+                        ->values()
+                        ->all();
+
+                    if ($logs !== []) {
+                        return $logs;
+                    }
                 }
             }
-        }
 
-        return [];
+            return [];
+        });
     }
 
     /**
@@ -250,13 +261,16 @@ class BunnyShieldWafService
     public function triggeredRules(Site $site): array
     {
         $shieldZoneId = $this->accessLists->ensureShieldZone($site);
-        $response = $this->api->client()->get("/shield/waf/rules/review-triggered/{$shieldZoneId}");
 
-        if (! $response->successful()) {
-            return [];
-        }
+        return Cache::remember($this->siteCacheKey($shieldZoneId, 'triggered-rules'), now()->addSeconds(30), function () use ($shieldZoneId): array {
+            $response = $this->api->client()->get("/shield/waf/rules/review-triggered/{$shieldZoneId}");
 
-        return $this->extractRows($response->json());
+            if (! $response->successful()) {
+                return [];
+            }
+
+            return $this->extractRows($response->json());
+        });
     }
 
     /**
@@ -265,17 +279,20 @@ class BunnyShieldWafService
     public function customRules(Site $site): array
     {
         $shieldZoneId = $this->accessLists->ensureShieldZone($site);
-        $response = $this->api->client()->get("/shield/waf/custom-rules/{$shieldZoneId}");
 
-        if (! $response->successful()) {
-            return [];
-        }
+        return Cache::remember($this->siteCacheKey($shieldZoneId, 'custom-rules'), now()->addSeconds(30), function () use ($shieldZoneId): array {
+            $response = $this->api->client()->get("/shield/waf/custom-rules/{$shieldZoneId}");
 
-        $enums = $this->wafEnums();
+            if (! $response->successful()) {
+                return [];
+            }
 
-        return collect($this->extractRows($response->json()))
-            ->map(fn (array $row): array => $this->normalizeCustomRuleRow($row, $enums))
-            ->all();
+            $enums = $this->wafEnums();
+
+            return collect($this->extractRows($response->json()))
+                ->map(fn (array $row): array => $this->normalizeCustomRuleRow($row, $enums))
+                ->all();
+        });
     }
 
     /**
@@ -283,34 +300,36 @@ class BunnyShieldWafService
      */
     public function wafEnums(): array
     {
-        $response = $this->api->client()->get('/shield/waf/enums');
+        return Cache::remember('bunny:shield:waf-enums', now()->addDay(), function (): array {
+            $response = $this->api->client()->get('/shield/waf/enums');
 
-        if (! $response->successful()) {
-            return [
-                'actions' => [],
-                'operators' => [],
-                'transformations' => [],
+            if (! $response->successful()) {
+                return [
+                    'actions' => [],
+                    'operators' => [],
+                    'transformations' => [],
+                ];
+            }
+
+            $payload = $response->json();
+            $groups = [
+                'actions' => $this->enumMap(Arr::get($payload, 'actions', Arr::get($payload, 'data.actions', []))),
+                'operators' => $this->enumMap(Arr::get($payload, 'operators', Arr::get($payload, 'data.operators', []))),
+                'transformations' => $this->enumMap(Arr::get($payload, 'transformations', Arr::get($payload, 'data.transformations', []))),
             ];
-        }
 
-        $payload = $response->json();
-        $groups = [
-            'actions' => $this->enumMap(Arr::get($payload, 'actions', Arr::get($payload, 'data.actions', []))),
-            'operators' => $this->enumMap(Arr::get($payload, 'operators', Arr::get($payload, 'data.operators', []))),
-            'transformations' => $this->enumMap(Arr::get($payload, 'transformations', Arr::get($payload, 'data.transformations', []))),
-        ];
+            if ($groups['actions'] !== [] || $groups['operators'] !== [] || $groups['transformations'] !== []) {
+                return $groups;
+            }
 
-        if ($groups['actions'] !== [] || $groups['operators'] !== [] || $groups['transformations'] !== []) {
-            return $groups;
-        }
+            $rows = collect($this->extractRows($payload));
 
-        $rows = collect($this->extractRows($payload));
-
-        return [
-            'actions' => $this->enumMap($rows->filter(fn (array $row) => str_contains(strtolower((string) ($row['group'] ?? $row['type'] ?? '')), 'action'))->all()),
-            'operators' => $this->enumMap($rows->filter(fn (array $row) => str_contains(strtolower((string) ($row['group'] ?? $row['type'] ?? '')), 'operator'))->all()),
-            'transformations' => $this->enumMap($rows->filter(fn (array $row) => str_contains(strtolower((string) ($row['group'] ?? $row['type'] ?? '')), 'transform'))->all()),
-        ];
+            return [
+                'actions' => $this->enumMap($rows->filter(fn (array $row) => str_contains(strtolower((string) ($row['group'] ?? $row['type'] ?? '')), 'action'))->all()),
+                'operators' => $this->enumMap($rows->filter(fn (array $row) => str_contains(strtolower((string) ($row['group'] ?? $row['type'] ?? '')), 'operator'))->all()),
+                'transformations' => $this->enumMap($rows->filter(fn (array $row) => str_contains(strtolower((string) ($row['group'] ?? $row['type'] ?? '')), 'transform'))->all()),
+            ];
+        });
     }
 
     /**
@@ -328,6 +347,7 @@ class BunnyShieldWafService
         }
 
         $row = (array) (Arr::get($response->json(), 'data') ?? $response->json());
+        $this->flushSiteCache($site);
 
         return $this->normalizeCustomRuleRow($row, $enums);
     }
@@ -358,14 +378,18 @@ class BunnyShieldWafService
             ];
         }
 
+        $this->flushSiteCache($site);
+
         return $this->normalizeCustomRuleRow($row, $enums);
     }
 
-    public function deleteCustomRule(string $ruleId): void
+    public function deleteCustomRule(Site $site, string $ruleId): void
     {
         $response = $this->api->client()->delete("/shield/waf/custom-rule/{$ruleId}");
 
         if ($response->successful() || in_array($response->status(), [404, 410], true)) {
+            $this->flushSiteCache($site);
+
             return;
         }
 
@@ -563,6 +587,37 @@ class BunnyShieldWafService
         }
 
         return Str::title(Str::of($normalized)->replace(['_', '-'], ' ')->value());
+    }
+
+    protected function flushSiteCache(Site $site): void
+    {
+        $shieldZoneId = (int) data_get($site->provider_meta, 'shield_zone_id', 0);
+
+        if ($shieldZoneId <= 0) {
+            return;
+        }
+
+        foreach ([
+            $this->siteCacheKey($shieldZoneId, 'bot-metrics'),
+            $this->siteCacheKey($shieldZoneId, 'overview-metrics'),
+            $this->siteCacheKey($shieldZoneId, 'event-logs', ['limit' => 20]),
+            $this->siteCacheKey($shieldZoneId, 'triggered-rules'),
+            $this->siteCacheKey($shieldZoneId, 'custom-rules'),
+        ] as $key) {
+            Cache::forget($key);
+        }
+    }
+
+    /**
+     * @param  array<string, scalar>  $suffix
+     */
+    protected function siteCacheKey(int $shieldZoneId, string $segment, array $suffix = []): string
+    {
+        $tail = collect($suffix)
+            ->map(fn ($value, $key): string => "{$key}:{$value}")
+            ->implode('|');
+
+        return "bunny:shield:{$shieldZoneId}:{$segment}".($tail !== '' ? ":{$tail}" : '');
     }
 
     protected function clampSensitivity(int $value): int
