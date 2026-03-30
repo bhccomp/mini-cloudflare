@@ -772,6 +772,10 @@ class PluginSiteService
      */
     protected function pluginFirewallRules(Site $site): array
     {
+        $countryOptions = $this->accessControl->countryOptions($site);
+        $continentOptions = $this->accessControl->continentOptions($site);
+        $continentCountries = app(\App\Services\Bunny\BunnyShieldAccessListService::class)->continentCountries();
+
         return SiteFirewallRule::query()
             ->where('site_id', $site->id)
             ->whereIn('status', [
@@ -782,15 +786,53 @@ class PluginSiteService
             ->latest('updated_at')
             ->limit(20)
             ->get()
-            ->map(fn (SiteFirewallRule $rule): array => [
-                'id' => (int) $rule->id,
-                'type' => (string) $rule->rule_type,
-                'target' => (string) $rule->target,
-                'action' => (string) $rule->action,
-                'status' => (string) $rule->status,
-                'source' => str_contains(strtolower((string) ($rule->note ?? '')), 'wordpress plugin') ? 'Plugin' : 'Dashboard',
-                'note' => (string) ($rule->note ?? ''),
-            ])
+            ->map(function (SiteFirewallRule $rule) use ($countryOptions, $continentOptions, $continentCountries): array {
+                $meta = is_array($rule->meta) ? $rule->meta : [];
+                $targets = collect((array) ($meta['targets'] ?? []))
+                    ->map(fn (mixed $value): string => strtoupper(trim((string) $value)))
+                    ->filter()
+                    ->values();
+
+                $target = (string) $rule->target;
+                $targetLabel = $target;
+                $targetList = [];
+
+                if ($rule->rule_type === SiteFirewallRule::TYPE_COUNTRY) {
+                    $targetList = $targets
+                        ->map(fn (string $code): string => (string) ($countryOptions[$code] ?? $code))
+                        ->all();
+                    $targetLabel = (string) ($meta['display_name'] ?? ($countryOptions[strtoupper($target)] ?? $target));
+                } elseif ($rule->rule_type === SiteFirewallRule::TYPE_CONTINENT) {
+                    $targetList = $targets
+                        ->map(fn (string $code): string => (string) ($continentOptions[$code] ?? $code))
+                        ->all();
+                    $expandedCountries = collect($targets)
+                        ->flatMap(fn (string $code): array => $continentCountries[$code] ?? [])
+                        ->unique()
+                        ->map(fn (string $code): string => (string) ($countryOptions[$code] ?? $code))
+                        ->values()
+                        ->all();
+                    $targetLabel = (string) ($meta['display_name'] ?? ($continentOptions[strtoupper($target)] ?? $target));
+
+                    if ($expandedCountries !== []) {
+                        $targetList = $expandedCountries;
+                    }
+                } elseif ($rule->rule_type === SiteFirewallRule::TYPE_IP) {
+                    $targetLabel = (string) ($meta['display_name'] ?? $target);
+                }
+
+                return [
+                    'id' => (int) $rule->id,
+                    'type' => (string) $rule->rule_type,
+                    'target' => $target,
+                    'target_label' => $targetLabel,
+                    'target_list' => $targetList,
+                    'action' => (string) $rule->action,
+                    'status' => (string) $rule->status,
+                    'source' => str_contains(strtolower((string) ($rule->note ?? '')), 'wordpress plugin') ? 'Plugin' : 'Dashboard',
+                    'note' => (string) ($rule->note ?? ''),
+                ];
+            })
             ->all();
     }
 }
