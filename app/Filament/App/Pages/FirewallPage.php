@@ -14,9 +14,13 @@ use App\Services\Bunny\BunnyLogsService;
 use App\Services\Firewall\FirewallInsightsPresenter;
 use Filament\Actions\Action;
 use Illuminate\View\View;
+use Livewire\Attributes\Url;
 
 class FirewallPage extends BaseProtectionPage
 {
+    #[Url(as: 'range')]
+    public ?string $selectedFirewallRange = '24h';
+
     protected static string|\UnitEnum|null $navigationGroup = 'Security & Protection';
 
     protected static ?string $slug = 'firewall';
@@ -34,6 +38,13 @@ class FirewallPage extends BaseProtectionPage
     public function getHeader(): ?View
     {
         return view('filament.app.pages.protection.page-header-with-routing-warning');
+    }
+
+    public function getWidgetData(): array
+    {
+        return [
+            'selectedFirewallRange' => $this->firewallRange(),
+        ];
     }
 
     protected function getHeaderActions(): array
