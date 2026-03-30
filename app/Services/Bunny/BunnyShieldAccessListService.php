@@ -206,7 +206,7 @@ class BunnyShieldAccessListService
      */
     public function continentCountries(): array
     {
-        return Cache::remember('bunny:shield:continent-countries', now()->addDay(), function (): array {
+        return Cache::remember('bunny:shield:continent-countries:v2', now()->addDay(), function (): array {
             foreach (['/region/list', '/region'] as $endpoint) {
                 $response = $this->api->client()->get($endpoint);
 
@@ -239,12 +239,43 @@ class BunnyShieldAccessListService
                         $map[$key] = array_values(array_unique($codes));
                     }
 
-                    return $map;
+                    return $this->mergeFallbackContinentCountries($map);
                 }
             }
 
-            return [];
+            return $this->fallbackContinentCountries();
         });
+    }
+
+    /**
+     * @param  array<string, array<int, string>>  $map
+     * @return array<string, array<int, string>>
+     */
+    protected function mergeFallbackContinentCountries(array $map): array
+    {
+        foreach ($this->fallbackContinentCountries() as $continent => $countries) {
+            $map[$continent] = array_values(array_unique(array_merge($map[$continent] ?? [], $countries)));
+        }
+
+        ksort($map);
+
+        return $map;
+    }
+
+    /**
+     * @return array<string, array<int, string>>
+     */
+    protected function fallbackContinentCountries(): array
+    {
+        return [
+            'AF' => ['AO', 'BF', 'BI', 'BJ', 'BW', 'CD', 'CF', 'CG', 'CI', 'CM', 'CV', 'DJ', 'DZ', 'EG', 'EH', 'ER', 'ET', 'GA', 'GH', 'GM', 'GN', 'GQ', 'GW', 'KE', 'KM', 'LR', 'LS', 'LY', 'MA', 'MG', 'ML', 'MR', 'MU', 'MW', 'MZ', 'NA', 'NE', 'NG', 'RE', 'RW', 'SC', 'SD', 'SH', 'SL', 'SN', 'SO', 'SS', 'ST', 'SZ', 'TD', 'TG', 'TN', 'TZ', 'UG', 'YT', 'ZA', 'ZM', 'ZW'],
+            'AN' => ['AQ', 'BV', 'GS', 'HM', 'TF'],
+            'AS' => ['AE', 'AF', 'AM', 'AZ', 'BD', 'BH', 'BN', 'BT', 'CC', 'CN', 'CX', 'CY', 'GE', 'HK', 'ID', 'IL', 'IN', 'IQ', 'IR', 'JO', 'JP', 'KG', 'KH', 'KP', 'KR', 'KW', 'KZ', 'LA', 'LB', 'LK', 'MM', 'MN', 'MO', 'MV', 'MY', 'NP', 'OM', 'PH', 'PK', 'PS', 'QA', 'SA', 'SG', 'SY', 'TH', 'TJ', 'TL', 'TM', 'TR', 'TW', 'UZ', 'VN', 'YE'],
+            'EU' => ['AD', 'AL', 'AT', 'AX', 'BA', 'BE', 'BG', 'BY', 'CH', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI', 'FO', 'FR', 'GB', 'GG', 'GI', 'GR', 'HR', 'HU', 'IE', 'IM', 'IS', 'IT', 'JE', 'LI', 'LT', 'LU', 'LV', 'MC', 'MD', 'ME', 'MK', 'MT', 'NL', 'NO', 'PL', 'PT', 'RO', 'RS', 'RU', 'SE', 'SI', 'SJ', 'SK', 'SM', 'UA', 'VA'],
+            'NA' => ['AG', 'AI', 'AW', 'BB', 'BL', 'BM', 'BQ', 'BS', 'BZ', 'CA', 'CR', 'CU', 'CW', 'DM', 'DO', 'GD', 'GL', 'GP', 'GT', 'HN', 'HT', 'JM', 'KN', 'KY', 'LC', 'MF', 'MQ', 'MS', 'MX', 'NI', 'PA', 'PM', 'PR', 'SV', 'SX', 'TC', 'TT', 'US', 'VC', 'VG', 'VI'],
+            'OC' => ['AS', 'AU', 'CK', 'FJ', 'FM', 'GU', 'KI', 'MH', 'MP', 'NC', 'NF', 'NR', 'NU', 'NZ', 'PF', 'PG', 'PN', 'PW', 'SB', 'TK', 'TO', 'TV', 'UM', 'VU', 'WF', 'WS'],
+            'SA' => ['AR', 'BO', 'BR', 'CL', 'CO', 'EC', 'FK', 'GF', 'GY', 'PE', 'PY', 'SR', 'UY', 'VE'],
+        ];
     }
 
     public function resolveShieldZoneId(Site $site): int
