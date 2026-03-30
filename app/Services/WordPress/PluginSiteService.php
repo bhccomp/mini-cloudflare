@@ -347,29 +347,21 @@ class PluginSiteService
     /**
      * @return array<string, mixed>
      */
-    public function firewallSummary(PluginSiteConnection $connection): array
+    public function firewallSummary(PluginSiteConnection $connection, string $range = '24h'): array
     {
         $site = $connection->site;
         $site->loadMissing('analyticsMetric', 'organization.subscriptions.plan');
         $access = $this->billingAccessSummaryForSite($site);
-        $insights = app(FirewallInsightsPresenter::class)->insights($site);
+        $normalizedRange = strtolower(trim($range)) === '7d' ? '7d' : '24h';
+        $insights = $site->provider === Site::PROVIDER_BUNNY
+            ? app(\App\Services\Bunny\BunnyFirewallInsightsService::class)->getSiteInsights($site, $normalizedRange)
+            : app(FirewallInsightsPresenter::class)->insights($site);
 
-        $since = now()->subDay();
-        $blockedActions = ['BLOCK', 'DENY', 'CHALLENGE'];
-        $blockedCount = EdgeRequestLog::query()
-            ->where('site_id', $site->id)
-            ->where('event_at', '>=', $since)
-            ->whereIn('action', $blockedActions)
-            ->count();
-        $challengeCount = EdgeRequestLog::query()
-            ->where('site_id', $site->id)
-            ->where('event_at', '>=', $since)
-            ->where('action', 'CHALLENGE')
-            ->count();
-        $requestTotal = max(1, (int) ($site->analyticsMetric?->total_requests_24h ?? 0));
-        $challengeRate = round(($challengeCount / $requestTotal) * 100, 2);
-        $botPressure = round(($blockedCount / $requestTotal) * 100, 2);
-        $insightTotal = (int) data_get($insights, 'summary.total', 0);
+        $summary = (array) data_get($insights, 'summary', []);
+        $insightTotal = (int) ($summary['total'] ?? 0);
+        $blockedCount = (int) ($summary['blocked'] ?? 0);
+        $challengeRate = round((float) ($summary['challenge_ratio'] ?? 0), 2);
+        $botPressure = round((float) ($summary['block_ratio'] ?? 0), 2);
         $topCountries = collect((array) data_get($insights, 'top_countries', []))
             ->map(fn (array $row): array => [
                 'country' => strtoupper((string) ($row['country'] ?? '')),
@@ -410,9 +402,10 @@ class PluginSiteService
             ],
             'metrics' => [
                 'requests_blocked' => $access['pro_enabled'] ? $blockedCount : 0,
-                'total_requests' => $access['pro_enabled'] ? max($insightTotal, (int) ($site->analyticsMetric?->total_requests_24h ?? 0)) : 0,
+                'total_requests' => $access['pro_enabled'] ? $insightTotal : 0,
                 'challenge_rate' => $access['pro_enabled'] ? $challengeRate : 0,
                 'bot_pressure' => $access['pro_enabled'] ? $botPressure : 0,
+                'range' => $normalizedRange,
             ],
             'controls' => [
                 'protection_mode' => $access['pro_enabled']

@@ -14,44 +14,52 @@ class BunnyFirewallInsightsService
         protected BunnyAnalyticsService $analytics,
     ) {}
 
-    public function getSiteInsights(Site $site): array
+    public function getSiteInsights(Site $site, string $range = '24h'): array
     {
+        $normalizedRange = $this->normalizeRange($range);
+
         return Cache::remember(
-            $this->cacheKey($site->id),
+            $this->cacheKey($site->id, $normalizedRange),
             now()->addMinutes(2),
-            fn (): array => $this->buildInsights($site)
+            fn (): array => $this->buildInsights($site, $normalizedRange)
         );
     }
 
     public function forgetSiteInsightsCache(int $siteId): void
     {
-        Cache::forget($this->cacheKey($siteId));
+        Cache::forget($this->cacheKey($siteId, '24h'));
+        Cache::forget($this->cacheKey($siteId, '7d'));
     }
 
-    protected function buildInsights(Site $site): array
+    protected function buildInsights(Site $site, string $range = '24h'): array
     {
+        $normalizedRange = $this->normalizeRange($range);
+        $windowStart = $normalizedRange === '7d' ? now()->subDays(7) : now()->subDay();
+
         // Prefer a larger live Bunny sample so top countries / IPs reflect recent edge traffic
         // instead of a small or stale local subset.
         $events = collect($this->logs->recentLogs($site, 2000));
+        $events = $this->filterEventsByRange($events, $windowStart);
 
         if ($events->isEmpty()) {
-            $events = $this->localEvents($site, 2000);
+            $events = $this->localEvents($site, 2000, $normalizedRange);
         }
 
         if ($events->isEmpty()) {
             $synced = $this->logs->syncToLocalStore($site, 1000);
 
             if ($synced > 0) {
-                $events = $this->localEvents($site, 2000);
+                $events = $this->localEvents($site, 2000, $normalizedRange);
             }
         }
 
+        $metric = $site->analyticsMetric ?: $this->analytics->syncSiteMetrics($site);
+
         if ($events->isEmpty()) {
-            $metric = $this->analytics->syncSiteMetrics($site) ?: $site->analyticsMetric;
-            $total = (int) ($metric?->total_requests_24h ?? 0);
-            $blocked = (int) ($metric?->blocked_requests_24h ?? 0);
+            $total = $this->metricTotalForRange($metric, $normalizedRange);
+            $blocked = $this->metricBlockedForRange($metric, $normalizedRange);
             $allowed = max(0, $total - $blocked);
-            $topCountries = $this->topCountriesFromGeoStats($site, $total);
+            $topCountries = $this->topCountriesFromGeoStats($site, $total, $normalizedRange);
 
             return [
                 'summary' => [
@@ -60,6 +68,8 @@ class BunnyFirewallInsightsService
                     'allowed' => $allowed,
                     'counted' => 0,
                     'block_ratio' => $total > 0 ? round(($blocked / max(1, $total)) * 100, 2) : 0,
+                    'challenge_ratio' => 0.0,
+                    'range' => $normalizedRange,
                 ],
                 'top_countries' => $topCountries,
                 'top_ips' => [],
@@ -82,17 +92,19 @@ class BunnyFirewallInsightsService
 
         $total = $events->count();
         $allowed = max(0, $total - $blocked);
-        $metric = $site->analyticsMetric ?: $this->analytics->syncSiteMetrics($site);
         $isDemoSeed = (bool) data_get($site->provider_meta, 'demo_seeded', false);
         $suspicious = null;
         $blockRatioOverride = null;
         $suspiciousRatioOverride = null;
+        $challengeRatio = $total > 0
+            ? round(($events->filter(fn (array $event): bool => in_array(strtoupper((string) ($event['action'] ?? 'ALLOW')), ['CHALLENGE', 'CAPTCHA'], true))->count() / $total) * 100, 2)
+            : 0.0;
 
         // Demo/screenshot sites should reflect seeded analytics totals on summary cards.
         if ($isDemoSeed && $metric) {
-            $total = (int) ($metric->total_requests_24h ?? $total);
-            $blocked = (int) ($metric->blocked_requests_24h ?? $blocked);
-            $allowed = max(0, (int) ($metric->allowed_requests_24h ?? ($total - $blocked)));
+            $total = $this->metricTotalForRange($metric, $normalizedRange) ?: $total;
+            $blocked = $this->metricBlockedForRange($metric, $normalizedRange) ?: $blocked;
+            $allowed = max(0, $total - $blocked);
             $suspicious = (int) data_get($site->provider_meta, 'demo_suspicious_requests_24h', 0);
             $blockRatioOverride = data_get($site->provider_meta, 'demo_block_ratio');
             $suspiciousRatioOverride = data_get($site->provider_meta, 'demo_suspicious_ratio');
@@ -173,9 +185,11 @@ class BunnyFirewallInsightsService
                 'block_ratio' => is_numeric($blockRatioOverride)
                     ? (float) $blockRatioOverride
                     : ($total > 0 ? round(($blocked / $total) * 100, 2) : 0),
+                'challenge_ratio' => $challengeRatio,
                 'suspicious_ratio' => is_numeric($suspiciousRatioOverride)
                     ? (float) $suspiciousRatioOverride
                     : null,
+                'range' => $normalizedRange,
             ],
             'top_countries' => $topCountries,
             'top_ips' => $topIps,
@@ -186,16 +200,18 @@ class BunnyFirewallInsightsService
         ];
     }
 
-    protected function cacheKey(int $siteId): string
+    protected function cacheKey(int $siteId, string $range = '24h'): string
     {
-        return 'firewall-insights:bunny:site:'.$siteId;
+        return 'firewall-insights:bunny:site:'.$siteId.':'.$this->normalizeRange($range);
     }
 
-    protected function localEvents(Site $site, int $limit = 500): \Illuminate\Support\Collection
+    protected function localEvents(Site $site, int $limit = 500, string $range = '24h'): \Illuminate\Support\Collection
     {
+        $windowStart = $this->normalizeRange($range) === '7d' ? now()->subDays(7) : now()->subDay();
+
         return EdgeRequestLog::query()
             ->where('site_id', $site->id)
-            ->where('event_at', '>=', now()->subDays(7))
+            ->where('event_at', '>=', $windowStart)
             ->latest('event_at')
             ->limit($limit)
             ->get()
@@ -218,7 +234,7 @@ class BunnyFirewallInsightsService
     /**
      * @return array<int, array{country:string,requests:int}>
      */
-    protected function topCountriesFromGeoStats(Site $site, int $totalRequests): array
+    protected function topCountriesFromGeoStats(Site $site, int $totalRequests, string $range = '24h'): array
     {
         $zoneId = (int) ($site->provider_resource_id ?: data_get($site->provider_meta, 'zone_id', 0));
 
@@ -228,7 +244,7 @@ class BunnyFirewallInsightsService
 
         $response = app(BunnyApiService::class)->client()->get('/statistics', [
             'pullZone' => $zoneId,
-            'dateFrom' => now()->subDay()->toDateString(),
+            'dateFrom' => ($this->normalizeRange($range) === '7d' ? now()->subDays(7) : now()->subDay())->toDateString(),
             'dateTo' => now()->toDateString(),
         ]);
 
@@ -290,6 +306,64 @@ class BunnyFirewallInsightsService
             ->take(10)
             ->values()
             ->all();
+    }
+
+    protected function normalizeRange(string $range): string
+    {
+        return strtolower(trim($range)) === '7d' ? '7d' : '24h';
+    }
+
+    protected function filterEventsByRange(\Illuminate\Support\Collection $events, \Illuminate\Support\Carbon $windowStart): \Illuminate\Support\Collection
+    {
+        return $events
+            ->filter(function (array $event) use ($windowStart): bool {
+                $timestamp = $event['timestamp'] ?? null;
+
+                if ($timestamp instanceof \Illuminate\Support\Carbon) {
+                    return $timestamp->greaterThanOrEqualTo($windowStart);
+                }
+
+                if ($timestamp instanceof \DateTimeInterface) {
+                    return \Illuminate\Support\Carbon::instance($timestamp)->greaterThanOrEqualTo($windowStart);
+                }
+
+                if (is_string($timestamp) && $timestamp !== '') {
+                    try {
+                        return \Illuminate\Support\Carbon::parse($timestamp)->greaterThanOrEqualTo($windowStart);
+                    } catch (\Throwable) {
+                        return false;
+                    }
+                }
+
+                return false;
+            })
+            ->values();
+    }
+
+    protected function metricTotalForRange(?SiteAnalyticsMetric $metric, string $range): int
+    {
+        if (! $metric) {
+            return 0;
+        }
+
+        if ($this->normalizeRange($range) === '7d') {
+            return (int) (array_sum((array) ($metric->allowed_trend ?? [])) + array_sum((array) ($metric->blocked_trend ?? [])));
+        }
+
+        return (int) ($metric->total_requests_24h ?? 0);
+    }
+
+    protected function metricBlockedForRange(?SiteAnalyticsMetric $metric, string $range): int
+    {
+        if (! $metric) {
+            return 0;
+        }
+
+        if ($this->normalizeRange($range) === '7d') {
+            return (int) array_sum((array) ($metric->blocked_trend ?? []));
+        }
+
+        return (int) ($metric->blocked_requests_24h ?? 0);
     }
 
     protected function countryCodeFromEdgeLabel(string $label): string

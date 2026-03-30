@@ -23,17 +23,19 @@ class PluginFirewallSummaryController extends Controller
     )]
     #[Header('Authorization', 'Bearer site token returned by the plugin connect endpoint.', type: 'string', required: true, example: 'Bearer fp_site_token_here')]
     #[QueryParameter('site_id', 'Connected FirePhage site ID.', required: true, type: 'int', example: 12)]
+    #[QueryParameter('range', 'Requested firewall metrics window. Supported values: 24h, 7d.', required: false, type: 'string', example: '24h')]
     #[Response(200, 'Firewall summary was returned for the authenticated site.')]
     #[Response(401, 'Plugin authentication failed or the site token is invalid.')]
     public function __invoke(Request $request, PluginSiteService $service): JsonResponse
     {
         $validated = $request->validate([
             'site_id' => ['required', 'integer', 'min:1'],
+            'range' => ['nullable', 'in:24h,7d'],
         ]);
 
         try {
             $connection = $service->authenticate($request, $validated['site_id']);
-            $payload = $service->firewallSummary($connection);
+            $payload = $service->firewallSummary($connection, (string) ($validated['range'] ?? '24h'));
         } catch (RuntimeException $exception) {
             return response()->json([
                 'message' => $exception->getMessage(),
