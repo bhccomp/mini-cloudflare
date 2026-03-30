@@ -2,6 +2,7 @@
 
 namespace App\Filament\App\Widgets\Firewall;
 
+use App\Filament\App\Concerns\InteractsWithFirewallRange;
 use App\Filament\App\Widgets\Concerns\ResolvesSelectedSite;
 use App\Services\Firewall\FirewallInsightsPresenter;
 use Illuminate\Support\Facades\Blade;
@@ -11,6 +12,7 @@ use Filament\Widgets\TableWidget;
 
 class FirewallTopIpsTable extends TableWidget
 {
+    use InteractsWithFirewallRange;
     use ResolvesSelectedSite;
 
     protected int|string|array $columnSpan = 1;
@@ -20,7 +22,7 @@ class FirewallTopIpsTable extends TableWidget
     public function table(Table $table): Table
     {
         return $table
-            ->description('Most active client IP addresses.')
+            ->description('Most active client IP addresses over the last '.$this->firewallRangeLabel().'.')
             ->records(fn (): array => $this->records())
             ->paginated(false)
             ->columns([
@@ -67,7 +69,7 @@ class FirewallTopIpsTable extends TableWidget
             return [];
         }
 
-        $insights = app(FirewallInsightsPresenter::class)->insights($site);
+        $insights = app(FirewallInsightsPresenter::class)->insights($site, $this->firewallRange());
 
         return collect((array) data_get($insights, 'top_ips', []))
             ->values()

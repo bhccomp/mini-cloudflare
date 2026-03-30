@@ -2,6 +2,7 @@
 
 namespace App\Filament\App\Widgets\Firewall;
 
+use App\Filament\App\Concerns\InteractsWithFirewallRange;
 use App\Filament\App\Widgets\Concerns\ResolvesSelectedSite;
 use App\Services\Firewall\FirewallAccessControlService;
 use App\Services\Firewall\FirewallInsightsPresenter;
@@ -16,6 +17,7 @@ use Illuminate\Support\Carbon;
 
 class FirewallRecentEventsTable extends TableWidget
 {
+    use InteractsWithFirewallRange;
     use ResolvesSelectedSite;
 
     protected int|string|array $columnSpan = 'full';
@@ -25,7 +27,7 @@ class FirewallRecentEventsTable extends TableWidget
     public function table(Table $table): Table
     {
         return $table
-            ->description('Recent decisions from protection telemetry.')
+            ->description('Recent decisions from protection telemetry over the last '.$this->firewallRangeLabel().'.')
             ->records(fn (?array $filters = null, int|string $page = 1, int|string $recordsPerPage = 10): LengthAwarePaginator => $this->records($filters, $page, $recordsPerPage))
             ->defaultPaginationPageOption(10)
             ->paginationPageOptions([10, 25, 50])
@@ -78,7 +80,7 @@ class FirewallRecentEventsTable extends TableWidget
                     ]),
                 SelectFilter::make('time_range')
                     ->label('Time Range')
-                    ->default('24h')
+                    ->default($this->firewallRange())
                     ->options([
                         '24h' => 'Last 24h',
                         '7d' => 'Last 7d',
@@ -142,11 +144,10 @@ class FirewallRecentEventsTable extends TableWidget
      */
     protected function records(?array $filters, int|string $page, int|string $recordsPerPage): LengthAwarePaginator
     {
-        $events = collect($this->eventRecords());
-
         $selectedCountry = strtoupper($this->normalizeFilterValue(data_get($filters, 'country.value') ?? data_get($filters, 'country')));
         $selectedAction = strtoupper($this->normalizeFilterValue(data_get($filters, 'action.value') ?? data_get($filters, 'action')));
         $timeRange = $this->normalizeFilterValue(data_get($filters, 'time_range.value') ?? data_get($filters, 'time_range'), '24h');
+        $events = collect($this->eventRecords($timeRange));
 
         if ($selectedCountry !== '') {
             $events = $events->where('country', $selectedCountry);
@@ -182,7 +183,7 @@ class FirewallRecentEventsTable extends TableWidget
     /**
      * @return array<int, array<string, mixed>>
      */
-    protected function eventRecords(): array
+    protected function eventRecords(?string $range = null): array
     {
         $site = $this->getSelectedSite();
 
@@ -190,7 +191,8 @@ class FirewallRecentEventsTable extends TableWidget
             return [];
         }
 
-        $insights = app(FirewallInsightsPresenter::class)->insights($site);
+        $selectedRange = $range === '7d' ? '7d' : $this->firewallRange();
+        $insights = app(FirewallInsightsPresenter::class)->insights($site, $selectedRange);
 
         return collect((array) data_get($insights, 'events', []))
             ->map(function (array $event): array {
@@ -218,7 +220,7 @@ class FirewallRecentEventsTable extends TableWidget
      */
     protected function countryOptions(): array
     {
-        return collect($this->eventRecords())
+        return collect($this->eventRecords($this->firewallRange()))
             ->pluck('country')
             ->filter()
             ->unique()

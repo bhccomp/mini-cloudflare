@@ -2,6 +2,7 @@
 
 namespace App\Filament\App\Widgets\Firewall;
 
+use App\Filament\App\Concerns\InteractsWithFirewallRange;
 use App\Filament\App\Widgets\Concerns\ResolvesSelectedSite;
 use App\Services\Firewall\FirewallInsightsPresenter;
 use Filament\Widgets\StatsOverviewWidget;
@@ -9,13 +10,14 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
 
 class FirewallThreatSummaryStats extends StatsOverviewWidget
 {
+    use InteractsWithFirewallRange;
     use ResolvesSelectedSite;
 
     protected int|string|array $columnSpan = 'full';
 
     protected ?string $heading = 'Threat Summary';
 
-    protected ?string $description = 'Live firewall posture and request pressure over the last 24 hours.';
+    protected ?string $description = 'Live firewall posture and request pressure.';
 
     protected function getStats(): array
     {
@@ -26,11 +28,9 @@ class FirewallThreatSummaryStats extends StatsOverviewWidget
         }
 
         $site->loadMissing('analyticsMetric');
-        $insights = app(FirewallInsightsPresenter::class)->insights($site);
+        $insights = app(FirewallInsightsPresenter::class)->insights($site, $this->firewallRange());
         $summary = (array) data_get($insights, 'summary', []);
         $threatLevel = app(FirewallInsightsPresenter::class)->threatLevel($insights);
-        $suspicious = app(FirewallInsightsPresenter::class)->suspiciousRequests($insights);
-
         $threatColor = match ($threatLevel) {
             'Under Attack' => 'danger',
             'Active Mitigation' => 'warning',
@@ -42,16 +42,20 @@ class FirewallThreatSummaryStats extends StatsOverviewWidget
                 ->description('Based on block ratio')
                 ->descriptionIcon('heroicon-m-shield-exclamation')
                 ->color($threatColor),
-            Stat::make('Total Requests (24h)', number_format((int) ($summary['total'] ?? 0)))
-                ->description('All observed requests')
+            Stat::make('Total Requests', number_format((int) ($summary['total'] ?? 0)))
+                ->description('All observed requests in the last '.$this->firewallRangeLabel())
                 ->descriptionIcon('heroicon-m-chart-bar')
                 ->color('primary'),
-            Stat::make('Blocked (24h)', number_format((int) ($summary['blocked'] ?? 0)))
-                ->description('Denied or challenged')
+            Stat::make('Blocked', number_format((int) ($summary['blocked'] ?? 0)))
+                ->description('Denied or challenged in the last '.$this->firewallRangeLabel())
                 ->descriptionIcon('heroicon-m-no-symbol')
                 ->color('danger'),
-            Stat::make('Suspicious (24h)', number_format($suspicious))
-                ->description('Potential risk signals')
+            Stat::make('Challenge Rate', number_format((float) ($summary['challenge_ratio'] ?? 0), 2).'%')
+                ->description('Share of requests challenged')
+                ->descriptionIcon('heroicon-m-sparkles')
+                ->color('warning'),
+            Stat::make('Protection Pressure', number_format((float) ($summary['block_ratio'] ?? 0), 2).'%')
+                ->description('Blocked or challenged request share')
                 ->descriptionIcon('heroicon-m-exclamation-triangle')
                 ->color('warning'),
             Stat::make('Last Sync', $site->syncFreshnessForHumans('No sync yet'))

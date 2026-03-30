@@ -2,6 +2,7 @@
 
 namespace App\Filament\App\Widgets\Firewall;
 
+use App\Filament\App\Concerns\InteractsWithFirewallRange;
 use App\Filament\App\Widgets\Concerns\ResolvesSelectedSite;
 use App\Services\Firewall\FirewallInsightsPresenter;
 use Filament\Tables;
@@ -10,6 +11,7 @@ use Filament\Widgets\TableWidget;
 
 class FirewallTopCountriesTable extends TableWidget
 {
+    use InteractsWithFirewallRange;
     use ResolvesSelectedSite;
 
     protected int|string|array $columnSpan = 1;
@@ -19,7 +21,7 @@ class FirewallTopCountriesTable extends TableWidget
     public function table(Table $table): Table
     {
         return $table
-            ->description('Highest traffic by country.')
+            ->description('Highest traffic by country over the last '.$this->firewallRangeLabel().'.')
             ->records(fn (): array => $this->records())
             ->paginated(false)
             ->columns([
@@ -48,7 +50,7 @@ class FirewallTopCountriesTable extends TableWidget
             return [];
         }
 
-        $insights = app(FirewallInsightsPresenter::class)->insights($site);
+        $insights = app(FirewallInsightsPresenter::class)->insights($site, $this->firewallRange());
 
         return collect((array) data_get($insights, 'top_countries', []))
             ->values()

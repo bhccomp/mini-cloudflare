@@ -8,10 +8,10 @@ use App\Services\Bunny\BunnyFirewallInsightsService;
 
 class FirewallInsightsPresenter
 {
-    public function insights(Site $site): array
+    public function insights(Site $site, string $range = '24h'): array
     {
         if ($site->provider === Site::PROVIDER_BUNNY) {
-            return app(BunnyFirewallInsightsService::class)->getSiteInsights($site);
+            return app(BunnyFirewallInsightsService::class)->getSiteInsights($site, $range);
         }
 
         return app(AwsFirewallInsightsService::class)->getSiteInsights($site);

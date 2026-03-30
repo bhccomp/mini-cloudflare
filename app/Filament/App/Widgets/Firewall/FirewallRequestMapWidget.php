@@ -2,12 +2,14 @@
 
 namespace App\Filament\App\Widgets\Firewall;
 
+use App\Filament\App\Concerns\InteractsWithFirewallRange;
 use App\Filament\App\Widgets\Concerns\ResolvesSelectedSite;
 use App\Services\Firewall\FirewallInsightsPresenter;
 use Filament\Widgets\Widget;
 
 class FirewallRequestMapWidget extends Widget
 {
+    use InteractsWithFirewallRange;
     use ResolvesSelectedSite;
 
     protected int|string|array $columnSpan = 'full';
@@ -25,7 +27,7 @@ class FirewallRequestMapWidget extends Widget
             return [];
         }
 
-        $insights = app(FirewallInsightsPresenter::class)->insights($site);
+        $insights = app(FirewallInsightsPresenter::class)->insights($site, $this->firewallRange());
 
         return app(FirewallInsightsPresenter::class)->mapPoints($insights);
     }

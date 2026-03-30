@@ -39,6 +39,22 @@ class FirewallPage extends BaseProtectionPage
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('range24h')
+                ->label('24 hours')
+                ->color(fn (): string => $this->firewallRange() === '24h' ? 'primary' : 'gray')
+                ->url(fn (): string => static::getUrl([
+                    'site_id' => $this->site?->id,
+                    'range' => '24h',
+                ]))
+                ->disabled(fn (): bool => ! $this->site),
+            Action::make('range7d')
+                ->label('7 days')
+                ->color(fn (): string => $this->firewallRange() === '7d' ? 'primary' : 'gray')
+                ->url(fn (): string => static::getUrl([
+                    'site_id' => $this->site?->id,
+                    'range' => '7d',
+                ]))
+                ->disabled(fn (): bool => ! $this->site),
             Action::make('syncNow')
                 ->label('Sync now')
                 ->icon('heroicon-m-arrow-path')
@@ -115,17 +131,15 @@ class FirewallPage extends BaseProtectionPage
         app(FirewallInsightsPresenter::class)->forget($this->site);
         app(AnalyticsSyncManager::class)->syncSiteMetrics($this->site);
         if ($this->site->provider === Site::PROVIDER_BUNNY) {
-            app(BunnyLogsService::class)->syncToLocalStore($this->site, 500);
+            app(BunnyLogsService::class)->syncToLocalStore($this->site, $this->firewallRange() === '7d' ? 5000 : 500, $this->firewallRange());
         }
 
         $this->refreshSite();
         $this->dispatch('firewall-sync-widgets');
 
-        $insights = app(FirewallInsightsPresenter::class)->insights($this->site);
-        $total = (int) ($this->site->analyticsMetric?->total_requests_24h
-            ?? data_get($insights, 'summary.total', 0));
-        $blocked = (int) ($this->site->analyticsMetric?->blocked_requests_24h
-            ?? data_get($insights, 'summary.blocked', 0));
+        $insights = app(FirewallInsightsPresenter::class)->insights($this->site, $this->firewallRange());
+        $total = (int) data_get($insights, 'summary.total', 0);
+        $blocked = (int) data_get($insights, 'summary.blocked', 0);
 
         if ($total === 0) {
             $this->notify('Sync complete. Edge telemetry reports 0 requests in the selected time range.');
@@ -133,6 +147,6 @@ class FirewallPage extends BaseProtectionPage
             return;
         }
 
-        $this->notify('Sync complete. '.$total.' requests observed, '.$blocked.' blocked.');
+        $this->notify('Sync complete. '.$total.' requests observed, '.$blocked.' blocked for the last '.$this->firewallRangeLabel().'.');
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Filament\App\Pages;
 
+use App\Filament\App\Concerns\InteractsWithFirewallRange;
 use App\Jobs\ApplySiteControlSettingJob;
 use App\Jobs\CheckAcmDnsValidationJob;
 use App\Jobs\InvalidateCloudFrontCacheJob;
@@ -31,6 +32,8 @@ use Livewire\Attributes\On;
 
 abstract class BaseProtectionPage extends Page
 {
+    use InteractsWithFirewallRange;
+
     protected static string|\UnitEnum|null $navigationGroup = 'Security & Protection';
 
     public ?Site $site = null;
@@ -126,7 +129,7 @@ abstract class BaseProtectionPage extends Page
         $this->site->loadMissing('analyticsMetric');
 
         $insightsPresenter = app(FirewallInsightsPresenter::class);
-        $insights = $insightsPresenter->insights($this->site);
+        $insights = $insightsPresenter->insights($this->site, $this->firewallRange());
         $summary = (array) data_get($insights, 'summary', []);
         $totalRequests = (int) ($summary['total'] ?? ($this->site->analyticsMetric?->total_requests_24h ?? 0));
         $blockedRequests = (int) ($summary['blocked'] ?? ($this->site->analyticsMetric?->blocked_requests_24h ?? 0));
@@ -157,7 +160,7 @@ abstract class BaseProtectionPage extends Page
             [
                 'label' => 'Total Requests',
                 'value' => number_format($totalRequests),
-                'support' => 'Everything seen by the edge in the last 24 hours, including good and bad traffic.',
+                'support' => 'Everything seen by the edge in the last '.$this->firewallRangeLabel().', including good and bad traffic.',
                 'help' => 'Use this to understand overall traffic volume. It includes normal visitors, bots, and blocked requests together.',
                 'color' => 'primary',
             ],

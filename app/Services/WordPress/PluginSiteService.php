@@ -329,7 +329,7 @@ class PluginSiteService
     {
         $normalizedRange = strtolower(trim($range)) === '7d' ? '7d' : '24h';
         $windowStart = $normalizedRange === '7d' ? now()->subDays(7) : now()->subDay();
-        $insightPayload = $insights ?? app(FirewallInsightsPresenter::class)->insights($site);
+        $insightPayload = $insights ?? app(FirewallInsightsPresenter::class)->insights($site, $normalizedRange);
         $events = collect((array) data_get($insightPayload, 'events', []))
             ->map(function (array $event): array {
                 $uri = (string) ($event['uri'] ?? '/');
@@ -400,7 +400,7 @@ class PluginSiteService
         $normalizedRange = strtolower(trim($range)) === '7d' ? '7d' : '24h';
         $insights = $site->provider === Site::PROVIDER_BUNNY
             ? app(\App\Services\Bunny\BunnyFirewallInsightsService::class)->getSiteInsights($site, $normalizedRange)
-            : app(FirewallInsightsPresenter::class)->insights($site);
+            : app(FirewallInsightsPresenter::class)->insights($site, $normalizedRange);
 
         $summary = (array) data_get($insights, 'summary', []);
         $insightTotal = (int) ($summary['total'] ?? 0);
