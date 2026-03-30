@@ -578,6 +578,8 @@ class FirewallAccessRulesTable extends TableWidget
             return SiteFirewallRule::query()->whereRaw('1 = 0');
         }
 
+        app(FirewallAccessControlService::class)->consolidateGroupedRuleSets($site, auth()->id());
+
         return SiteFirewallRule::query()
             ->where('site_id', $site->id)
             ->when(

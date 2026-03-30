@@ -7,6 +7,7 @@ use App\Models\Site;
 use App\Models\SiteFirewallRule;
 use App\Services\Bunny\BunnyShieldAccessListService;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Arr;
 
 class FirewallAccessControlService
@@ -243,6 +244,24 @@ class FirewallAccessControlService
             return [];
         }
 
+        $existing = $this->groupedRulesQuery(
+            site: $site,
+            ruleType: $ruleType,
+            action: $action,
+            mode: $mode,
+        )->get();
+
+        if ($existing->isNotEmpty()) {
+            return [$this->mergeGroupedRules(
+                rules: $existing,
+                incomingTargets: $targets->all(),
+                actorId: $actorId,
+                displayName: $displayName,
+                note: $note,
+                expiresAt: $expiresAt,
+            )];
+        }
+
         $count = $targets->count();
         $summary = $displayName ?: $this->ruleSetLabel($ruleType, $action);
 
@@ -272,6 +291,35 @@ class FirewallAccessControlService
         }
 
         return [$rule->fresh()];
+    }
+
+    public function consolidateGroupedRuleSets(Site $site, ?int $actorId = null): void
+    {
+        SiteFirewallRule::query()
+            ->where('site_id', $site->id)
+            ->whereIn('rule_type', [SiteFirewallRule::TYPE_COUNTRY, SiteFirewallRule::TYPE_CONTINENT])
+            ->whereIn('status', [
+                SiteFirewallRule::STATUS_PENDING,
+                SiteFirewallRule::STATUS_ACTIVE,
+                SiteFirewallRule::STATUS_FAILED,
+            ])
+            ->get()
+            ->groupBy(fn (SiteFirewallRule $rule): string => implode('|', [
+                $rule->rule_type,
+                $rule->action,
+                $rule->mode,
+            ]))
+            ->each(function (Collection $rules) use ($actorId): void {
+                if ($rules->count() < 2) {
+                    return;
+                }
+
+                $this->mergeGroupedRules(
+                    rules: $rules,
+                    incomingTargets: [],
+                    actorId: $actorId,
+                );
+            });
     }
 
     public function singleRuleLabel(string $ruleType, string $target, string $action): string
@@ -387,12 +435,22 @@ class FirewallAccessControlService
         $action = strtolower((string) Arr::get($data, 'action', $rule->action));
         $displayName = trim((string) Arr::get($data, 'display_name', (string) ($meta['display_name'] ?? '')));
 
-        if ($ruleType === SiteFirewallRule::TYPE_COUNTRY) {
-            $codes = collect(preg_split('/\r\n|\r|\n/', (string) Arr::get($data, 'countries_content', '')) ?: [])
+        if (in_array($ruleType, [SiteFirewallRule::TYPE_COUNTRY, SiteFirewallRule::TYPE_CONTINENT], true)) {
+            $codes = collect(Arr::wrap(Arr::get($data, 'grouped_targets', [])))
+                ->map(fn (mixed $value): string => strtoupper(trim((string) $value)))
+                ->filter(fn (string $code): bool => preg_match('/^[A-Z]{2}$/', $code) === 1)
+                ->unique()
+                ->values();
+
+            if ($codes->isEmpty()) {
+                $sourceField = $ruleType === SiteFirewallRule::TYPE_COUNTRY ? 'countries_content' : 'continents_content';
+
+                $codes = collect(preg_split('/\r\n|\r|\n/', (string) Arr::get($data, $sourceField, '')) ?: [])
                 ->map(fn (string $line): string => strtoupper(trim($line)))
                 ->filter(fn (string $code): bool => preg_match('/^[A-Z]{2}$/', $code) === 1)
                 ->unique()
                 ->values();
+            }
 
             if ($codes->isNotEmpty()) {
                 $meta['targets'] = $codes->all();
@@ -442,6 +500,35 @@ class FirewallAccessControlService
         }
 
         return $rule->fresh();
+    }
+
+    public function removeTargetFromRuleSet(SiteFirewallRule $rule, ?int $actorId, string $target): ?SiteFirewallRule
+    {
+        if (! in_array($rule->rule_type, [SiteFirewallRule::TYPE_COUNTRY, SiteFirewallRule::TYPE_CONTINENT], true)) {
+            $this->removeRule($rule, $actorId);
+
+            return null;
+        }
+
+        $target = strtoupper(trim($target));
+        $remainingTargets = collect($this->groupedRuleTargets($rule))
+            ->reject(fn (string $value): bool => $value === $target)
+            ->values();
+
+        if ($remainingTargets->isEmpty()) {
+            $this->removeRule($rule, $actorId);
+
+            return null;
+        }
+
+        return $this->updateRule($rule, $actorId, [
+            'action' => $rule->action,
+            'mode' => $rule->mode,
+            'display_name' => (string) data_get($rule->meta, 'display_name', ''),
+            'note' => $rule->note,
+            'expires_at' => $rule->expires_at,
+            'grouped_targets' => $remainingTargets->all(),
+        ]);
     }
 
     public function deployStagedRules(Site $site, ?int $actorId): int
@@ -553,5 +640,101 @@ class FirewallAccessControlService
         };
 
         return "{$typeLabel} {$suffix}";
+    }
+
+    protected function groupedRulesQuery(
+        Site $site,
+        string $ruleType,
+        string $action,
+        string $mode,
+    )
+    {
+        return SiteFirewallRule::query()
+            ->where('site_id', $site->id)
+            ->where('rule_type', $ruleType)
+            ->where('action', $action)
+            ->where('mode', $mode)
+            ->whereIn('status', [
+                SiteFirewallRule::STATUS_PENDING,
+                SiteFirewallRule::STATUS_ACTIVE,
+                SiteFirewallRule::STATUS_REMOVED,
+                SiteFirewallRule::STATUS_FAILED,
+            ]);
+    }
+
+    /**
+     * @param  Collection<int, SiteFirewallRule>  $rules
+     * @param  array<int, string>  $incomingTargets
+     */
+    protected function mergeGroupedRules(
+        Collection $rules,
+        array $incomingTargets,
+        ?int $actorId,
+        ?string $displayName = null,
+        ?string $note = null,
+        ?CarbonInterface $expiresAt = null,
+    ): SiteFirewallRule {
+        /** @var SiteFirewallRule $keeper */
+        $keeper = $rules
+            ->sortBy([
+                fn (SiteFirewallRule $rule): int => match ($rule->status) {
+                    SiteFirewallRule::STATUS_ACTIVE => 0,
+                    SiteFirewallRule::STATUS_PENDING => 1,
+                    SiteFirewallRule::STATUS_FAILED => 2,
+                    SiteFirewallRule::STATUS_REMOVED => 3,
+                    default => 4,
+                },
+                fn (SiteFirewallRule $rule): int => $rule->id,
+            ])
+            ->first();
+
+        $mergedTargets = $rules
+            ->flatMap(fn (SiteFirewallRule $rule): array => $this->groupedRuleTargets($rule))
+            ->merge($incomingTargets)
+            ->map(fn (mixed $value): string => strtoupper(trim((string) $value)))
+            ->filter(fn (string $value): bool => preg_match('/^[A-Z]{2}$/', $value) === 1)
+            ->unique()
+            ->values();
+
+        $updated = $this->updateRule($keeper, $actorId, [
+            'action' => $keeper->action,
+            'mode' => $keeper->mode,
+            'display_name' => $displayName !== null && trim($displayName) !== ''
+                ? $displayName
+                : (string) data_get($keeper->meta, 'display_name', $this->ruleSetLabel($keeper->rule_type, $keeper->action)),
+            'note' => $note ?? $keeper->note,
+            'expires_at' => $expiresAt ?? $keeper->expires_at,
+            'grouped_targets' => $mergedTargets->all(),
+        ]);
+
+        $rules
+            ->reject(fn (SiteFirewallRule $rule): bool => $rule->id === $keeper->id)
+            ->each(fn (SiteFirewallRule $rule) => $this->removeRule($rule, $actorId));
+
+        return $updated;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected function groupedRuleTargets(SiteFirewallRule $rule): array
+    {
+        $meta = is_array($rule->meta) ? $rule->meta : [];
+        $targets = collect(Arr::wrap($meta['targets'] ?? []))
+            ->map(fn (mixed $value): string => strtoupper(trim((string) $value)))
+            ->filter(fn (string $value): bool => preg_match('/^[A-Z]{2}$/', $value) === 1)
+            ->unique()
+            ->values();
+
+        if ($targets->isNotEmpty()) {
+            return $targets->all();
+        }
+
+        return collect(preg_split('/\r\n|\r|\n/', (string) ($meta['content'] ?? '')) ?: [])
+            ->map(fn (string $line): string => strtoupper(trim($line)))
+            ->filter(fn (string $value): bool => preg_match('/^[A-Z]{2}$/', $value) === 1)
+            ->unique()
+            ->values()
+            ->all();
     }
 }

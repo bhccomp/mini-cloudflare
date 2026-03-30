@@ -15,11 +15,16 @@ class PluginFirewallRuleDeleteController extends Controller
         $validated = $request->validate([
             'site_id' => ['required', 'integer', 'min:1'],
             'rule_id' => ['required', 'integer', 'min:1'],
+            'target' => ['nullable', 'string'],
         ]);
 
         try {
             $connection = $service->authenticate($request, $validated['site_id']);
-            $payload = $service->removeFirewallRule($connection, (int) $validated['rule_id']);
+            $payload = $service->removeFirewallRule(
+                $connection,
+                (int) $validated['rule_id'],
+                isset($validated['target']) ? (string) $validated['target'] : null,
+            );
         } catch (RuntimeException $exception) {
             return response()->json([
                 'message' => $exception->getMessage(),
