@@ -4,6 +4,7 @@ namespace App\Services\Bunny;
 
 use App\Models\EdgeRequestLog;
 use App\Models\Site;
+use App\Models\SiteAnalyticsMetric;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 
@@ -36,9 +37,11 @@ class BunnyFirewallInsightsService
         $normalizedRange = $this->normalizeRange($range);
         $windowStart = $normalizedRange === '7d' ? now()->subDays(7) : now()->subDay();
 
-        // Prefer a larger live Bunny sample so top countries / IPs reflect recent edge traffic
-        // instead of a small or stale local subset.
-        $events = collect($this->logs->recentLogs($site, 2000));
+        // Prefer local range-filtered events for broader windows so 7d summaries do not collapse
+        // into the same recent sample as 24h. Fall back to live Bunny logs when local data is thin.
+        $events = $normalizedRange === '7d'
+            ? $this->localEvents($site, 5000, $normalizedRange)
+            : collect($this->logs->recentLogs($site, 2000));
         $events = $this->filterEventsByRange($events, $windowStart);
 
         if ($events->isEmpty()) {
@@ -99,6 +102,17 @@ class BunnyFirewallInsightsService
         $challengeRatio = $total > 0
             ? round(($events->filter(fn (array $event): bool => in_array(strtoupper((string) ($event['action'] ?? 'ALLOW')), ['CHALLENGE', 'CAPTCHA'], true))->count() / $total) * 100, 2)
             : 0.0;
+
+        if ($normalizedRange === '7d' && $metric) {
+            $trendTotal = $this->metricTotalForRange($metric, $normalizedRange);
+            $trendBlocked = $this->metricBlockedForRange($metric, $normalizedRange);
+
+            if ($trendTotal > 0) {
+                $total = $trendTotal;
+                $blocked = min($trendBlocked, $trendTotal);
+                $allowed = max(0, $total - $blocked);
+            }
+        }
 
         // Demo/screenshot sites should reflect seeded analytics totals on summary cards.
         if ($isDemoSeed && $metric) {
