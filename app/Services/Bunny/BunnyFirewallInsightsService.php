@@ -39,9 +39,7 @@ class BunnyFirewallInsightsService
 
         // Prefer local range-filtered events for broader windows so 7d summaries do not collapse
         // into the same recent sample as 24h. Fall back to live Bunny logs when local data is thin.
-        $events = $normalizedRange === '7d'
-            ? $this->localEvents($site, 5000, $normalizedRange)
-            : collect($this->logs->recentLogs($site, 2000));
+        $events = collect($this->logs->recentLogs($site, $normalizedRange === '7d' ? 5000 : 2000, $normalizedRange));
         $events = $this->filterEventsByRange($events, $windowStart);
 
         if ($events->isEmpty()) {
@@ -49,10 +47,10 @@ class BunnyFirewallInsightsService
         }
 
         if ($events->isEmpty()) {
-            $synced = $this->logs->syncToLocalStore($site, 1000);
+            $synced = $this->logs->syncToLocalStore($site, $normalizedRange === '7d' ? 5000 : 1000, $normalizedRange);
 
             if ($synced > 0) {
-                $events = $this->localEvents($site, 2000, $normalizedRange);
+                $events = $this->localEvents($site, $normalizedRange === '7d' ? 5000 : 2000, $normalizedRange);
             }
         }
 
@@ -102,17 +100,6 @@ class BunnyFirewallInsightsService
         $challengeRatio = $total > 0
             ? round(($events->filter(fn (array $event): bool => in_array(strtoupper((string) ($event['action'] ?? 'ALLOW')), ['CHALLENGE', 'CAPTCHA'], true))->count() / $total) * 100, 2)
             : 0.0;
-
-        if ($normalizedRange === '7d' && $metric) {
-            $trendTotal = $this->metricTotalForRange($metric, $normalizedRange);
-            $trendBlocked = $this->metricBlockedForRange($metric, $normalizedRange);
-
-            if ($trendTotal > 0) {
-                $total = $trendTotal;
-                $blocked = min($trendBlocked, $trendTotal);
-                $allowed = max(0, $total - $blocked);
-            }
-        }
 
         // Demo/screenshot sites should reflect seeded analytics totals on summary cards.
         if ($isDemoSeed && $metric) {

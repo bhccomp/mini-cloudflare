@@ -17,11 +17,13 @@ class BunnyLogsService
     /**
      * @return array<int, array<string, mixed>>
      */
-    public function recentLogs(Site $site, int $limit = 200): array
+    public function recentLogs(Site $site, int $limit = 200, string $range = '24h'): array
     {
         if (app(DemoModeService::class)->shouldUseDemoData($site)) {
             return $this->recentLocalLogs($site, $limit);
         }
+
+        $normalizedRange = strtolower(trim($range)) === '7d' ? '7d' : '24h';
 
         $zoneId = (int) ($site->provider_resource_id ?: data_get($site->provider_meta, 'zone_id', 0));
         if ($zoneId <= 0) {
@@ -59,7 +61,7 @@ class BunnyLogsService
                 ->all();
         }
 
-        $archiveRows = $this->downloadLogArchiveRows($site, $limit);
+        $archiveRows = $this->downloadLogArchiveRows($site, $limit, $normalizedRange === '7d' ? 7 : 3);
         if ($archiveRows !== []) {
             return collect($archiveRows)
                 ->map(fn (array $row): array => $this->normalizeRow($row))
@@ -72,13 +74,13 @@ class BunnyLogsService
         return [];
     }
 
-    public function syncToLocalStore(Site $site, int $limit = 500): int
+    public function syncToLocalStore(Site $site, int $limit = 500, string $range = '24h'): int
     {
         if (app(DemoModeService::class)->shouldUseDemoData($site)) {
             return 0;
         }
 
-        $rows = $this->recentLogs($site, $limit);
+        $rows = $this->recentLogs($site, $limit, $range);
 
         if ($rows === []) {
             return 0;
@@ -253,7 +255,7 @@ class BunnyLogsService
     /**
      * @return array<int, array<string, mixed>>
      */
-    protected function downloadLogArchiveRows(Site $site, int $limit): array
+    protected function downloadLogArchiveRows(Site $site, int $limit, int $days = 3): array
     {
         $zoneId = (int) ($site->provider_resource_id ?: data_get($site->provider_meta, 'zone_id', 0));
         if ($zoneId <= 0) {
@@ -268,7 +270,7 @@ class BunnyLogsService
         $base = rtrim((string) config('edge.bunny.logging_base_url', 'https://logging.bunnycdn.com'), '/');
         $rows = [];
 
-        foreach (range(0, 2) as $daysAgo) {
+        foreach (range(0, max(0, $days - 1)) as $daysAgo) {
             $datePath = now()->subDays($daysAgo)->format('m-d-y');
             $url = "{$base}/{$datePath}/{$zoneId}.log";
 
