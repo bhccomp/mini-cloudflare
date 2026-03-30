@@ -325,10 +325,55 @@ class PluginSiteService
     /**
      * @return array<int, array<string, mixed>>
      */
-    public function recentFirewallEventsForSite(Site $site, int $limit = 10): array
+    public function recentFirewallEventsForSite(Site $site, int $limit = 10, string $range = '24h', ?array $insights = null): array
     {
+        $normalizedRange = strtolower(trim($range)) === '7d' ? '7d' : '24h';
+        $windowStart = $normalizedRange === '7d' ? now()->subDays(7) : now()->subDay();
+        $insightPayload = $insights ?? app(FirewallInsightsPresenter::class)->insights($site);
+        $events = collect((array) data_get($insightPayload, 'events', []))
+            ->map(function (array $event): array {
+                $uri = (string) ($event['uri'] ?? '/');
+                $path = parse_url($uri, PHP_URL_PATH) ?: $uri;
+
+                return [
+                    'timestamp' => $event['timestamp'] ?? now(),
+                    'action' => strtoupper((string) ($event['action'] ?? 'ALLOW')),
+                    'path' => (string) $path,
+                    'status_code' => (int) ($event['status_code'] ?? 0),
+                    'country' => strtoupper((string) ($event['country'] ?? '??')),
+                    'ip' => (string) ($event['ip'] ?? '-'),
+                    'method' => strtoupper((string) ($event['method'] ?? 'GET')),
+                ];
+            })
+            ->filter(function (array $event) use ($windowStart): bool {
+                try {
+                    return \Illuminate\Support\Carbon::parse((string) ($event['timestamp'] ?? now()->toIso8601String()))
+                        ->greaterThanOrEqualTo($windowStart);
+                } catch (\Throwable) {
+                    return false;
+                }
+            })
+            ->sortByDesc(fn (array $event): int => \Illuminate\Support\Carbon::parse((string) $event['timestamp'])->timestamp)
+            ->take(max(1, $limit))
+            ->values();
+
+        if ($events->isNotEmpty()) {
+            return $events
+                ->map(fn (array $row): array => [
+                    'timestamp' => \Illuminate\Support\Carbon::parse((string) $row['timestamp'])->toIso8601String(),
+                    'action' => (string) ($row['action'] ?? 'ALLOW'),
+                    'path' => (string) ($row['path'] ?? '/'),
+                    'status_code' => (int) ($row['status_code'] ?? 0),
+                    'country' => strtoupper((string) ($row['country'] ?? '??')),
+                    'ip' => (string) ($row['ip'] ?? '-'),
+                    'method' => strtoupper((string) ($row['method'] ?? 'GET')),
+                ])
+                ->all();
+        }
+
         return EdgeRequestLog::query()
             ->where('site_id', $site->id)
+            ->where('event_at', '>=', $windowStart)
             ->latest('event_at')
             ->limit(max(1, $limit))
             ->get()
@@ -423,7 +468,7 @@ class PluginSiteService
                 'countries' => $access['pro_enabled'] ? $this->accessControl->countryOptions($site) : [],
                 'continents' => $access['pro_enabled'] ? $this->accessControl->continentOptions($site) : [],
             ],
-            'activity' => $access['pro_enabled'] ? $this->recentFirewallEventsForSite($site, 10) : [],
+            'activity' => $access['pro_enabled'] ? $this->recentFirewallEventsForSite($site, 10, $normalizedRange, $insights) : [],
             'feed' => $access['pro_enabled'] ? $this->activityFeed->forSite($site, 10) : [],
             'insights' => [
                 'top_countries' => $access['pro_enabled'] ? $topCountries : [],
