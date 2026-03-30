@@ -125,13 +125,13 @@ class FirewallAccessControlService
         }
 
         $meta = is_array($rule->meta) ? $rule->meta : [];
-        $content = trim((string) ($meta['content'] ?? ''));
+        $providerPayload = $this->providerRulePayload($site, $rule, $meta);
 
         try {
             $providerResult = $this->bunny->createRule($site, [
-                'rule_type' => $rule->rule_type,
-                'target' => $rule->target,
-                'content' => $content !== '' ? $content : null,
+                'rule_type' => $providerPayload['rule_type'],
+                'target' => $providerPayload['target'],
+                'content' => $providerPayload['content'],
                 'action' => $rule->action,
                 'expires_at' => $rule->expires_at?->toIso8601String(),
                 'note' => $rule->note,
@@ -173,6 +173,50 @@ class FirewallAccessControlService
         }
 
         return $rule->fresh();
+    }
+
+    /**
+     * @param  array<string, mixed>  $meta
+     * @return array{rule_type: string, target: string, content: ?string}
+     */
+    protected function providerRulePayload(Site $site, SiteFirewallRule $rule, array $meta): array
+    {
+        $content = trim((string) ($meta['content'] ?? ''));
+
+        if ($rule->rule_type !== SiteFirewallRule::TYPE_CONTINENT) {
+            return [
+                'rule_type' => $rule->rule_type,
+                'target' => $rule->target,
+                'content' => $content !== '' ? $content : null,
+            ];
+        }
+
+        $selectedContinents = collect(Arr::wrap($meta['targets'] ?? []))
+            ->map(fn (mixed $value): string => strtoupper(trim((string) $value)))
+            ->filter()
+            ->values();
+
+        if ($selectedContinents->isEmpty()) {
+            $selectedContinents = collect([strtoupper(trim((string) $rule->target))])->filter()->values();
+        }
+
+        $continentMap = $this->bunny->continentCountries();
+        $countryTargets = $selectedContinents
+            ->flatMap(fn (string $continent): array => $continentMap[$continent] ?? [])
+            ->map(fn (mixed $value): string => strtoupper(trim((string) $value)))
+            ->filter(fn (string $value): bool => strlen($value) === 2)
+            ->unique()
+            ->values();
+
+        if ($countryTargets->isEmpty()) {
+            throw new \RuntimeException('No country mapping is available for the selected continent.');
+        }
+
+        return [
+            'rule_type' => SiteFirewallRule::TYPE_COUNTRY,
+            'target' => $rule->target,
+            'content' => $countryTargets->implode("\n"),
+        ];
     }
 
     /**
