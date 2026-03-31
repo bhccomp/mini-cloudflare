@@ -1,5 +1,48 @@
 # MEMORY
 
+## WooCommerce Protection Presets (Latest)
+- FirePhage now has a real preset layer for store-heavy traffic on the WAF side instead of only generic firewall controls.
+- New preset service:
+  - `app/Services/Firewall/FirewallPresetService.php`
+- Current presets:
+  - `WooCommerce Protected`
+  - `High Bot Pressure`
+- These presets are productization on the FirePhage side; Bunny already had the underlying primitives.
+- `WooCommerce Protected` currently applies:
+  - WooCommerce cache bypasses for:
+    - `/cart*`
+    - `/checkout*`
+    - `/my-account*`
+    - `/wc-api/*`
+    - `/wp-json/wc/*`
+    - `/wp-json/wc/store/*`
+  - store-focused rate limits for:
+    - checkout
+    - cart
+    - account
+    - WooCommerce REST API
+    - WooCommerce Store API
+  - balanced bot detection
+  - stronger WAF sensitivity for store traffic
+- `High Bot Pressure` currently applies:
+  - the same WooCommerce cache bypass coverage
+  - tighter WooCommerce rate-limit thresholds
+  - stricter bot-detection sensitivity/aggression
+  - stricter shield settings including VPN / Tor / datacenter blocking
+- WAF page now includes a `Protection Presets` card in the right-side stack:
+  - implemented in `resources/views/filament/app/pages/protection/firewall-access-control.blade.php`
+  - `High Bot Pressure` must stay styled as an emergency/danger action
+- Protection Overview page now has a red header action:
+  - `Under Bot Attack Mode`
+  - implemented in `app/Filament/App/Pages/FirewallPage.php`
+  - this applies the `high_bot_pressure` preset directly from the overview page
+- Important UX detail:
+  - `Under Bot Attack Mode` is currently a one-click preset application, not a reversible provider-native mode toggle
+  - do not present it as if Bunny has a dedicated built-in “bot attack mode” switch
+- Preset state is tracked in site `provider_meta` under:
+  - `firewall_presets.last_applied`
+  - per-preset tracked rate-limit IDs
+
 ## WAF Expansion + Rule Builder (Latest)
 - WAF page load was optimized after it became too heavy from synchronous Bunny API calls on first render.
 - Current WAF performance approach:
@@ -649,6 +692,10 @@
 - Remote WordPress plugin path:
   - `/var/www/nodesfoundry.com/wp-content/plugins/firephage-security`
 - Remote Git auth is already configured under the `codex` user on `5.78.113.107`.
+- If direct SSH auth is missing in the current shell/session, check the local credentials file before assuming deploy is blocked:
+  - `/var/www/firephage-waf-saas/.local/CREDS.md`
+  - current stored values there include the `codex` SSH password for `5.78.113.107`
+  - use that file for live `nodesfoundry.com` plugin syncs from this workspace
 - Working process for plugin changes:
   - make plugin changes in the separate local repo at `/var/www/firephage-security`
   - commit and push that repo to GitHub
