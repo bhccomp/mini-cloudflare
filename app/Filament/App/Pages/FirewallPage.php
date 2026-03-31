@@ -8,11 +8,14 @@ use App\Filament\App\Widgets\Firewall\FirewallRequestMapWidget;
 use App\Filament\App\Widgets\Firewall\FirewallThreatSummaryStats;
 use App\Filament\App\Widgets\Firewall\FirewallTopCountriesTable;
 use App\Filament\App\Widgets\Firewall\FirewallTopIpsTable;
+use App\Models\AuditLog;
 use App\Models\Site;
 use App\Services\Analytics\AnalyticsSyncManager;
 use App\Services\Bunny\BunnyLogsService;
+use App\Services\Firewall\FirewallPresetService;
 use App\Services\Firewall\FirewallInsightsPresenter;
 use Filament\Actions\Action;
+use Filament\Notifications\Notification;
 use Illuminate\View\View;
 use Livewire\Attributes\Url;
 
@@ -71,6 +74,12 @@ class FirewallPage extends BaseProtectionPage
                 ->icon('heroicon-m-arrow-path')
                 ->color('primary')
                 ->action('syncFirewallNow')
+                ->disabled(fn (): bool => ! $this->site),
+            Action::make('underBotAttackMode')
+                ->label('Under Bot Attack Mode')
+                ->icon('heroicon-m-bolt')
+                ->color('danger')
+                ->action('applyHighBotPressurePreset')
                 ->disabled(fn (): bool => ! $this->site),
             Action::make('troubleshootingMode')
                 ->label(fn (): string => $this->isTroubleshootingMode()
@@ -159,5 +168,40 @@ class FirewallPage extends BaseProtectionPage
         }
 
         $this->notify('Sync complete. '.$total.' requests observed, '.$blocked.' blocked for the last '.$this->firewallRangeLabel().'.');
+    }
+
+    public function applyHighBotPressurePreset(): void
+    {
+        if (! $this->site || $this->site->provider !== Site::PROVIDER_BUNNY) {
+            Notification::make()->title('High Bot Pressure is available only for Standard Edge sites.')->warning()->send();
+
+            return;
+        }
+
+        if (! $this->ensureNotDemoReadOnly('High Bot Pressure preset')) {
+            return;
+        }
+
+        try {
+            $result = app(FirewallPresetService::class)->applyPreset($this->site, 'high_bot_pressure');
+
+            $this->refreshSite();
+            $this->dispatch('firewall-sync-widgets');
+
+            AuditLog::create([
+                'actor_id' => auth()->id(),
+                'organization_id' => $this->site->organization_id,
+                'site_id' => $this->site->id,
+                'action' => 'site.firewall_preset.high_bot_pressure',
+                'status' => 'success',
+                'message' => (string) ($result['message'] ?? 'High Bot Pressure preset applied.'),
+                'meta' => $result,
+            ]);
+
+            $this->notify((string) ($result['message'] ?? 'High Bot Pressure preset applied.'));
+        } catch (\Throwable $exception) {
+            report($exception);
+            Notification::make()->title('Unable to apply High Bot Pressure.')->body($exception->getMessage())->danger()->send();
+        }
     }
 }

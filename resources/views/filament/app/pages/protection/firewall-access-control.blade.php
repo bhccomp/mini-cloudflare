@@ -361,7 +361,7 @@
                                     @endif
                                     <div class="mt-4">
                                         <x-filament::button
-                                            color="gray"
+                                            color="{{ $preset['id'] === 'high_bot_pressure' ? 'danger' : 'gray' }}"
                                             type="button"
                                             wire:click="applyProtectionPreset('{{ $preset['id'] }}')"
                                         >
