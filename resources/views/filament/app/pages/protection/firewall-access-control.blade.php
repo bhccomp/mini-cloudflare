@@ -343,6 +343,44 @@
 
                 <div class="fp-waf-stack">
                     <x-filament.app.settings.card
+                        title="Protection Presets"
+                        description="Apply a store-focused protection profile in one click, then fine-tune any cache, bot, or WAF detail afterward."
+                        icon="heroicon-o-bolt"
+                    >
+                        <div class="grid gap-3">
+                            @foreach ($this->protectionPresets() as $preset)
+                                <div class="fp-waf-note">
+                                    <strong>{{ $preset['name'] }}</strong>
+                                    <span>{{ $preset['description'] }}</span>
+                                    @if (! empty($preset['highlights']) && is_array($preset['highlights']))
+                                        <div class="mt-3 grid gap-1 text-sm text-slate-600 dark:text-slate-300">
+                                            @foreach ($preset['highlights'] as $highlight)
+                                                <div>&bull; {{ $highlight }}</div>
+                                            @endforeach
+                                        </div>
+                                    @endif
+                                    <div class="mt-4">
+                                        <x-filament::button
+                                            color="gray"
+                                            type="button"
+                                            wire:click="applyProtectionPreset('{{ $preset['id'] }}')"
+                                        >
+                                            Apply {{ $preset['name'] }}
+                                        </x-filament::button>
+                                    </div>
+                                </div>
+                            @endforeach
+
+                            @if ($lastPreset = $this->lastAppliedProtectionPreset())
+                                <div class="fp-waf-note">
+                                    <strong>Last applied preset: {{ $lastPreset['name'] ?? 'Protection preset' }}</strong>
+                                    <span>Applied {{ \Illuminate\Support\Carbon::parse((string) ($lastPreset['applied_at'] ?? now()))->diffForHumans() }}. You can still adjust individual rules, bot settings, and cache bypasses afterward.</span>
+                                </div>
+                            @endif
+                        </div>
+                    </x-filament.app.settings.card>
+
+                    <x-filament.app.settings.card
                         title="Protection Snapshot"
                         description="Recent edge security outcomes across access control, WAF detections, and bot challenges."
                         icon="heroicon-o-shield-check"

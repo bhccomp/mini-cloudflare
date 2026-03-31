@@ -3,9 +3,11 @@
 namespace App\Filament\App\Pages;
 
 use App\Filament\App\Widgets\Firewall\FirewallAccessRulesTable;
+use App\Models\AuditLog;
 use App\Models\SiteFirewallRule;
 use App\Services\Bunny\Waf\BunnyShieldWafService;
 use App\Services\Firewall\FirewallAccessControlService;
+use App\Services\Firewall\FirewallPresetService;
 use App\Services\SiteContext;
 use App\Services\UiModeManager;
 use Filament\Forms\Components\DateTimePicker;
@@ -858,6 +860,45 @@ class FirewallAccessControlPage extends BaseProtectionPage implements HasForms
         Notification::make()->title('WAF telemetry refreshed.')->success()->send();
     }
 
+    public function applyProtectionPreset(string $presetId): void
+    {
+        if (! $this->site || $this->site->provider !== \App\Models\Site::PROVIDER_BUNNY) {
+            Notification::make()->title('Protection presets are available only for Standard Edge sites.')->warning()->send();
+
+            return;
+        }
+
+        if (! $this->ensureNotDemoReadOnly('Protection presets')) {
+            return;
+        }
+
+        try {
+            $result = app(FirewallPresetService::class)->applyPreset($this->site, $presetId);
+
+            $this->refreshSite();
+            $this->reloadWafState();
+            $this->dispatch('firewall-access-rules-updated');
+
+            AuditLog::create([
+                'actor_id' => auth()->id(),
+                'organization_id' => $this->site->organization_id,
+                'site_id' => $this->site->id,
+                'action' => 'site.firewall_preset.'.$presetId,
+                'status' => 'success',
+                'message' => (string) ($result['message'] ?? 'Protection preset applied.'),
+                'meta' => $result,
+            ]);
+
+            Notification::make()
+                ->title((string) ($result['message'] ?? 'Protection preset applied.'))
+                ->success()
+                ->send();
+        } catch (Throwable $exception) {
+            report($exception);
+            Notification::make()->title('Unable to apply the protection preset.')->body($exception->getMessage())->danger()->send();
+        }
+    }
+
     /**
      * @return array<int, array{label:string,value:string,support:string,color:string}>
      */
@@ -942,5 +983,23 @@ class FirewallAccessControlPage extends BaseProtectionPage implements HasForms
             '3', 'log', 'log only' => 'Log',
             default => str($value)->headline()->toString(),
         };
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function protectionPresets(): array
+    {
+        return app(FirewallPresetService::class)->presets();
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function lastAppliedProtectionPreset(): ?array
+    {
+        $state = data_get($this->site?->provider_meta, 'firewall_presets.last_applied', []);
+
+        return is_array($state) && ($state['id'] ?? null) !== null ? $state : null;
     }
 }
