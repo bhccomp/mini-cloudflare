@@ -8,6 +8,7 @@
     "require": {
         "php": "^8.2",
         "aws/aws-sdk-php": "^3.370",
+        "bezhansalleh/filament-google-analytics": "^3.3",
         "cweagans/composer-patches": "^2.0",
         "daacreators/creators-ticketing": "^1.2",
         "dedoc/scramble": "^0.13.15",

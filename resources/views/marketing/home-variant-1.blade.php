@@ -3,12 +3,8 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <x-marketing.seo-meta
-            title="FirePhage | Managed WAF, Origin Protection, and Human-Readable Edge Security"
-            description="FirePhage helps WordPress, WooCommerce, and agency teams protect websites with managed WAF controls, origin IP shielding, bot protection, and clear operational visibility."
-            :canonical="route('home')"
-            :og-url="route('home')"
-            :structured-data="[
+        @php
+            $homeStructuredData = [
                 [
                     '@context' => 'https://schema.org',
                     '@type' => 'Organization',
@@ -29,9 +25,18 @@
                     'applicationCategory' => 'SecurityApplication',
                     'operatingSystem' => 'Web',
                     'url' => route('home'),
-                    'description' => 'Managed WAF, origin protection, uptime visibility, and WordPress-focused edge security in one dashboard.',
+                    'description' => 'Website protection for WordPress and WooCommerce with WAF, origin shielding, monitoring, and readable operational visibility.',
                 ],
-            ]"
+            ];
+        @endphp
+        <x-marketing.seo-meta
+            :title="\App\Support\MarketingSeo::homepageTitle()"
+            :description="\App\Support\MarketingSeo::homepageDescription()"
+            :canonical="route('home')"
+            :og-url="route('home')"
+            :og-title="\App\Support\MarketingSeo::homepageTitle()"
+            :og-description="\App\Support\MarketingSeo::homepageDescription()"
+            :structured-data="$homeStructuredData"
         />
         <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
         @vite(['resources/css/app.css', 'resources/js/app.js'])

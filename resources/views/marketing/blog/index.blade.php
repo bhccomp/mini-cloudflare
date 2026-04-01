@@ -4,10 +4,12 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <x-marketing.seo-meta
-            title="FirePhage Blog | WordPress Protection, Firewalls, and Bot Attacks"
-            description="Clear FirePhage articles about WordPress protection, firewall strategy, bot attacks, WooCommerce security, origin protection, and practical onboarding guidance."
+            :title="\App\Support\MarketingSeo::blogIndexTitle()"
+            :description="\App\Support\MarketingSeo::blogIndexDescription()"
             :canonical="$posts->currentPage() > 1 ? $posts->url($posts->currentPage()) : route('blog.index')"
             :og-url="$posts->currentPage() > 1 ? $posts->url($posts->currentPage()) : route('blog.index')"
+            :og-title="\App\Support\MarketingSeo::blogIndexTitle()"
+            :og-description="\App\Support\MarketingSeo::blogIndexDescription()"
             :structured-data="[
                 [
                     '@context' => 'https://schema.org',

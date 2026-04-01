@@ -47,7 +47,7 @@
     <p>FirePhage and its providers may process information in different countries depending on where infrastructure, billing, email, and operational systems are located.</p>
 
     <h2>10. Cookies and similar technologies</h2>
-    <p>FirePhage uses necessary cookies and similar browser-side storage for website security, session handling, CSRF protection, and remembering cookie preferences. Optional cookie categories may also be presented for preferences, analytics, or marketing if those website features are enabled later. See the <a href="{{ route('cookies') }}">Cookie Policy</a> for more detail.</p>
+    <p>FirePhage uses necessary cookies and similar browser-side storage for website security, session handling, CSRF protection, and remembering cookie preferences. FirePhage may also load Google Analytics in consent mode for website traffic measurement, with analytics storage denied by default unless you allow analytics cookies. See the <a href="{{ route('cookies') }}">Cookie Policy</a> for more detail.</p>
 
     <h2>11. Questions</h2>
     <p>If you have privacy questions or requests, contact <a href="mailto:privacy@firephage.com">privacy@firephage.com</a> or <a href="mailto:contact@firephage.com">contact@firephage.com</a>.</p>

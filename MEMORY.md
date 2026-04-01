@@ -1,5 +1,73 @@
 # MEMORY
 
+## Canonical Host + Structured SEO System (Latest)
+- Marketing SEO is now centralized through:
+  - `app/Support/MarketingSeo.php`
+  - `config/marketing-seo.php`
+- Current purpose:
+  - keep homepage/blog SEO titles and descriptions consistent
+  - normalize canonicals and OG URLs to the preferred host
+  - provide clean fallback descriptions for blog posts from excerpts/content
+  - keep OG image alt text sensible for blog content
+- Homepage SEO is now explicitly defined in config:
+  - title:
+    - `WordPress and WooCommerce Protection | FirePhage`
+  - description:
+    - `Protect WordPress and WooCommerce sites with WAF, bot filtering, origin shielding, monitoring, and clear operational visibility from one dashboard.`
+- Blog SEO is now handled systematically:
+  - per-post overrides can live in:
+    - `config/marketing-seo.php`
+  - DB-backed `seo_title` / `seo_description` still work
+  - otherwise fallback descriptions are generated cleanly from excerpt/content instead of blunt truncation
+- Important canonical-host behavior:
+  - app-level middleware now redirects:
+    - `www.firephage.com` -> `firephage.com`
+  - middleware file:
+    - `app/Http/Middleware/RedirectWwwToCanonicalHost.php`
+  - registered in:
+    - `bootstrap/app.php`
+- This is the current preferred public host strategy:
+  - non-www canonical host
+  - canonicals and OG URLs should always align to `config('app.url')`
+
+## Google Analytics Tracking + Admin Dashboard (Latest)
+- FirePhage now has two separate Google Analytics pieces in the SaaS app:
+  1. frontend website tracking
+  2. Filament admin analytics dashboard
+- Frontend tracking:
+  - measurement ID is sourced from:
+    - `GOOGLE_ANALYTICS_MEASUREMENT_ID`
+  - marketing config key:
+    - `config/marketing.php`
+  - current site behavior uses Google Consent Mode, not unconditional cookies
+- Consent Mode implementation:
+  - GA script can load before explicit consent
+  - default consent state is denied for analytics/ad storage until updated by the cookie banner
+  - when a visitor accepts analytics cookies, FirePhage updates Google consent state accordingly
+  - implementation touches:
+    - `resources/views/components/marketing/seo-meta.blade.php`
+    - `resources/js/app.js`
+    - `resources/views/marketing/cookies.blade.php`
+    - `resources/views/marketing/privacy.blade.php`
+- Admin analytics dashboard:
+  - package installed:
+    - `bezhansalleh/filament-google-analytics`
+  - config files:
+    - `config/analytics.php`
+    - `config/google-analytics.php`
+  - admin panel registration is conditional:
+    - plugin is only registered when both the property ID and service-account credentials are present
+  - admin provider:
+    - `app/Providers/Filament/AdminPanelProvider.php`
+- Required env / credential shape for admin analytics:
+  - `ANALYTICS_PROPERTY_ID`
+  - service-account JSON at:
+    - `storage/app/analytics/service-account-credentials.json`
+- Important distinction:
+  - the Filament package is for reading GA4 data in admin
+  - it does not replace frontend website tracking
+
+
 ## Cookie Consent + Cookie Policy Baseline (Latest)
 - FirePhage marketing site now has a real cookie-consent baseline instead of only privacy-policy text.
 - New public page:

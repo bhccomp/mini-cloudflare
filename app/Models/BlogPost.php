@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\MarketingSeo;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Builder;
@@ -62,12 +63,17 @@ class BlogPost extends Model
 
     public function seoTitle(): string
     {
-        return trim((string) ($this->seo_title ?: $this->title));
+        return MarketingSeo::blogTitle($this);
     }
 
     public function seoDescription(): string
     {
-        return trim((string) ($this->seo_description ?: $this->excerpt ?: 'FirePhage insights about WordPress protection, bot attacks, firewalls, and practical website security.'));
+        return MarketingSeo::blogDescription($this);
+    }
+
+    public function ogImageAlt(): string
+    {
+        return MarketingSeo::blogOgImageAlt($this);
     }
 
     public function readingTimeMinutes(): int

@@ -9,6 +9,7 @@ use App\Filament\Admin\Widgets\RecentEarlyAccessLeadsTable;
 use App\Filament\Admin\Widgets\RecentTicketsTable;
 use App\Filament\Admin\Widgets\RecentUsersTable;
 use App\Filament\Admin\Widgets\RecentWordPressSubscribersTable;
+use BezhanSalleh\GoogleAnalytics\GoogleAnalyticsPlugin;
 use Filament\Enums\DatabaseNotificationsPosition;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -30,7 +31,7 @@ class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
-        return $panel
+        $panel = $panel
             ->id('admin')
             ->path('admin')
             ->login()
@@ -72,5 +73,23 @@ class AdminPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
             ]);
+
+        if ($this->hasGoogleAnalyticsConfig()) {
+            $panel->plugin(GoogleAnalyticsPlugin::make());
+        }
+
+        return $panel;
+    }
+
+    protected function hasGoogleAnalyticsConfig(): bool
+    {
+        $propertyId = config('analytics.property_id');
+        $credentials = config('analytics.service_account_credentials_json');
+
+        return filled($propertyId)
+            && (
+                is_array($credentials)
+                || (is_string($credentials) && file_exists($credentials))
+            );
     }
 }

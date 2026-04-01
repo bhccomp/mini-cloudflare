@@ -1,6 +1,8 @@
 @import 'tailwindcss';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../vendor/bezhansalleh/filament-google-analytics/resources/views/**/*';
+@source '../../vendor/bezhansalleh/filament-google-analytics/src/{Widgets,Support}/*';
 @source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';
 @source '../**/*.js';

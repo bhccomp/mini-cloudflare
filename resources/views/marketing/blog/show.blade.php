@@ -10,6 +10,7 @@
             :canonical="$post->canonical_url ?: route('blog.show', $post)"
             :og-url="$post->canonical_url ?: route('blog.show', $post)"
             :og-image="$post->og_image_url"
+            :og-image-alt="$post->ogImageAlt()"
             :structured-data="[
                 [
                     '@context' => 'https://schema.org',

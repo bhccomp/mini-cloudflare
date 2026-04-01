@@ -2,7 +2,7 @@
     <div class="pointer-events-none absolute inset-0 z-0" aria-hidden="true">
         <img
             src="{{ asset('images/hero-banner-new.png') }}"
-            alt=""
+            alt="Abstract FirePhage network protection background"
             class="absolute inset-0 h-full w-full object-cover object-right opacity-[0.85]"
             loading="eager"
             decoding="async"

@@ -113,6 +113,29 @@ const initializeMarketingMobileMenu = () => {
     });
 };
 
+const initializeGoogleAnalyticsTracking = () => {
+    if (typeof window.gtag !== 'function') {
+        return;
+    }
+
+    const updateTracking = (consent) => {
+        const granted = Boolean(consent?.analytics);
+
+        window.gtag('consent', 'update', {
+            ad_storage: 'denied',
+            ad_user_data: 'denied',
+            ad_personalization: 'denied',
+            analytics_storage: granted ? 'granted' : 'denied',
+        });
+    };
+
+    updateTracking(window.firephageConsent);
+
+    window.addEventListener('firephage:consent-updated', (event) => {
+        updateTracking(event.detail);
+    });
+};
+
 const initializeCookieConsent = () => {
     const root = document.querySelector('[data-cookie-consent]');
     const modal = document.querySelector('[data-cookie-consent-modal]');
@@ -267,9 +290,11 @@ if (document.readyState === 'loading') {
         initializeServicesDropdowns();
         initializeMarketingMobileMenu();
         initializeCookieConsent();
+        initializeGoogleAnalyticsTracking();
     }, { once: true });
 } else {
     initializeServicesDropdowns();
     initializeMarketingMobileMenu();
     initializeCookieConsent();
+    initializeGoogleAnalyticsTracking();
 }
