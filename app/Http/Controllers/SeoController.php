@@ -22,21 +22,17 @@ class SeoController extends Controller
 
     public function sitemap(): Response
     {
-        $earlyAccessEnabled = (bool) config('marketing.early_access_enabled', true);
-
         $urls = collect([
+            ['loc' => route('home'), 'lastmod' => null, 'changefreq' => 'weekly', 'priority' => '1.0'],
             ['loc' => route('services.index'), 'lastmod' => null, 'changefreq' => 'weekly', 'priority' => '0.9'],
             ['loc' => route('blog.index'), 'lastmod' => null, 'changefreq' => 'weekly', 'priority' => '0.8'],
             ['loc' => route('contact'), 'lastmod' => null, 'changefreq' => 'monthly', 'priority' => '0.6'],
             ['loc' => route('terms'), 'lastmod' => null, 'changefreq' => 'yearly', 'priority' => '0.3'],
             ['loc' => route('privacy'), 'lastmod' => null, 'changefreq' => 'yearly', 'priority' => '0.3'],
+            ['loc' => route('cookies'), 'lastmod' => null, 'changefreq' => 'yearly', 'priority' => '0.3'],
             ['loc' => route('refund-policy'), 'lastmod' => null, 'changefreq' => 'yearly', 'priority' => '0.3'],
             ['loc' => route('acceptable-use'), 'lastmod' => null, 'changefreq' => 'yearly', 'priority' => '0.3'],
         ]);
-
-        if (! $earlyAccessEnabled) {
-            $urls->prepend(['loc' => route('home'), 'lastmod' => null, 'changefreq' => 'weekly', 'priority' => '1.0']);
-        }
 
         $urls = $urls->merge(
             collect(config('marketing-services', []))->keys()->map(fn (string $service) => [

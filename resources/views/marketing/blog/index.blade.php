@@ -6,18 +6,42 @@
         <x-marketing.seo-meta
             title="FirePhage Blog | WordPress Protection, Firewalls, and Bot Attacks"
             description="Clear FirePhage articles about WordPress protection, firewall strategy, bot attacks, WooCommerce security, origin protection, and practical onboarding guidance."
-            :canonical="route('blog.index')"
-            :og-url="route('blog.index')"
+            :canonical="$posts->currentPage() > 1 ? $posts->url($posts->currentPage()) : route('blog.index')"
+            :og-url="$posts->currentPage() > 1 ? $posts->url($posts->currentPage()) : route('blog.index')"
             :structured-data="[
                 [
                     '@context' => 'https://schema.org',
                     '@type' => 'Blog',
                     'name' => 'FirePhage Blog',
-                    'url' => route('blog.index'),
+                    'url' => $posts->currentPage() > 1 ? $posts->url($posts->currentPage()) : route('blog.index'),
                     'description' => 'Clear articles about WordPress protection, firewall strategy, bot attacks, and practical onboarding guidance.',
+                ],
+                [
+                    '@context' => 'https://schema.org',
+                    '@type' => 'BreadcrumbList',
+                    'itemListElement' => [
+                        [
+                            '@type' => 'ListItem',
+                            'position' => 1,
+                            'name' => 'FirePhage',
+                            'item' => route('home'),
+                        ],
+                        [
+                            '@type' => 'ListItem',
+                            'position' => 2,
+                            'name' => 'Blog',
+                            'item' => route('blog.index'),
+                        ],
+                    ],
                 ],
             ]"
         />
+        @if ($posts->previousPageUrl())
+            <link rel="prev" href="{{ $posts->previousPageUrl() }}">
+        @endif
+        @if ($posts->nextPageUrl())
+            <link rel="next" href="{{ $posts->nextPageUrl() }}">
+        @endif
         <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
@@ -106,6 +130,20 @@
                         @if ($posts->hasPages())
                             <div class="mt-10">
                                 {{ $posts->links() }}
+                            </div>
+                        @endif
+
+                        @if ($serviceLinks->isNotEmpty())
+                            <div class="mt-12 rounded-3xl border border-white/10 bg-slate-900/75 p-7">
+                                <p class="text-sm font-semibold uppercase tracking-[0.14em] text-cyan-300">Explore FirePhage services</p>
+                                <div class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                                    @foreach ($serviceLinks as $serviceLink)
+                                        <a href="{{ route('services.show', $serviceLink['slug']) }}" class="rounded-2xl border border-white/8 bg-slate-950/60 p-4 transition hover:border-cyan-300/50 hover:text-white">
+                                            <p class="text-sm font-semibold text-white">{{ $serviceLink['label'] }}</p>
+                                            <p class="mt-2 text-sm leading-6 text-slate-400">{{ $serviceLink['summary'] }}</p>
+                                        </a>
+                                    @endforeach
+                                </div>
                             </div>
                         @endif
                     </section>

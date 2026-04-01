@@ -45,6 +45,7 @@
                         <div class="flex flex-wrap items-center gap-3 text-sm text-slate-300">
                             <a href="{{ route('terms') }}" class="rounded-full border border-white/10 px-4 py-2 hover:border-cyan-300/60 hover:text-white">Terms</a>
                             <a href="{{ route('privacy') }}" class="rounded-full border border-white/10 px-4 py-2 hover:border-cyan-300/60 hover:text-white">Privacy</a>
+                            <a href="{{ route('cookies') }}" class="rounded-full border border-white/10 px-4 py-2 hover:border-cyan-300/60 hover:text-white">Cookies</a>
                             <a href="{{ route('refund-policy') }}" class="rounded-full border border-white/10 px-4 py-2 hover:border-cyan-300/60 hover:text-white">Refunds</a>
                             <a href="{{ route('acceptable-use') }}" class="rounded-full border border-white/10 px-4 py-2 hover:border-cyan-300/60 hover:text-white">Acceptable Use</a>
                             <a href="{{ route('contact') }}" class="rounded-full border border-white/10 px-4 py-2 hover:border-cyan-300/60 hover:text-white">Contact</a>
@@ -57,5 +58,6 @@
                 </div>
             </main>
         </div>
+        <x-marketing.cookie-consent />
     </body>
 </html>

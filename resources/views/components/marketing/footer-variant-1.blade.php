@@ -5,6 +5,7 @@
             <a href="{{ route('blog.index') }}" class="hover:text-slate-200">Blog</a>
             <a href="{{ route('terms') }}" class="hover:text-slate-200">Terms</a>
             <a href="{{ route('privacy') }}" class="hover:text-slate-200">Privacy</a>
+            <a href="{{ route('cookies') }}" class="hover:text-slate-200">Cookies</a>
             <a href="{{ route('refund-policy') }}" class="hover:text-slate-200">Refunds</a>
             <a href="{{ route('acceptable-use') }}" class="hover:text-slate-200">Acceptable Use</a>
             <a href="{{ route('contact') }}" class="hover:text-slate-200">Contact</a>
@@ -12,3 +13,4 @@
         </nav>
     </div>
 </footer>
+<x-marketing.cookie-consent />

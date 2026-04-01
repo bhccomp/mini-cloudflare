@@ -123,6 +123,22 @@
                                 <x-marketing.auth-aware-link guest-label="Start Free" class="mt-5 inline-flex rounded-lg bg-cyan-500 px-4 py-2 text-sm font-medium text-slate-950 hover:bg-cyan-400" />
                             </div>
 
+                            @if ($relatedServices->isNotEmpty())
+                                <div class="rounded-3xl border border-white/10 bg-slate-900/75 p-7">
+                                    <p class="text-sm font-semibold uppercase tracking-[0.14em] text-cyan-300">Related services</p>
+                                    <div class="mt-5 space-y-5">
+                                        @foreach ($relatedServices as $service)
+                                            <article>
+                                                <h2 class="text-base font-semibold leading-6 text-white">
+                                                    <a href="{{ route('services.show', $service['slug']) }}" class="hover:text-cyan-200">{{ $service['label'] }}</a>
+                                                </h2>
+                                                <p class="mt-2 text-sm leading-6 text-slate-400">{{ $service['summary'] }}</p>
+                                            </article>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
+
                             @if ($relatedPosts->isNotEmpty())
                                 <div class="rounded-3xl border border-white/10 bg-slate-900/75 p-7">
                                     <p class="text-sm font-semibold uppercase tracking-[0.14em] text-cyan-300">Related articles</p>

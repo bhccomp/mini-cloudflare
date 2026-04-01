@@ -4,8 +4,8 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <x-marketing.seo-meta
-            :title="'FirePhage ' . $service['nav_label'] . ' | ' . $service['summary']"
-            :description="$service['description']"
+            :title="$service['seo_title'] ?? ('FirePhage ' . $service['nav_label'] . ' | ' . $service['summary'])"
+            :description="$service['seo_description'] ?? $service['description']"
             :canonical="route('services.show', $serviceKey)"
             :og-url="route('services.show', $serviceKey)"
             :og-image="asset('images/' . $service['image'])"
@@ -165,6 +165,22 @@
                                     @endforeach
                                 </div>
                             </div>
+
+                            @if ($relatedPosts->isNotEmpty())
+                                <div class="rounded-3xl border border-white/8 bg-slate-950/60 p-6">
+                                    <p class="text-sm font-semibold text-white">Related guides</p>
+                                    <div class="mt-5 space-y-4">
+                                        @foreach ($relatedPosts as $post)
+                                            <article>
+                                                <h3 class="text-sm font-semibold leading-6 text-white">
+                                                    <a href="{{ route('blog.show', $post) }}" class="hover:text-cyan-200">{{ $post->title }}</a>
+                                                </h3>
+                                                <p class="mt-2 text-sm leading-6 text-slate-400">{{ $post->publishedLabel() }}</p>
+                                            </article>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
                         </div>
                     </section>
                 </main>

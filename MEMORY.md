@@ -1,5 +1,76 @@
 # MEMORY
 
+## Cookie Consent + Cookie Policy Baseline (Latest)
+- FirePhage marketing site now has a real cookie-consent baseline instead of only privacy-policy text.
+- New public page:
+  - `/cookies`
+  - file:
+    - `resources/views/marketing/cookies.blade.php`
+- Cookie consent UI is now a shared marketing component:
+  - `resources/views/components/marketing/cookie-consent.blade.php`
+- Current consent behavior:
+  - banner with:
+    - `Accept all`
+    - `Use essential only`
+    - `Manage preferences`
+  - modal with categories:
+    - necessary
+    - preferences
+    - analytics
+    - marketing
+  - consent is stored in a first-party cookie:
+    - `firephage_cookie_consent`
+  - JS exposes current consent on:
+    - `window.firephageConsent`
+  - JS also emits:
+    - `firephage:consent-updated`
+  - intended purpose:
+    - future analytics / marketing / optional scripts can be gated through the stored consent state
+- Footer and legal-layout links now include:
+  - `Cookies`
+- Privacy policy now explicitly references cookies and the cookie policy page.
+- Cookie policy is included in the sitemap.
+- Important compliance note:
+  - this provides the correct site baseline for necessary-cookie disclosure and optional-cookie consent
+  - it does not by itself guarantee full legal GDPR compliance across all data processing
+
+## Additional SEO Expansion (Latest)
+- SEO pass was extended after the homepage became publicly crawlable again.
+- Sitemap now always includes `/` since the forced early-access redirect is removed.
+- Service pages now have stronger page-specific metadata sourced from `config/marketing-services.php`:
+  - `seo_title`
+  - `seo_description`
+- Service pages now include contextual internal links to related blog posts:
+  - `Related guides`
+- Blog index improvements:
+  - paginated canonical / OG URL handling
+  - `prev` / `next` link tags
+  - breadcrumb schema
+  - internal link block to key service pages
+- Blog post improvements:
+  - contextual `Related services` sidebar block
+- Current SEO/product assessment:
+  - technical SEO foundation is now solid
+  - remaining upside is mostly from:
+    - more content
+    - backlinks
+    - search-console work
+    - authority building
+
+## New Published Blog Content (Latest)
+- Two additional production blog posts were published directly in the database under the active `WordPress Security` category.
+- Current new slugs:
+  - `protect-woocommerce-from-fake-orders-login-abuse-and-scraping`
+  - `how-to-move-dns-to-a-new-edge-provider-without-causing-downtime`
+- Purpose of these posts:
+  - strengthen topic coverage for:
+    - WooCommerce bot protection
+    - safe DNS cutover / onboarding
+  - reinforce internal linking back into service pages
+- Important operational note:
+  - the app/server is currently using `UTC`
+  - blog publishing should use timestamps that are already in the past relative to `UTC`, otherwise the `published()` scope hides the post
+
 ## SEO + Public Marketing Crawlability (Latest)
 - Public marketing SEO received a broader cleanup pass.
 - Shared SEO metadata component improvements:

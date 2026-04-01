@@ -35,6 +35,7 @@ Route::get('/contact', [ContactController::class, 'create'])->name('contact');
 Route::post('/contact', [ContactController::class, 'store'])->name('contact.store');
 Route::view('/terms', 'marketing.terms')->name('terms');
 Route::view('/privacy', 'marketing.privacy')->name('privacy');
+Route::view('/cookies', 'marketing.cookies')->name('cookies');
 Route::view('/refund-policy', 'marketing.refund-policy')->name('refund-policy');
 Route::view('/acceptable-use', 'marketing.acceptable-use')->name('acceptable-use');
 Route::view('/logos', 'marketing.logos')->name('logos');
