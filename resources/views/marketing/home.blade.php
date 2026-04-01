@@ -8,6 +8,7 @@
             description="FirePhage helps WordPress, WooCommerce, and agency teams protect websites with managed WAF controls, origin IP shielding, bot protection, and clear operational visibility."
             :canonical="route('home.blue')"
             :og-url="route('home.blue')"
+            robots="noindex,follow"
         />
         <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
         @vite(['resources/css/app.css', 'resources/js/app.js'])

@@ -1,5 +1,68 @@
 # MEMORY
 
+## SEO + Public Marketing Crawlability (Latest)
+- Public marketing SEO received a broader cleanup pass.
+- Shared SEO metadata component improvements:
+  - default social image now points to:
+    - `public/images/social/firephage-x-header.png`
+  - added richer robots defaults:
+    - `index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1`
+  - added:
+    - `og:locale`
+    - `og:image:secure_url`
+    - image width / height / alt tags
+- Legal pages now use the shared SEO component instead of raw `<title>` / description tags:
+  - `resources/views/components/marketing/legal-page-layout.blade.php`
+- Service pages now include:
+  - service-specific OG image
+  - breadcrumb structured data
+- Blog article pages now include:
+  - canonical / OG URL alignment with `canonical_url`
+  - breadcrumb structured data
+  - `article:published_time`
+  - `article:modified_time`
+  - `article:section` when category exists
+- Utility / non-index pages now explicitly use:
+  - `noindex,follow`
+  - current pages adjusted:
+    - `early-access`
+    - `home.blue`
+    - `logos`
+- Sitemap behavior was corrected in `SeoController`:
+  - `early-access` was removed from the sitemap
+  - home is only included in the sitemap when early-access gating is actually disabled
+- Important public-SEO/product change:
+  - the forced redirect from `/` to `/early-access` was removed from `routes/web.php`
+  - the real homepage is now publicly reachable again
+  - `/early-access` still exists as a separate page and was not removed
+
+## Registration + Google Auth UX (Latest)
+- Registration form now enforces a stronger password policy server-side:
+  - minimum 12 characters
+  - uppercase
+  - lowercase
+  - number
+  - symbol
+- Registration form now includes:
+  - `Show / Hide` for password
+  - `Show / Hide` for confirm password
+  - `Generate` button for a strong password
+  - generated password fills both fields
+- Password guidance was moved to a shared line beneath the password row so it no longer wraps awkwardly inside the first column.
+- Google sign-in issue on production was traced to missing config:
+  - `services.google.client_id = null`
+  - `services.google.client_secret = null`
+  - redirect URI is set to `https://firephage.com/auth/google/callback`
+- Current Google-auth behavior:
+  - register page hides Google button if OAuth is not configured
+  - Filament login page hides Google button if OAuth is not configured
+  - `GoogleAuthController` now fails gracefully instead of throwing users into Google's raw `Missing required parameter: client_id` error page
+- To enable Google auth for real later:
+  - set `GOOGLE_CLIENT_ID`
+  - set `GOOGLE_CLIENT_SECRET`
+  - register redirect:
+    - `https://firephage.com/auth/google/callback`
+
 ## Marketing Homepage Refinement (Latest)
 - Homepage marketing work stayed intentionally within the existing structure and visual language.
 - Important constraint:

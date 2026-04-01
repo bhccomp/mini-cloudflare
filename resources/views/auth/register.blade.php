@@ -69,12 +69,14 @@
                             </div>
                         @endif
 
-                        <a
-                            href="{{ route('auth.google.redirect') }}"
-                            class="mb-6 inline-flex w-full items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:border-cyan-300 hover:bg-white/10"
-                        >
-                            Continue with Google
-                        </a>
+                        @if (filled(config('services.google.client_id')) && filled(config('services.google.client_secret')) && filled(config('services.google.redirect')))
+                            <a
+                                href="{{ route('auth.google.redirect') }}"
+                                class="mb-6 inline-flex w-full items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:border-cyan-300 hover:bg-white/10"
+                            >
+                                Continue with Google
+                            </a>
+                        @endif
 
                         <form method="POST" action="{{ route('register.store') }}" class="space-y-5">
                             @csrf
@@ -133,7 +135,25 @@
 
                             <div class="grid gap-5 sm:grid-cols-2">
                                 <div>
-                                    <label for="password" class="mb-2 block text-sm font-medium text-slate-200">Password</label>
+                                    <div class="mb-2 flex items-center justify-between gap-3">
+                                        <label for="password" class="block text-sm font-medium text-slate-200">Password</label>
+                                        <div class="flex items-center gap-2">
+                                            <button
+                                                type="button"
+                                                id="toggle-password-visibility"
+                                                class="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-slate-300 transition hover:border-cyan-300/60 hover:text-white"
+                                            >
+                                                Show
+                                            </button>
+                                            <button
+                                                type="button"
+                                                id="generate-password"
+                                                class="inline-flex items-center rounded-full border border-cyan-400/30 bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-200 transition hover:border-cyan-300/60 hover:text-white"
+                                            >
+                                                Generate
+                                            </button>
+                                        </div>
+                                    </div>
                                     <input
                                         id="password"
                                         name="password"
@@ -149,7 +169,16 @@
                                 </div>
 
                                 <div>
-                                    <label for="password_confirmation" class="mb-2 block text-sm font-medium text-slate-200">Confirm password</label>
+                                    <div class="mb-2 flex items-center justify-between gap-3">
+                                        <label for="password_confirmation" class="block text-sm font-medium text-slate-200">Confirm password</label>
+                                        <button
+                                            type="button"
+                                            id="toggle-password-confirmation-visibility"
+                                            class="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-slate-300 transition hover:border-cyan-300/60 hover:text-white"
+                                        >
+                                            Show
+                                        </button>
+                                    </div>
                                     <input
                                         id="password_confirmation"
                                         name="password_confirmation"
@@ -161,6 +190,7 @@
                                     >
                                 </div>
                             </div>
+                            <p class="-mt-2 text-xs text-slate-400">Use at least 12 characters with uppercase, lowercase, a number, and a symbol.</p>
 
                             <button type="submit" class="inline-flex w-full items-center justify-center rounded-2xl bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300">
                                 Start free
@@ -170,5 +200,75 @@
                 </section>
             </div>
         </div>
+
+        <script>
+            (() => {
+                const trigger = document.getElementById('generate-password');
+                const password = document.getElementById('password');
+                const confirmation = document.getElementById('password_confirmation');
+                const togglePassword = document.getElementById('toggle-password-visibility');
+                const toggleConfirmation = document.getElementById('toggle-password-confirmation-visibility');
+
+                if (! trigger || ! password || ! confirmation || ! window.crypto?.getRandomValues) {
+                    return;
+                }
+
+                const bindVisibilityToggle = (button, field) => {
+                    if (! button || ! field) {
+                        return;
+                    }
+
+                    button.addEventListener('click', () => {
+                        const nextType = field.type === 'password' ? 'text' : 'password';
+                        field.type = nextType;
+                        button.textContent = nextType === 'password' ? 'Show' : 'Hide';
+                    });
+                };
+
+                const uppercase = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+                const lowercase = 'abcdefghijkmnopqrstuvwxyz';
+                const numbers = '23456789';
+                const symbols = '!@#$%^&*()-_=+[]{}?';
+                const all = uppercase + lowercase + numbers + symbols;
+
+                const randomChar = (chars) => {
+                    const bytes = new Uint32Array(1);
+                    window.crypto.getRandomValues(bytes);
+
+                    return chars[bytes[0] % chars.length];
+                };
+
+                bindVisibilityToggle(togglePassword, password);
+                bindVisibilityToggle(toggleConfirmation, confirmation);
+
+                trigger.addEventListener('click', () => {
+                    const generated = [
+                        randomChar(uppercase),
+                        randomChar(lowercase),
+                        randomChar(numbers),
+                        randomChar(symbols),
+                    ];
+
+                    for (let i = generated.length; i < 18; i++) {
+                        generated.push(randomChar(all));
+                    }
+
+                    for (let i = generated.length - 1; i > 0; i--) {
+                        const bytes = new Uint32Array(1);
+                        window.crypto.getRandomValues(bytes);
+                        const j = bytes[0] % (i + 1);
+                        [generated[i], generated[j]] = [generated[j], generated[i]];
+                    }
+
+                    const value = generated.join('');
+                    password.value = value;
+                    confirmation.value = value;
+                    password.dispatchEvent(new Event('input', { bubbles: true }));
+                    confirmation.dispatchEvent(new Event('input', { bubbles: true }));
+                    password.focus();
+                    password.select();
+                });
+            })();
+        </script>
     </body>
 </html>

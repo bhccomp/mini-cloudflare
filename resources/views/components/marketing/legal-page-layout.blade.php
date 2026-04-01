@@ -8,8 +8,20 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>{{ $title }}</title>
-        <meta name="description" content="{{ $description }}">
+        <x-marketing.seo-meta
+            :title="$title"
+            :description="$description"
+            :canonical="request()->url()"
+            :structured-data="[
+                [
+                    '@context' => 'https://schema.org',
+                    '@type' => 'WebPage',
+                    'name' => $title,
+                    'url' => request()->url(),
+                    'description' => $description,
+                ],
+            ]"
+        />
         <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>

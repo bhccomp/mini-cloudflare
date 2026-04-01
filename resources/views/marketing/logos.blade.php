@@ -3,9 +3,12 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>FirePhage Logo Concepts</title>
-        <meta name="description" content="Logo concept board for FirePhage branding selection.">
-        <meta name="theme-color" content="#020617">
+        <x-marketing.seo-meta
+            title="FirePhage Logo Concepts"
+            description="Logo concept board for FirePhage branding selection."
+            :canonical="route('logos')"
+            robots="noindex,follow"
+        />
         <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>

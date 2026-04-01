@@ -21,9 +21,7 @@ Route::domain(config('demo.host'))->group(function (): void {
     Route::get('/', fn () => redirect('/app'));
 });
 
-Route::view('/', 'marketing.home-variant-1')
-    ->middleware(RedirectPublicHomeToEarlyAccess::class)
-    ->name('home');
+Route::view('/', 'marketing.home-variant-1')->name('home');
 Route::get('/robots.txt', [SeoController::class, 'robots'])->name('seo.robots');
 Route::get('/sitemap.xml', [SeoController::class, 'sitemap'])->name('seo.sitemap');
 Route::get('/early-access', [EarlyAccessController::class, 'create'])->name('early-access');

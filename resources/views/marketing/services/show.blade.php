@@ -8,6 +8,8 @@
             :description="$service['description']"
             :canonical="route('services.show', $serviceKey)"
             :og-url="route('services.show', $serviceKey)"
+            :og-image="asset('images/' . $service['image'])"
+            :og-image-alt="$service['image_alt']"
             :structured-data="[
                 [
                     '@context' => 'https://schema.org',
@@ -28,6 +30,30 @@
                     'serviceType' => $service['nav_label'],
                     'description' => $service['summary'],
                     'url' => route('services.show', $serviceKey),
+                ],
+                [
+                    '@context' => 'https://schema.org',
+                    '@type' => 'BreadcrumbList',
+                    'itemListElement' => [
+                        [
+                            '@type' => 'ListItem',
+                            'position' => 1,
+                            'name' => 'FirePhage',
+                            'item' => route('home'),
+                        ],
+                        [
+                            '@type' => 'ListItem',
+                            'position' => 2,
+                            'name' => 'Services',
+                            'item' => route('services.index'),
+                        ],
+                        [
+                            '@type' => 'ListItem',
+                            'position' => 3,
+                            'name' => 'FirePhage ' . $service['nav_label'],
+                            'item' => route('services.show', $serviceKey),
+                        ],
+                    ],
                 ],
             ]"
         />

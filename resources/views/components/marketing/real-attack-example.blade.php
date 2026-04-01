@@ -4,6 +4,7 @@
         <div class="mx-auto max-w-3xl text-center">
             <h2 class="text-3xl font-semibold text-white">Under attack? Take control fast.</h2>
             <p class="mt-3 text-sm text-slate-300">When traffic spikes hard, operators need a hard switch, not a long checklist.</p>
+            <p class="mt-2 text-sm text-slate-400">When traffic turns hostile, switch instantly to high-pressure protection.</p>
         </div>
 
         <div class="attack-proof-card mx-auto mt-8 max-w-3xl rounded-2xl border border-slate-700/70 bg-slate-900/70 p-6">

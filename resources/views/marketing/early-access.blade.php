@@ -8,6 +8,7 @@
             description="Join FirePhage early access for launch pricing, onboarding priority, and guided setup for managed WAF, origin protection, and human-readable website security."
             :canonical="route('early-access')"
             :og-url="route('early-access')"
+            robots="noindex,follow"
             :structured-data="[
                 [
                     '@context' => 'https://schema.org',

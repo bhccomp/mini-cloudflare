@@ -8,7 +8,7 @@
             :description="$post->seoDescription()"
             og-type="article"
             :canonical="$post->canonical_url ?: route('blog.show', $post)"
-            :og-url="route('blog.show', $post)"
+            :og-url="$post->canonical_url ?: route('blog.show', $post)"
             :og-image="$post->og_image_url"
             :structured-data="[
                 [
@@ -19,7 +19,7 @@
                     'datePublished' => optional($post->published_at ?? $post->created_at)->toAtomString(),
                     'dateModified' => optional($post->updated_at ?? $post->published_at ?? $post->created_at)->toAtomString(),
                     'mainEntityOfPage' => $post->canonical_url ?: route('blog.show', $post),
-                    'url' => route('blog.show', $post),
+                    'url' => $post->canonical_url ?: route('blog.show', $post),
                     'author' => [
                         '@type' => 'Organization',
                         'name' => 'FirePhage',
@@ -34,8 +34,37 @@
                     ],
                     'image' => $post->og_image_url ?: asset('images/dashboard-preview.png'),
                 ],
+                [
+                    '@context' => 'https://schema.org',
+                    '@type' => 'BreadcrumbList',
+                    'itemListElement' => [
+                        [
+                            '@type' => 'ListItem',
+                            'position' => 1,
+                            'name' => 'FirePhage',
+                            'item' => route('home'),
+                        ],
+                        [
+                            '@type' => 'ListItem',
+                            'position' => 2,
+                            'name' => 'Blog',
+                            'item' => route('blog.index'),
+                        ],
+                        [
+                            '@type' => 'ListItem',
+                            'position' => 3,
+                            'name' => $post->title,
+                            'item' => $post->canonical_url ?: route('blog.show', $post),
+                        ],
+                    ],
+                ],
             ]"
         />
+        <meta property="article:published_time" content="{{ optional($post->published_at ?? $post->created_at)->toAtomString() }}">
+        <meta property="article:modified_time" content="{{ optional($post->updated_at ?? $post->published_at ?? $post->created_at)->toAtomString() }}">
+        @if ($post->category)
+            <meta property="article:section" content="{{ $post->category->name }}">
+        @endif
         <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>

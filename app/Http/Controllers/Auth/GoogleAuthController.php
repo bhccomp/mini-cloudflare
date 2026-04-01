@@ -15,12 +15,24 @@ class GoogleAuthController extends Controller
 {
     public function redirect(): RedirectResponse
     {
+        if (! $this->googleOauthConfigured()) {
+            return redirect('/register')->withErrors([
+                'google' => 'Google sign-in is not available right now.',
+            ]);
+        }
+
         return Socialite::driver('google')
             ->redirect();
     }
 
     public function callback(WorkspaceAccountCreator $creator): RedirectResponse
     {
+        if (! $this->googleOauthConfigured()) {
+            return redirect('/app/login')->withErrors([
+                'google' => 'Google sign-in is not available right now.',
+            ]);
+        }
+
         $googleUser = Socialite::driver('google')->user();
         $email = Str::lower(trim((string) $googleUser->getEmail()));
 
@@ -64,5 +76,12 @@ class GoogleAuthController extends Controller
         request()->session()->regenerate();
 
         return redirect($user->is_super_admin ? '/admin' : '/app');
+    }
+
+    protected function googleOauthConfigured(): bool
+    {
+        return filled(config('services.google.client_id'))
+            && filled(config('services.google.client_secret'))
+            && filled(config('services.google.redirect'));
     }
 }

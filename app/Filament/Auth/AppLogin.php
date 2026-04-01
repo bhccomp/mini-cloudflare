@@ -68,13 +68,22 @@ class AppLogin extends Login
 
     protected function getFormActions(): array
     {
-        return [
+        $actions = [
             $this->getAuthenticateFormAction(),
-            Action::make('google')
+        ];
+
+        if (
+            filled(config('services.google.client_id'))
+            && filled(config('services.google.client_secret'))
+            && filled(config('services.google.redirect'))
+        ) {
+            $actions[] = Action::make('google')
                 ->label('Continue with Google')
                 ->color('gray')
-                ->url(route('auth.google.redirect')),
-        ];
+                ->url(route('auth.google.redirect'));
+        }
+
+        return $actions;
     }
 
     protected function getDemoCaptchaFormComponent(): Component

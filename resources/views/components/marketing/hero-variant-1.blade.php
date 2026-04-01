@@ -31,10 +31,11 @@
                     </ul>
 
                     <div class="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-start">
-                        <x-marketing.auth-aware-link guest-label="Start free trial" class="w-full rounded-xl bg-cyan-400 px-6 py-3 text-center text-sm font-semibold text-slate-950 shadow-[0_0_0_1px_rgba(34,211,238,0.24),0_0_22px_rgba(34,211,238,0.22)] hover:bg-cyan-300 sm:w-auto" />
-                        <a href="{{ $demoDashboardUrl ?? ('https://' . config('demo.host') . '/app') }}" class="w-full rounded-xl border border-slate-700 px-6 py-3 text-center text-sm font-semibold text-slate-100 hover:border-slate-500 sm:w-auto">View live demo dashboard</a>
+                        <x-marketing.auth-aware-link guest-label="Start 30-day free trial" class="w-full rounded-xl bg-cyan-400 px-6 py-3 text-center text-sm font-semibold text-slate-950 shadow-[0_0_0_1px_rgba(34,211,238,0.24),0_0_22px_rgba(34,211,238,0.22)] hover:bg-cyan-300 sm:w-auto" />
+                        <a href="{{ $demoDashboardUrl ?? ('https://' . config('demo.host') . '/app') }}" class="w-full rounded-xl border border-slate-700 px-6 py-3 text-center text-sm font-semibold text-slate-100 hover:border-slate-500 sm:w-auto">View live demo</a>
                     </div>
                     <p class="mt-3 text-xs text-slate-400/90">30-day free trial • One site • Full protection</p>
+                    <p class="mt-1 text-xs text-slate-500/90">Already protecting live WordPress and WooCommerce sites</p>
 
                     <div class="mt-6 flex flex-wrap gap-x-3 gap-y-2 text-xs text-slate-400">
                         <span>Origin protection</span>
