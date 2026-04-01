@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="FirePhage social logo">
+  <defs>
+    <linearGradient id="fp-social-bg" x1="72" y1="48" x2="440" y2="464" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#07111f"/>
+      <stop offset="55%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#13233d"/>
+    </linearGradient>
+    <radialGradient id="fp-social-glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(170 126) rotate(39) scale(338 304)">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity=".34"/>
+      <stop offset="100%" stop-color="#38bdf8" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="fp-social-shield" x1="132" y1="88" x2="384" y2="396" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#67e8f9"/>
+      <stop offset="55%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#0ea5e9"/>
+    </linearGradient>
+    <linearGradient id="fp-social-core" x1="221" y1="183" x2="304" y2="309" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#d9f8ff"/>
+      <stop offset="100%" stop-color="#7dd3fc"/>
+    </linearGradient>
+    <filter id="fp-social-soft-shadow" x="70" y="72" width="372" height="370" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+      <feOffset dy="18"/>
+      <feGaussianBlur stdDeviation="18"/>
+      <feComposite in2="hardAlpha" operator="out"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.0117647 0 0 0 0 0.0627451 0 0 0 0 0.141176 0 0 0 0.42 0"/>
+      <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_0_1"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_0_1" result="shape"/>
+    </filter>
+  </defs>
+
+  <rect width="512" height="512" rx="112" fill="url(#fp-social-bg)"/>
+  <rect x="20" y="20" width="472" height="472" rx="92" fill="url(#fp-social-glow)"/>
+  <rect x="20" y="20" width="472" height="472" rx="92" stroke="rgba(125, 211, 252, 0.18)" stroke-width="2"/>
+
+  <g filter="url(#fp-social-soft-shadow)">
+    <path
+      d="M256 78L379 130V239C379 314 324 384 256 411C188 384 133 314 133 239V130L256 78Z"
+      fill="none"
+      stroke="url(#fp-social-shield)"
+      stroke-width="22"
+      stroke-linejoin="round"
+    />
+
+    <path
+      d="M256 182L297 205V250L256 273L215 250V205L256 182Z"
+      fill="none"
+      stroke="url(#fp-social-core)"
+      stroke-width="14"
+      stroke-linejoin="round"
+    />
+
+    <path d="M256 274V322" stroke="url(#fp-social-core)" stroke-width="14" stroke-linecap="round"/>
+    <path d="M256 322L219 360" stroke="url(#fp-social-core)" stroke-width="11" stroke-linecap="round"/>
+    <path d="M256 322L293 360" stroke="url(#fp-social-core)" stroke-width="11" stroke-linecap="round"/>
+  </g>
+
+  <circle cx="352" cy="145" r="11" fill="#f97316"/>
+  <circle cx="352" cy="145" r="25" fill="#fb923c" opacity=".14"/>
+</svg>

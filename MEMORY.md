@@ -1,5 +1,52 @@
 # MEMORY
 
+## Marketing Homepage Refinement (Latest)
+- Homepage marketing work stayed intentionally within the existing structure and visual language.
+- Important constraint:
+  - do not redesign the homepage during this pass
+  - keep the strong hero, premium dark aesthetic, and large section rhythm
+  - changes are copy / spacing / emphasis refinements, not a new layout system
+- Current homepage refinements include:
+  - sharper hero copy with clearer edge-first positioning
+  - explicit but lightweight free-trial messaging:
+    - `30-day free trial • One site • Full protection`
+  - pricing copy now clarifies:
+    - `30-day free trial includes full protection for one site.`
+  - Starter-plan marketing CTA now reads:
+    - `Start 30-day free trial`
+  - old homepage payment-method trial copy was removed from marketing pricing cards
+- Marketing sections that were refined without structural changes:
+  - `hero-variant-1`
+  - `human-friendly-onboarding-variant-1`
+  - `safe-dns-cutover`
+  - `features`
+  - `global-edge-protection`
+  - `real-attack-example`
+  - `security-dashboard-section`
+  - `pricing-variant-1`
+  - `availability-monitoring-variant-1`
+- Spacing / balance adjustments from this pass:
+  - tighter transition below the hero
+  - Website Availability Monitoring now uses content-driven image height and tighter vertical padding
+  - `Under Attack` has slightly more breathing room
+  - `Edge Protection in Numbers` has slightly stronger visual separation
+  - pricing now fades more softly into the footer
+
+## Social Assets (Latest)
+- Social-brand assets were added under:
+  - `public/images/social/`
+- Current generated assets:
+  - `firephage-social-logo.svg`
+  - `firephage-x-header.png`
+- Header generation helper script lives at:
+  - `scripts/generate_firephage_x_header.php`
+
+## Plugin Firewall Summary Payload (Latest)
+- Plugin firewall summary rows for IP rules were adjusted so the plugin shows the IP itself as the primary label again.
+- Current behavior:
+  - IP is the main label
+  - custom rule name, when present and different, is kept as secondary detail instead of replacing the IP
+
 ## WooCommerce Protection Presets (Latest)
 - FirePhage now has a real preset layer for store-heavy traffic on the WAF side instead of only generic firewall controls.
 - New preset service:

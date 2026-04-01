@@ -39,7 +39,7 @@
     @endif
 
     @if ((int) $trialDays > 0)
-        <p class="mt-3 text-xs font-semibold text-cyan-200">Includes a {{ (int) $trialDays }}-day free trial. Checkout still collects a payment method for automatic billing after the trial unless canceled.</p>
+        <p class="mt-3 text-xs font-semibold text-cyan-200">Includes a {{ (int) $trialDays }}-day free trial.</p>
     @endif
 
     <div class="mt-5 space-y-5">

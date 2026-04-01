@@ -18,14 +18,14 @@
             <div class="order-2 lg:order-2">
                 <h2 class="text-3xl font-semibold text-white">Safe DNS Cutover</h2>
                 <p class="mt-4 text-sm leading-7 text-slate-300">
-                    When you&apos;re ready, simply switch your DNS to FirePhage Edge.
-                    The platform verifies records automatically and ensures a clean traffic cutover.
+                    DNS cutover should feel controlled, not risky. FirePhage verifies the edge setup before activation, lets teams preview the state, and keeps the transition staged so traffic is not moved blind.
                 </p>
 
                 <ul class="mt-6 space-y-3 text-sm text-slate-200">
-                    <li class="flex items-start gap-2"><span class="text-cyan-300">•</span><span>DNS verification before activation</span></li>
-                    <li class="flex items-start gap-2"><span class="text-cyan-300">•</span><span>Automatic traffic validation</span></li>
-                    <li class="flex items-start gap-2"><span class="text-cyan-300">•</span><span>No downtime deployment</span></li>
+                    <li class="flex items-start gap-2"><span class="text-cyan-300">•</span><span>Preview the target state before activation</span></li>
+                    <li class="flex items-start gap-2"><span class="text-cyan-300">•</span><span>Verify records and edge readiness before traffic is shifted</span></li>
+                    <li class="flex items-start gap-2"><span class="text-cyan-300">•</span><span>Keep rollback optional if something does not look right</span></li>
+                    <li class="flex items-start gap-2"><span class="text-cyan-300">•</span><span>Move traffic in a staged, controlled way</span></li>
                 </ul>
             </div>
         </div>

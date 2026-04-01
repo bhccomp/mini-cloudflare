@@ -857,7 +857,11 @@ class PluginSiteService
                 }
 
                 if ($rule->rule_type === SiteFirewallRule::TYPE_IP) {
-                    $targetLabel = (string) ($meta['display_name'] ?? $target);
+                    $targetLabel = $target;
+                    $displayName = trim((string) ($meta['display_name'] ?? ''));
+                    if ($displayName !== '' && $displayName !== $target) {
+                        $targetList = [$displayName];
+                    }
                 }
 
                 return [[

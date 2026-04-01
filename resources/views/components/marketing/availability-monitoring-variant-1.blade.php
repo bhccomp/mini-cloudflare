@@ -1,4 +1,4 @@
-<section class="relative w-full border-y border-white/5 bg-[#041427] py-16 lg:py-20">
+<section class="relative w-full border-y border-white/5 bg-[#041427] py-7 lg:py-8">
     <div class="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/0 via-white/0 to-white/[0.03]" aria-hidden="true"></div>
     <div class="relative z-10 mx-auto max-w-7xl px-6 lg:px-10">
         <div class="grid grid-cols-1 items-center gap-8 lg:grid-cols-2 lg:gap-10">
@@ -27,13 +27,13 @@
                 </div>
             </div>
 
-            <div class="relative flex justify-center lg:justify-end">
+            <div class="relative flex items-center justify-center lg:justify-end">
                 <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_62%_45%,rgba(34,211,238,0.18),transparent_65%)] blur-3xl opacity-70" aria-hidden="true"></div>
-                <div class="relative z-10 w-full max-w-[460px] md:max-w-[500px] xl:max-w-[540px] h-[220px] sm:h-[250px] lg:h-[280px] xl:h-[300px]">
+                <div class="relative z-10 w-full max-w-[760px] md:max-w-[860px] xl:max-w-[980px]">
                     <img
                         src="{{ asset('design-assets/monitor-alerts.png') }}"
                         alt="Availability monitoring and alert integrations preview"
-                        class="h-full w-full object-contain object-center drop-shadow-[0_16px_34px_rgba(2,8,23,0.36)]"
+                        class="h-auto w-full object-contain object-center drop-shadow-[0_16px_34px_rgba(2,8,23,0.36)]"
                         width="1024"
                         height="1536"
                         loading="lazy"

@@ -1,5 +1,6 @@
-<section class="relative w-full border-y border-white/5 bg-[#041427] py-28">
-    <div class="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/0 via-white/0 to-white/[0.03]" aria-hidden="true"></div>
+<section class="relative w-full border-y border-white/5 bg-[#05182d] py-28">
+    <div class="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/[0.03] via-white/[0.01] to-white/[0.04]" aria-hidden="true"></div>
+    <div class="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-cyan-400/8 to-transparent" aria-hidden="true"></div>
     <div class="relative z-10 mx-auto max-w-7xl px-6 lg:px-10">
         <div class="mx-auto max-w-3xl text-center">
             <h2 class="text-3xl font-semibold text-white">Edge Protection in Numbers</h2>

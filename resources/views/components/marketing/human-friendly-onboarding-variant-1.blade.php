@@ -3,22 +3,20 @@
     <div class="relative z-10 mx-auto max-w-7xl px-6 lg:px-10">
         <div class="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
             <div>
-                <h2 class="text-3xl font-semibold text-white">Human-Friendly Onboarding</h2>
+                <h2 class="text-3xl font-semibold text-white">Guided Edge Onboarding</h2>
                 <p class="mt-4 text-sm leading-7 text-slate-300">
-                    Our team can handle the entire onboarding process for you.
-                    DNS changes, edge deployment, and configuration can be completed by the FirePhage team at no extra cost.
-                    No DevOps knowledge required. Our team can assist with DNS cutover and setup.
+                    FirePhage protection starts with DNS, so the cutover has to be handled carefully. We guide the move, stage the edge setup, and keep the transition controlled so the site goes live behind FirePhage without unnecessary downtime risk.
                 </p>
 
                 <ul class="mt-6 space-y-3 text-sm text-slate-200">
-                    <li class="flex items-start gap-2"><span class="text-cyan-300">•</span><span>No technical knowledge required</span></li>
-                    <li class="flex items-start gap-2"><span class="text-cyan-300">•</span><span>Our team can perform DNS cutover for you</span></li>
-                    <li class="flex items-start gap-2"><span class="text-cyan-300">•</span><span>We can handle the DNS setup and onboarding for you.</span></li>
+                    <li class="flex items-start gap-2"><span class="text-cyan-300">•</span><span>Safe DNS transition planned around the live site</span></li>
+                    <li class="flex items-start gap-2"><span class="text-cyan-300">•</span><span>Guided setup with staged changes before traffic is fully moved</span></li>
+                    <li class="flex items-start gap-2"><span class="text-cyan-300">•</span><span>Protection is placed in front of WordPress, not forced to live only inside it</span></li>
                     <li class="flex items-start gap-2"><span class="text-cyan-300">•</span><span>Zero configuration on your server</span></li>
-                    <li class="flex items-start gap-2"><span class="text-cyan-300">•</span><span>Ready in minutes</span></li>
+                    <li class="flex items-start gap-2"><span class="text-cyan-300">•</span><span>No-downtime path as the target, not an afterthought</span></li>
                 </ul>
 
-                <x-marketing.auth-aware-link guest-label="Start protecting now" class="mt-8 inline-flex rounded-lg bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950 hover:bg-cyan-300" />
+                <x-marketing.auth-aware-link guest-label="Start free trial" class="mt-8 inline-flex rounded-lg bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950 hover:bg-cyan-300" />
             </div>
 
             <div class="relative flex justify-center lg:justify-end">
