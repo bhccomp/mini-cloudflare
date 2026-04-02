@@ -136,6 +136,58 @@ const initializeGoogleAnalyticsTracking = () => {
     });
 };
 
+const initializeCrispChat = () => {
+    const websiteId = document
+        .querySelector('meta[name="firephage-crisp-website-id"]')
+        ?.getAttribute('content');
+
+    if (! websiteId) {
+        return;
+    }
+
+    const scriptId = 'firephage-crisp-loader';
+
+    const ensureLoaded = () => {
+        if (document.getElementById(scriptId)) {
+            return;
+        }
+
+        window.$crisp = window.$crisp || [];
+        window.CRISP_WEBSITE_ID = websiteId;
+
+        const script = document.createElement('script');
+        script.id = scriptId;
+        script.src = 'https://client.crisp.chat/l.js';
+        script.async = true;
+
+        document.head.appendChild(script);
+    };
+
+    const updateChat = (consent) => {
+        const granted = Boolean(consent?.preferences);
+
+        if (! granted) {
+            if (Array.isArray(window.$crisp)) {
+                window.$crisp.push(['do', 'chat:hide']);
+            }
+
+            return;
+        }
+
+        ensureLoaded();
+
+        if (Array.isArray(window.$crisp)) {
+            window.$crisp.push(['do', 'chat:show']);
+        }
+    };
+
+    updateChat(window.firephageConsent);
+
+    window.addEventListener('firephage:consent-updated', (event) => {
+        updateChat(event.detail);
+    });
+};
+
 const initializeCookieConsent = () => {
     const root = document.querySelector('[data-cookie-consent]');
     const modal = document.querySelector('[data-cookie-consent-modal]');
@@ -291,10 +343,12 @@ if (document.readyState === 'loading') {
         initializeMarketingMobileMenu();
         initializeCookieConsent();
         initializeGoogleAnalyticsTracking();
+        initializeCrispChat();
     }, { once: true });
 } else {
     initializeServicesDropdowns();
     initializeMarketingMobileMenu();
     initializeCookieConsent();
     initializeGoogleAnalyticsTracking();
+    initializeCrispChat();
 }

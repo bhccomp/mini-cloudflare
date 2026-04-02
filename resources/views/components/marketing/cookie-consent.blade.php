@@ -7,7 +7,7 @@
             <div class="max-w-3xl">
                 <p class="text-sm font-semibold text-white">Cookie preferences</p>
                 <p class="mt-2 text-sm leading-6 text-slate-300">
-                    FirePhage uses necessary cookies for security, sessions, and form protection. Optional cookies can be enabled for preferences, analytics, or marketing if they are introduced later.
+                    FirePhage uses necessary cookies for security, sessions, and form protection. Optional cookies can also enable website preferences such as the Crisp support chat widget, analytics, or marketing tools.
                 </p>
                 <p class="mt-2 text-xs text-slate-400">
                     See the <a href="{{ route('cookies') }}" class="text-cyan-300 hover:text-cyan-200">Cookie Policy</a> and <a href="{{ route('privacy') }}" class="text-cyan-300 hover:text-cyan-200">Privacy Policy</a>.
@@ -74,7 +74,7 @@
             <label class="flex items-start justify-between gap-4 rounded-2xl border border-white/8 bg-slate-900/70 p-4">
                 <div>
                     <p class="text-sm font-semibold text-white">Preference cookies</p>
-                    <p class="mt-1 text-sm leading-6 text-slate-400">Used to remember optional website preferences if those features are enabled later.</p>
+                    <p class="mt-1 text-sm leading-6 text-slate-400">Used for optional website preferences and support tooling such as the Crisp chat widget when enabled.</p>
                 </div>
                 <input type="checkbox" data-cookie-consent-category="preferences" class="mt-1 h-4 w-4 rounded border-white/20 bg-slate-950 text-cyan-400">
             </label>

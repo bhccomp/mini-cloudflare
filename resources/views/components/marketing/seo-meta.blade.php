@@ -62,6 +62,9 @@
     </script>
     <script async src="https://www.googletagmanager.com/gtag/js?id={{ urlencode(config('marketing.google_analytics_measurement_id')) }}"></script>
 @endif
+@if (filled(config('marketing.crisp_website_id')))
+    <meta name="firephage-crisp-website-id" content="{{ config('marketing.crisp_website_id') }}">
+@endif
 
 @foreach ($structuredData as $schema)
     @if (! empty($schema))

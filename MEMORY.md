@@ -1,5 +1,48 @@
 # MEMORY
 
+## Crisp Website Chat (Latest)
+- FirePhage marketing site now supports Crisp website chat through a simple env-configured integration.
+- Current env/config:
+  - `CRISP_WEBSITE_ID`
+  - exposed through:
+    - `config/marketing.php`
+- Current implementation:
+  - Crisp is surfaced on marketing pages through `resources/views/components/marketing/seo-meta.blade.php`
+  - frontend loading and consent handling live in:
+    - `resources/js/app.js`
+- Current consent behavior:
+  - Crisp is treated as a `preferences`-category feature under the cookie banner
+  - if a visitor chooses `Use essential only`, Crisp stays off
+  - if `preferences` consent is allowed, Crisp can load and show the chat widget
+- Legal/cookie docs now mention Crisp:
+  - `resources/views/components/marketing/cookie-consent.blade.php`
+  - `resources/views/marketing/cookies.blade.php`
+  - `resources/views/marketing/privacy.blade.php`
+- Current Crisp website ID in production env:
+  - `a337394d-33ce-42c7-ad03-5936bb4ed31b`
+- Important scope:
+  - this was added for the public marketing site
+  - not for the app/admin experience by default
+
+## AI Crawler-Friendly Robots.txt (Latest)
+- `robots.txt` is now more explicit about AI crawler behavior.
+- Current behavior:
+  - allows:
+    - `OAI-SearchBot`
+    - `Claude-SearchBot`
+    - `PerplexityBot`
+  - blocks by default:
+    - `GPTBot`
+    - `ClaudeBot`
+  - keeps general indexing open for normal search crawlers
+  - still exposes the sitemap
+- Current file path for the logic:
+  - `app/Http/Controllers/SeoController.php`
+- Important product note:
+  - this improves discoverability for AI-search crawlers
+  - it does not "force" ChatGPT or other systems to know FirePhage
+  - awareness still depends on crawlability, content quality, and external references
+
 ## Canonical Host + Structured SEO System (Latest)
 - Marketing SEO is now centralized through:
   - `app/Support/MarketingSeo.php`
@@ -130,14 +173,25 @@
 - Current new slugs:
   - `protect-woocommerce-from-fake-orders-login-abuse-and-scraping`
   - `how-to-move-dns-to-a-new-edge-provider-without-causing-downtime`
+  - `how-to-protect-wordpress-from-xml-rpc-abuse`
+  - `how-to-protect-wordpress-login-from-brute-force-attacks`
 - Purpose of these posts:
   - strengthen topic coverage for:
     - WooCommerce bot protection
     - safe DNS cutover / onboarding
+    - XML-RPC abuse
+    - WordPress login brute-force protection
   - reinforce internal linking back into service pages
 - Important operational note:
   - the app/server is currently using `UTC`
   - blog publishing should use timestamps that are already in the past relative to `UTC`, otherwise the `published()` scope hides the post
+- Blog-writing workflow note:
+  - before creating any new blog post, check:
+    - `blog.md`
+  - this file contains the required FirePhage blog writing pattern and voice guidance
+  - future blog posts should follow that file first, then apply the current SEO rules already used in the app
+  - `blog.md` now lives at repo root:
+    - `blog.md`
 
 ## SEO + Public Marketing Crawlability (Latest)
 - Public marketing SEO received a broader cleanup pass.

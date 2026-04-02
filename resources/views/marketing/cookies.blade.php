@@ -11,7 +11,7 @@
     <p>FirePhage currently uses the following categories:</p>
     <ul>
         <li><strong>Necessary cookies:</strong> required for security, login sessions, CSRF protection, and storing your cookie preferences.</li>
-        <li><strong>Preference cookies:</strong> optional cookies for remembering non-essential website preferences if those features are enabled later.</li>
+        <li><strong>Preference cookies:</strong> optional cookies for remembering non-essential website preferences and loading support tooling such as the Crisp website chat widget.</li>
         <li><strong>Analytics cookies:</strong> optional cookies for traffic measurement and website analytics, including Google Analytics when you allow analytics cookies.</li>
         <li><strong>Marketing cookies:</strong> optional cookies for attribution or advertising tools if those services are enabled later.</li>
     </ul>
@@ -20,6 +20,7 @@
     <ul>
         <li><strong>Session and security cookies:</strong> used by Laravel and FirePhage for login state, CSRF protection, and authenticated sessions.</li>
         <li><strong>Cookie preference storage:</strong> FirePhage stores your cookie consent choice so the website can respect it on future visits.</li>
+        <li><strong>Support chat tooling:</strong> if you allow preference cookies, FirePhage may load the Crisp support chat widget so you can start a live conversation from the website.</li>
         <li><strong>Form-protection services:</strong> if Turnstile is enabled on forms, Cloudflare may set cookies or process browser signals for abuse prevention.</li>
         <li><strong>Billing flows:</strong> Stripe may use cookies or similar mechanisms on checkout or billing-related pages when those services are loaded.</li>
         <li><strong>Analytics services:</strong> FirePhage may load Google Analytics in consent mode to support privacy-aware measurement. Analytics storage remains denied until you allow analytics cookies.</li>
@@ -29,7 +30,7 @@
     <p>Necessary cookies do not require the same prior opt-in handling as non-essential cookies because they are used to provide core website functions such as secure login, request integrity, and remembering your consent choice.</p>
 
     <h2>5. Optional cookies</h2>
-    <p>Optional cookie categories are disabled unless you choose to allow them. FirePhage may load Google Analytics in consent mode with analytics storage denied by default. If you accept analytics cookies, analytics storage can be enabled. If you choose essential-only cookies, analytics storage remains denied.</p>
+    <p>Optional cookie categories are disabled unless you choose to allow them. If you allow preference cookies, FirePhage may load Crisp website chat. FirePhage may also load Google Analytics in consent mode with analytics storage denied by default. If you accept analytics cookies, analytics storage can be enabled. If you choose essential-only cookies, analytics storage remains denied.</p>
 
     <h2>6. How to change your choice</h2>
     <p>You can change your cookie settings by using the cookie banner or by clearing FirePhage cookies from your browser and revisiting the site.</p>
