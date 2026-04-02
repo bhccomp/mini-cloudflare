@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'early_access_enabled' => (bool) env('EARLY_ACCESS_ENABLED', true),
+    'early_access_enabled' => filter_var(env('EARLY_ACCESS_ENABLED', true), FILTER_VALIDATE_BOOL),
     'google_analytics_measurement_id' => env('GOOGLE_ANALYTICS_MEASUREMENT_ID'),
     'crisp_website_id' => env('CRISP_WEBSITE_ID'),
 

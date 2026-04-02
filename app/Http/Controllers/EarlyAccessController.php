@@ -5,17 +5,26 @@ namespace App\Http\Controllers;
 use App\Models\EarlyAccessLead;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Illuminate\View\View;
 
 class EarlyAccessController extends Controller
 {
     public function create(): View
     {
+        if (! config('marketing.early_access_enabled', true)) {
+            throw new NotFoundHttpException();
+        }
+
         return view('marketing.early-access');
     }
 
     public function store(Request $request): RedirectResponse
     {
+        if (! config('marketing.early_access_enabled', true)) {
+            throw new NotFoundHttpException();
+        }
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email:rfc', 'max:255'],

@@ -1,5 +1,35 @@
 # MEMORY
 
+## Early Access Public Access Disabled (Latest)
+- The old `/early-access` page is now kept in code but disabled publicly when early access is not in use.
+- Current behavior:
+  - `EarlyAccessController` returns `404` for both view and submit actions when:
+    - `marketing.early_access_enabled = false`
+- Important config fix:
+  - `config/marketing.php` now parses `EARLY_ACCESS_ENABLED` with `FILTER_VALIDATE_BOOL`
+  - reason:
+    - plain `(bool) env('EARLY_ACCESS_ENABLED')` treats the string `"false"` as truthy in PHP
+- Current production intent:
+  - `EARLY_ACCESS_ENABLED=false`
+  - `/early-access` should no longer remain publicly crawlable when the main homepage is live
+
+## Blog Editor Layout (Latest)
+- Filament admin blog create/edit form was reworked for writing comfort.
+- Current layout in:
+  - `app/Filament/Admin/Resources/BlogPostResource.php`
+- Current form behavior:
+  - two tabs:
+    - `Article`
+    - `SEO & Publishing`
+  - `Article` tab:
+    - full-width
+    - single-column
+    - intended to give the markdown editor maximum horizontal room
+  - `SEO & Publishing` tab:
+    - two-column split
+    - SEO on one side
+    - Publishing on the other
+
 ## Crisp Website Chat (Latest)
 - FirePhage marketing site now supports Crisp website chat through a simple env-configured integration.
 - Current env/config:
