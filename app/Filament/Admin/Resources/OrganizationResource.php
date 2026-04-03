@@ -6,6 +6,7 @@ use App\Filament\Admin\Resources\OrganizationResource\Pages;
 use App\Models\Organization;
 use App\Models\Plan;
 use App\Services\Billing\OrganizationEntitlementService;
+use App\Services\Billing\OrganizationBillingService;
 use Filament\Actions;
 use Filament\Forms;
 use Filament\Resources\Resource;
@@ -75,6 +76,12 @@ class OrganizationResource extends Resource
                 Tables\Columns\TextColumn::make('updated_at')->since(),
             ])
             ->actions([
+                Actions\Action::make('generate_payment_link')
+                    ->label('Generate Stripe link')
+                    ->icon('heroicon-o-link')
+                    ->color('primary')
+                    ->visible(fn (): bool => app(OrganizationBillingService::class)->hasStripeConfigured())
+                    ->url(fn (Organization $record): string => static::getUrl('generate-payment-link', ['record' => $record])),
                 Actions\EditAction::make(),
             ])
             ->bulkActions([
@@ -88,6 +95,7 @@ class OrganizationResource extends Resource
             'index' => Pages\ListOrganizations::route('/'),
             'create' => Pages\CreateOrganization::route('/create'),
             'edit' => Pages\EditOrganization::route('/{record}/edit'),
+            'generate-payment-link' => Pages\GeneratePaymentLink::route('/{record}/generate-payment-link'),
         ];
     }
 }

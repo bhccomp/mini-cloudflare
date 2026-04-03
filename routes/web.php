@@ -39,6 +39,8 @@ Route::view('/cookies', 'marketing.cookies')->name('cookies');
 Route::view('/refund-policy', 'marketing.refund-policy')->name('refund-policy');
 Route::view('/acceptable-use', 'marketing.acceptable-use')->name('acceptable-use');
 Route::view('/logos', 'marketing.logos')->name('logos');
+Route::view('/billing/checkout/complete', 'marketing.billing-checkout-complete')->name('billing.checkout.complete');
+Route::view('/billing/checkout/cancelled', 'marketing.billing-checkout-cancelled')->name('billing.checkout.cancelled');
 Route::post('/stripe/webhook', StripeWebhookController::class)->name('stripe.webhook');
 Route::middleware('guest')->group(function (): void {
     Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');

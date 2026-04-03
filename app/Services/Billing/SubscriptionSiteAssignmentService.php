@@ -41,7 +41,7 @@ class SubscriptionSiteAssignmentService
             ->with(['plan', 'sites'])
             ->where('organization_id', $site->organization_id)
             ->where('plan_id', $plan->id)
-            ->whereIn('status', ['active', 'trialing'])
+            ->whereIn('status', ['active', 'trialing', 'checkout_completed'])
             ->orderBy('id')
             ->get()
             ->first(fn (OrganizationSubscription $subscription): bool => $this->hasAvailableWebsiteSlot($subscription));

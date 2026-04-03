@@ -1,5 +1,42 @@
 # MEMORY
 
+## Admin Stripe Payment Links For Accounts (Latest)
+- FirePhage admin now supports generating a Stripe subscription checkout link for an existing organization/account before site onboarding starts.
+- Current use case:
+  - client creates an account first
+  - admin opens the organization in Filament admin
+  - admin chooses a paid plan and generates a Stripe link
+  - client pays through that link
+  - later site onboarding can continue without the normal checkout step if the selected site plan matches the already-paid subscription
+- Current implementation:
+  - service:
+    - `app/Services/Billing/OrganizationCheckoutLinkService.php`
+  - admin page:
+    - `app/Filament/Admin/Resources/OrganizationResource/Pages/GeneratePaymentLink.php`
+  - admin view:
+    - `resources/views/filament/admin/resources/organization-resource/pages/generate-payment-link.blade.php`
+  - Organization admin resource now exposes:
+    - `Generate Stripe link`
+- Current billing behavior:
+  - the generated Stripe checkout is organization-level, not site-level
+  - Stripe metadata includes:
+    - `organization_id`
+    - `plan_id`
+    - `plan_code`
+    - `created_via=admin_payment_link`
+  - success/cancel pages exist at:
+    - `/billing/checkout/complete`
+    - `/billing/checkout/cancelled`
+- Important onboarding behavior:
+  - `SubscriptionSiteAssignmentService` now treats `checkout_completed` subscriptions as reusable
+  - effect:
+    - once the client pays, later site creation under the same organization and plan can immediately reuse that subscription slot
+    - FirePhage should not force the customer back through checkout for the matching plan
+- Multi-site behavior today:
+  - add site 1, site 2, site 3 normally under the same organization
+  - if the chosen plan still has included website slots left, FirePhage reuses the existing subscription automatically
+  - if all included website slots are already used, the next added site falls back to a new checkout flow for that site
+
 ## Early Access Public Access Disabled (Latest)
 - The old `/early-access` page is now kept in code but disabled publicly when early access is not in use.
 - Current behavior:
