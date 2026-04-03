@@ -1,5 +1,62 @@
 # MEMORY
 
+## Email Verification Enforcement + Branded Notifications (Latest)
+- FirePhage now has real email verification enforcement for newly registered and invite-created users.
+- Current behavior:
+  - registration sends:
+    - welcome email
+    - branded FirePhage verification email
+  - guest invitation setup sends:
+    - branded FirePhage verification email
+  - unverified users are redirected to:
+    - `/email/verify`
+    - before they can use `/app` to add sites or manage protection
+- Important enforcement detail:
+  - the unverified-user gate had to live in the Filament `authMiddleware` layer, not the general panel middleware, otherwise it would run before authentication and fail to see the logged-in user
+- Current files:
+  - `app/Http/Middleware/RedirectUnverifiedUsersToEmailVerification.php`
+  - `app/Providers/Filament/UserPanelProvider.php`
+  - `app/Http/Controllers/Auth/EmailVerificationPromptController.php`
+  - `app/Http/Controllers/Auth/VerifyEmailController.php`
+  - `app/Http/Controllers/Auth/ResendEmailVerificationController.php`
+  - `resources/views/auth/verify-email.blade.php`
+  - `routes/web.php`
+- Important notification behavior:
+  - default Laravel verification email was replaced with the FirePhage transactional template style
+  - verification mail now uses:
+    - `app/Notifications/VerifyEmailNotification.php`
+    - `resources/views/emails/verify-email.blade.php`
+  - after verification completes, FirePhage sends:
+    - confirmation email
+    - database notification for the in-app topbar
+  - completion notification uses:
+    - `app/Notifications/EmailVerifiedNotification.php`
+    - `resources/views/emails/email-verified.blade.php`
+- Current model behavior:
+  - `App\Models\User` overrides `sendEmailVerificationNotification()` so all future verification emails use the FirePhage-branded notification
+
+## Prepaid Plan Onboarding UX (Latest)
+- Site onboarding `Step 3: Plan` now behaves differently when the organization already has a reusable paid Stripe subscription created through the admin payment-link flow.
+- Current behavior:
+  - if the organization has exactly one reusable paid plan with available site slots:
+    - the plan is auto-selected
+    - the plan selector is disabled
+    - helper text changes to:
+      - user is already subscribed to that plan
+      - FirePhage will attach the new site to the existing subscription during onboarding
+  - the review step no longer talks about Stripe checkout in that case
+  - the final wizard button is now:
+    - `Create Site`
+    - instead of `Go to Checkout`
+- Important implementation detail:
+  - the auto-selected plan must be pushed into wizard state during hydration, otherwise Filament still throws:
+    - `The protection plan field is required.`
+- Current file:
+  - `app/Filament/App/Resources/SiteResource.php`
+- Current scope:
+  - this only changes the flow when there is a single clear reusable subscription plan
+  - if multiple reusable plan options exist, the user can still choose manually
+
 ## Guest Organization Invitation Acceptance (Latest)
 - Organization invitation links now work for invited users who do not already have a FirePhage account.
 - New flow:

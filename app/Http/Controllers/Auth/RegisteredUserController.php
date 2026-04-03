@@ -45,10 +45,11 @@ class RegisteredUserController extends Controller
         );
 
         $user->notify(new WelcomeUserNotification($user->fresh('currentOrganization')));
+        $user->sendEmailVerificationNotification();
 
         Auth::login($user);
         $request->session()->regenerate();
 
-        return redirect('/app');
+        return redirect()->route('verification.notice');
     }
 }

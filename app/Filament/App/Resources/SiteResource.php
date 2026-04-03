@@ -24,10 +24,12 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\IconPosition;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\Collection;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\HtmlString;
@@ -42,6 +44,51 @@ class SiteResource extends Resource
     protected static string|\UnitEnum|null $navigationGroup = 'General';
 
     protected static ?int $navigationSort = -40;
+
+    protected static function reusableSubscriptionsForOrganization(int $organizationId): Collection
+    {
+        if ($organizationId < 1) {
+            return collect();
+        }
+
+        return \App\Models\OrganizationSubscription::query()
+            ->with(['plan', 'sites'])
+            ->where('organization_id', $organizationId)
+            ->whereIn('status', ['active', 'trialing', 'checkout_completed'])
+            ->orderBy('id')
+            ->get()
+            ->filter(fn (\App\Models\OrganizationSubscription $subscription): bool => app(\App\Services\Billing\SubscriptionSiteAssignmentService::class)->hasAvailableWebsiteSlot($subscription))
+            ->values();
+    }
+
+    protected static function defaultReusablePlanId(int $organizationId): ?int
+    {
+        $planIds = static::reusableSubscriptionsForOrganization($organizationId)
+            ->pluck('plan_id')
+            ->filter(fn ($id): bool => (int) $id > 0)
+            ->unique()
+            ->values();
+
+        return $planIds->count() === 1 ? (int) $planIds->first() : null;
+    }
+
+    protected static function defaultReusablePlan(int $organizationId): ?Plan
+    {
+        $planId = static::defaultReusablePlanId($organizationId);
+
+        return $planId ? Plan::query()->find($planId) : null;
+    }
+
+    protected static function reusablePlanForOrganizationSelection(int $organizationId, int $planId): ?Plan
+    {
+        if ($organizationId < 1 || $planId < 1) {
+            return null;
+        }
+
+        return static::reusableSubscriptionsForOrganization($organizationId)
+            ->firstWhere('plan_id', $planId)
+            ?->plan;
+    }
 
     public static function getEloquentQuery(): Builder
     {
@@ -107,6 +154,20 @@ class SiteResource extends Resource
                                     ->label('Protection plan')
                                     ->required()
                                     ->native(false)
+                                    ->default(function (Get $get): ?int {
+                                        return static::defaultReusablePlanId((int) ($get('organization_id') ?: 0));
+                                    })
+                                    ->afterStateHydrated(function ($component, $state, Get $get, Set $set): void {
+                                        if ((int) ($state ?: 0) > 0) {
+                                            return;
+                                        }
+
+                                        $defaultPlanId = static::defaultReusablePlanId((int) ($get('organization_id') ?: 0));
+
+                                        if ($defaultPlanId) {
+                                            $set('plan_id', $defaultPlanId);
+                                        }
+                                    })
                                     ->options(fn (): array => Plan::query()
                                         ->where('is_active', true)
                                         ->where('is_contact_only', false)
@@ -118,7 +179,24 @@ class SiteResource extends Resource
                                             $plan->id => $plan->name.' - '.$plan->displayPrice().'/mo',
                                         ])
                                         ->all())
-                                    ->helperText('Billing is handled in secure Stripe Checkout after the site draft is created.'),
+                                    ->disabled(function (Get $get): bool {
+                                        return static::defaultReusablePlanId((int) ($get('organization_id') ?: 0)) !== null;
+                                    })
+                                    ->dehydrated()
+                                    ->helperText(function (Get $get): string {
+                                        $organizationId = (int) ($get('organization_id') ?: 0);
+                                        $planId = (int) ($get('plan_id') ?: 0);
+
+                                        $plan = $planId > 0
+                                            ? static::reusablePlanForOrganizationSelection($organizationId, $planId)
+                                            : static::defaultReusablePlan($organizationId);
+
+                                        if ($plan) {
+                                            return "You are already subscribed to {$plan->name}. FirePhage will attach this site to that existing subscription during onboarding.";
+                                        }
+
+                                        return 'Billing is handled in secure Stripe Checkout after the site draft is created.';
+                                    }),
                             ]),
                         \Filament\Schemas\Components\Wizard\Step::make('Review & Create')
                             ->description('Confirm details and create your protection layer.')
@@ -147,13 +225,25 @@ class SiteResource extends Resource
                                     }),
                                 Forms\Components\Placeholder::make('review_note')
                                     ->label('Next action after creation')
-                                    ->content('Go straight to secure checkout. After payment, FirePhage returns you to DNS and protection setup in the Site Status Hub.'),
+                                    ->content(function (Get $get): string {
+                                        $organizationId = (int) ($get('organization_id') ?: 0);
+                                        $planId = (int) ($get('plan_id') ?: 0);
+                                        $plan = $planId > 0
+                                            ? static::reusablePlanForOrganizationSelection($organizationId, $planId)
+                                            : static::defaultReusablePlan($organizationId);
+
+                                        if ($plan) {
+                                            return "This organization is already subscribed to {$plan->name}. After the site is created, FirePhage will continue straight to DNS and protection setup in the Site Status Hub.";
+                                        }
+
+                                        return 'Go straight to secure checkout. After payment, FirePhage returns you to DNS and protection setup in the Site Status Hub.';
+                                    }),
                             ])->columns(1),
                     ])
                         ->submitAction(
                             new HtmlString(
                                 Actions\Action::make('submitSiteOnboarding')
-                                    ->label('Go to Checkout')
+                                    ->label('Create Site')
                                     ->icon('heroicon-m-arrow-right')
                                     ->iconPosition(IconPosition::After)
                                     ->submit('create')

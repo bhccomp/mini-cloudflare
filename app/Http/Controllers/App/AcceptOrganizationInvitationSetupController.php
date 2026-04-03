@@ -70,17 +70,17 @@ class AcceptOrganizationInvitationSetupController extends Controller
             'name' => (string) $validated['name'],
             'email' => Str::lower(trim((string) $invitation->email)),
             'password' => Hash::make((string) $validated['password']),
-            'email_verified_at' => now(),
             'is_super_admin' => false,
         ]);
 
         $acceptanceService->accept($invitation, $user);
+        $user->sendEmailVerificationNotification();
 
         Auth::login($user);
         $request->session()->regenerate();
 
-        return redirect('/app')
-            ->with('status', 'Invitation accepted. Your FirePhage account is ready.');
+        return redirect()->route('verification.notice')
+            ->with('status', 'Invitation accepted. Verify your email before managing sites or protection settings.');
     }
 
     private function invitation(string $token): ?OrganizationInvitation

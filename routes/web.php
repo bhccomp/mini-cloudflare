@@ -3,6 +3,9 @@
 use App\Http\Controllers\EarlyAccessController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\GoogleAuthController;
+use App\Http\Controllers\Auth\EmailVerificationPromptController;
+use App\Http\Controllers\Auth\ResendEmailVerificationController;
+use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\App\AcceptOrganizationInvitationController;
 use App\Http\Controllers\App\AcceptOrganizationInvitationSetupController;
 use App\Http\Controllers\App\SiteCheckoutController;
@@ -53,6 +56,14 @@ Route::redirect('/login', '/app/login')->name('login');
 Route::get('/wordpress/free-token/verify/{token}', VerifyFreeTokenController::class)->name('wordpress.free-token.verify');
 
 Route::middleware('auth')->group(function (): void {
+    Route::get('/email/verify', EmailVerificationPromptController::class)->name('verification.notice');
+    Route::get('/email/verify/{id}/{hash}', VerifyEmailController::class)
+        ->middleware('signed')
+        ->name('verification.verify');
+    Route::post('/email/verification-notification', ResendEmailVerificationController::class)
+        ->middleware('throttle:6,1')
+        ->name('verification.send');
+
     Route::post('/logout', function (Request $request) {
         Auth::logout();
 
@@ -62,10 +73,12 @@ Route::middleware('auth')->group(function (): void {
         return redirect('/');
     })->name('logout');
 
-    Route::get('/app/sites/{site}/checkout/{plan}', SiteCheckoutController::class)
-        ->name('app.sites.checkout');
-    Route::get('/app/sites/{site}/checkout/success', SiteCheckoutSuccessController::class)
-        ->name('app.sites.checkout.success');
+    Route::middleware('verified')->group(function (): void {
+        Route::get('/app/sites/{site}/checkout/{plan}', SiteCheckoutController::class)
+            ->name('app.sites.checkout');
+        Route::get('/app/sites/{site}/checkout/success', SiteCheckoutSuccessController::class)
+            ->name('app.sites.checkout.success');
+    });
 });
 
 Route::get('/app/invitations/{token}/accept', AcceptOrganizationInvitationController::class)
