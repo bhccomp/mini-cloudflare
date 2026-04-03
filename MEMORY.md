@@ -1,5 +1,38 @@
 # MEMORY
 
+## Guest Organization Invitation Acceptance (Latest)
+- Organization invitation links now work for invited users who do not already have a FirePhage account.
+- New flow:
+  - invited user clicks the original invitation link
+  - if not signed in, FirePhage redirects them to a guest setup page
+  - user can enter:
+    - full name
+    - password
+    - password confirmation
+  - FirePhage creates the user account using the invited email address
+  - invitation is accepted automatically
+  - user is logged in and sent into `/app`
+- Current implementation:
+  - shared acceptance service:
+    - `app/Services/Auth/OrganizationInvitationAcceptanceService.php`
+  - guest setup controller:
+    - `app/Http/Controllers/App/AcceptOrganizationInvitationSetupController.php`
+  - guest setup view:
+    - `resources/views/auth/accept-organization-invitation.blade.php`
+  - existing logged-in accept flow now reuses the shared acceptance service:
+    - `app/Http/Controllers/App/AcceptOrganizationInvitationController.php`
+- Important routing/middleware fix:
+  - invitation accept/setup paths had to be excluded from:
+    - `app/Http/Middleware/RedirectUnauthenticatedAppToLogin.php`
+  - otherwise guests were always forced to `/login` before the setup page could load
+- Password UX on the invitation setup page now matches the register page:
+  - show/hide password
+  - show/hide confirm password
+  - generate password button
+- Important safety behavior:
+  - if an account already exists for the invited email, FirePhage does not overwrite or merge silently
+  - instead, the invitee is told to sign in first and then accept the invitation with that existing account
+
 ## Billing Overview + Reconciliation (Latest)
 - Admin billing visibility is no longer a placeholder.
 - New service:

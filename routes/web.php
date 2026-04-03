@@ -4,6 +4,7 @@ use App\Http\Controllers\EarlyAccessController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\App\AcceptOrganizationInvitationController;
+use App\Http\Controllers\App\AcceptOrganizationInvitationSetupController;
 use App\Http\Controllers\App\SiteCheckoutController;
 use App\Http\Controllers\App\SiteCheckoutSuccessController;
 use App\Http\Controllers\BlogController;
@@ -61,10 +62,18 @@ Route::middleware('auth')->group(function (): void {
         return redirect('/');
     })->name('logout');
 
-    Route::get('/app/invitations/{token}/accept', AcceptOrganizationInvitationController::class)
-        ->name('app.invitations.accept');
     Route::get('/app/sites/{site}/checkout/{plan}', SiteCheckoutController::class)
         ->name('app.sites.checkout');
     Route::get('/app/sites/{site}/checkout/success', SiteCheckoutSuccessController::class)
         ->name('app.sites.checkout.success');
+});
+
+Route::get('/app/invitations/{token}/accept', AcceptOrganizationInvitationController::class)
+    ->name('app.invitations.accept');
+
+Route::middleware('guest')->group(function (): void {
+    Route::get('/app/invitations/{token}/setup', [AcceptOrganizationInvitationSetupController::class, 'create'])
+        ->name('app.invitations.accept.setup');
+    Route::post('/app/invitations/{token}/setup', [AcceptOrganizationInvitationSetupController::class, 'store'])
+        ->name('app.invitations.accept.setup.store');
 });
