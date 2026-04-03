@@ -124,6 +124,7 @@ These are filler. They add words without adding meaning.
 - [ ] Ending is a single strong point, not a recap
 - [ ] Author is set to Nikola Jocic, not Admin
 - [ ] Internal link to one service page is present
+- [ ] Internal link appears where it is actually relevant to the point being made, not just dropped into the post to satisfy linking
 - [ ] Word count is between 1000 and 1800
 
 ---

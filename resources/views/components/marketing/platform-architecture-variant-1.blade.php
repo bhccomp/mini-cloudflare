@@ -14,9 +14,9 @@
             </div>
 
             <div class="order-2 lg:order-2">
-                <h2 class="text-3xl font-semibold text-white">How FirePage Protects You Today</h2>
+                <h2 class="text-3xl font-semibold text-white">How FirePhage Protects You Today</h2>
                 <p class="mt-4 text-sm leading-7 text-slate-300">
-                    Every request passes through FirePage&apos;s global edge network where our custom WordPress WAF rules automatically filter malicious traffic before it ever touches your origin server.
+                    Every request passes through FirePhage&apos;s global edge network where our custom WordPress WAF rules automatically filter malicious traffic before it ever touches your origin server.
                 </p>
                 <ul class="mt-6 space-y-3 text-sm text-slate-200">
                     <li class="flex items-start gap-2"><span class="text-cyan-300">•</span><span>Edge layer receives and inspects incoming traffic</span></li>

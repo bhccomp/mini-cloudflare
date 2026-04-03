@@ -30,6 +30,19 @@
     - SEO on one side
     - Publishing on the other
 
+## Blog Voice + Authorship Refinement (Latest)
+- All published FirePhage blog posts are now assigned to:
+  - `Nikola Jocic`
+- Important reason:
+  - avoid anonymous `Admin` bylines
+  - stronger expertise / authorship signal for a security product
+- Current blog-writing workflow is now stricter:
+  - before creating or rewriting a blog post, check:
+    - `blog.md`
+  - current additional checklist rule:
+    - the internal FirePhage service link should appear where it is actually relevant to the argument being made, not just dropped into the post mechanically
+- Older posts were also adjusted so internal service links feel more natural in the body where needed.
+
 ## Crisp Website Chat (Latest)
 - FirePhage marketing site now supports Crisp website chat through a simple env-configured integration.
 - Current env/config:
