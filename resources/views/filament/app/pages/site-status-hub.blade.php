@@ -39,6 +39,8 @@
         "
         @if ($this->site && ! $this->isSiteLive() && $this->shouldPollStatus()) wire:poll.15s="pollStatus" @endif
     >
+        <x-filament-actions::modals />
+
         @if (! $this->site)
             @include('filament.app.pages.protection.empty-state')
         @else

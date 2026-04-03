@@ -1,5 +1,54 @@
 # MEMORY
 
+## DNS Assistance Modal + Onboarding Development Mode (Latest)
+- `Ask FirePhage To Handle DNS` on the Site Status Hub no longer sends users to the support page.
+- Current behavior:
+  - opens a modal directly on the onboarding/status page
+  - asks for:
+    - registrar URL
+    - registrar username
+    - registrar password
+    - whether login requires 2FA
+  - creates a support ticket automatically
+  - keeps the user on the same page
+  - shows a success notification after submit
+- Ticketing behavior:
+  - new service:
+    - `app/Services/Support/DnsAssistanceTicketService.php`
+  - ticket is created in:
+    - `Technical Support`
+  - subject is:
+    - `DNS Assistance Request`
+  - domain is written into:
+    - `Website / Domain`
+  - canned DNS instructions plus registrar access details are written into:
+    - `What’s happening?`
+  - existing ticket-created customer/admin email notifications should continue to fire through the current ticketing event flow
+- UI wiring:
+  - action lives on:
+    - `app/Filament/App/Pages/SiteStatusHubPage.php`
+  - onboarding buttons in:
+    - `resources/views/filament/app/pages/site-status-hub-onboarding.blade.php`
+    now call the page action modal
+  - page view now renders Filament action modals through:
+    - `resources/views/filament/app/pages/site-status-hub.blade.php`
+- Important product clarification about Development Mode / Troubleshooting Mode before DNS cutover:
+  - before edge provisioning:
+    - development mode effectively does nothing useful
+  - after provisioning but before DNS cutover:
+    - the setting is applied to the future edge config immediately
+    - but it does not affect live visitor traffic yet because DNS is not cut over
+  - `Troubleshooting Mode` is broader than desired for onboarding because it also relaxes WAF behavior
+  - `Development Mode` is the safer onboarding/testing option because it relaxes cache/optimization only
+- Onboarding change:
+  - site creation wizard now includes:
+    - `Start with Development Mode enabled`
+  - current placement:
+    - `Review & Create` step
+  - helper text now tells users:
+    - they can disable Development Mode later from the Cache Page
+  - this uses the existing `development_mode` site flag rather than inventing a separate “testing mode” concept
+
 ## Email Verification Enforcement + Branded Notifications (Latest)
 - FirePhage now has real email verification enforcement for newly registered and invite-created users.
 - Current behavior:

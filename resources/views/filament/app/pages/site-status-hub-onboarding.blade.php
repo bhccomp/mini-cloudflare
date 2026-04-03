@@ -82,9 +82,9 @@
 
             <div>
                 <x-filament::button
-                    tag="a"
+                    type="button"
                     color="gray"
-                    :href="\App\Filament\App\Pages\SupportPage::getUrl()"
+                    wire:click="mountAction('requestDnsAssistance')"
                 >
                     Ask FirePhage To Handle DNS
                 </x-filament::button>
@@ -153,9 +153,9 @@
 
             <div>
                 <x-filament::button
-                    tag="a"
+                    type="button"
                     color="gray"
-                    :href="\App\Filament\App\Pages\SupportPage::getUrl()"
+                    wire:click="mountAction('requestDnsAssistance')"
                 >
                     Ask FirePhage To Handle DNS
                 </x-filament::button>
@@ -231,9 +231,9 @@
 
             <div>
                 <x-filament::button
-                    tag="a"
+                    type="button"
                     color="gray"
-                    :href="\App\Filament\App\Pages\SupportPage::getUrl()"
+                    wire:click="mountAction('requestDnsAssistance')"
                 >
                     Ask FirePhage To Handle DNS
                 </x-filament::button>

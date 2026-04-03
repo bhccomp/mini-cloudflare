@@ -223,6 +223,15 @@ class SiteResource extends Resource
 
                                         return $plan?->name ? $plan->name.' - '.$plan->displayPrice().'/mo' : 'Not selected';
                                     }),
+                                Forms\Components\Toggle::make('development_mode')
+                                    ->label('Start with Development Mode enabled')
+                                    ->default(false)
+                                    ->helperText('Use this if you want to test the site after DNS cutover before turning on full cache and optimization. You can disable Development Mode later from the Cache Page.'),
+                                Forms\Components\Placeholder::make('review_development_mode')
+                                    ->label('Development Mode')
+                                    ->content(fn (Get $get): string => (bool) ($get('development_mode') ?? false)
+                                        ? 'Enabled for initial testing after cutover'
+                                        : 'Disabled'),
                                 Forms\Components\Placeholder::make('review_note')
                                     ->label('Next action after creation')
                                     ->content(function (Get $get): string {

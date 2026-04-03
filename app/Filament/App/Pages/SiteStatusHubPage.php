@@ -21,8 +21,11 @@ use App\Services\Billing\SiteUsageMeteringService;
 use App\Services\Billing\SubscriptionSiteAssignmentService;
 use App\Services\Billing\OrganizationEntitlementService;
 use App\Services\OrganizationAccessService;
+use App\Services\Support\DnsAssistanceTicketService;
 use App\Services\WordPress\PluginSiteService;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Checkbox;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Illuminate\Http\Request;
 
@@ -97,6 +100,66 @@ class SiteStatusHubPage extends BaseProtectionPage
                 ->icon('heroicon-m-plus')
                 ->color('primary')
                 ->url(SiteResource::getUrl('create')),
+            Action::make('requestDnsAssistance')
+                ->label('Ask FirePhage To Handle DNS')
+                ->icon('heroicon-m-lifebuoy')
+                ->color('gray')
+                ->visible(fn (): bool => (bool) $this->site && ! $this->isSiteLive())
+                ->modalHeading('Ask FirePhage To Handle DNS')
+                ->modalDescription('Share registrar access so the technical team can handle DNS changes for this domain.')
+                ->modalSubmitActionLabel('Create DNS assistance ticket')
+                ->form([
+                    TextInput::make('registrar_url')
+                        ->label('Domain registrar URL')
+                        ->placeholder('https://example-registrar.com')
+                        ->required()
+                        ->url(),
+                    TextInput::make('registrar_username')
+                        ->label('Username')
+                        ->required(),
+                    TextInput::make('registrar_password')
+                        ->label('Password')
+                        ->required()
+                        ->password(),
+                    Checkbox::make('requires_two_factor')
+                        ->label('Registrar requires 2FA while logging in'),
+                ])
+                ->action(function (array $data): void {
+                    if (! $this->site || ! auth()->user()) {
+                        Notification::make()
+                            ->title('Unable to create ticket.')
+                            ->body('The site context is missing. Refresh the page and try again.')
+                            ->danger()
+                            ->send();
+
+                        return;
+                    }
+
+                    try {
+                        app(DnsAssistanceTicketService::class)->create(
+                            $this->site,
+                            auth()->user(),
+                            trim((string) ($data['registrar_url'] ?? '')),
+                            trim((string) ($data['registrar_username'] ?? '')),
+                            trim((string) ($data['registrar_password'] ?? '')),
+                            (bool) ($data['requires_two_factor'] ?? false),
+                        );
+                    } catch (\Throwable $exception) {
+                        Notification::make()
+                            ->title('Unable to create ticket.')
+                            ->body($exception->getMessage())
+                            ->danger()
+                            ->send();
+
+                        return;
+                    }
+
+                    Notification::make()
+                        ->title('DNS assistance ticket created.')
+                        ->body('FirePhage received your DNS request. Someone from the technical team will get back to you as soon as possible.')
+                        ->success()
+                        ->send();
+                }),
         ];
     }
 
