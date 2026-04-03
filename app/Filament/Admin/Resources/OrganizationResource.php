@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources;
 use App\Filament\Admin\Resources\OrganizationResource\Pages;
 use App\Models\Organization;
 use App\Models\Plan;
+use App\Services\Billing\AdminBillingOverviewService;
 use App\Services\Billing\OrganizationEntitlementService;
 use App\Services\Billing\OrganizationBillingService;
 use Filament\Actions;
@@ -66,10 +67,19 @@ class OrganizationResource extends Resource
                 Tables\Columns\TextColumn::make('name')->searchable(),
                 Tables\Columns\TextColumn::make('slug')->searchable(),
                 Tables\Columns\TextColumn::make('billing_email')->searchable(),
-                Tables\Columns\TextColumn::make('settings.billing_mode')->label('Billing')->badge(),
-                Tables\Columns\TextColumn::make('settings.assigned_plan_id')
+                Tables\Columns\TextColumn::make('billing_status')
+                    ->label('Billing')
+                    ->state(fn (Organization $record): string => app(AdminBillingOverviewService::class)->summaryForOrganization($record)['status_label'])
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'Active', 'Comped' => 'success',
+                        'Trialing', 'Manual Trial', 'Syncing' => 'info',
+                        'Past Due' => 'danger',
+                        default => 'gray',
+                    }),
+                Tables\Columns\TextColumn::make('effective_plan')
                     ->label('Assigned plan')
-                    ->formatStateUsing(fn ($state) => $state ? Plan::query()->find($state)?->name : null)
+                    ->state(fn (Organization $record): ?string => app(AdminBillingOverviewService::class)->summaryForOrganization($record)['plan_label'])
                     ->toggleable(),
                 Tables\Columns\TextColumn::make('sites_count')->counts('sites')->label('Sites'),
                 Tables\Columns\TextColumn::make('users_count')->counts('users')->label('Users'),

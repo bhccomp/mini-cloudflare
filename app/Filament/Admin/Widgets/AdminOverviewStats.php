@@ -8,6 +8,7 @@ use App\Models\EarlyAccessLead;
 use App\Models\Site;
 use App\Models\User;
 use App\Models\WordPressSubscriber;
+use App\Services\Billing\AdminBillingOverviewService;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Database\Eloquent\Builder;
@@ -23,6 +24,7 @@ class AdminOverviewStats extends StatsOverviewWidget
 
     protected function getStats(): array
     {
+        $billing = app(AdminBillingOverviewService::class)->headlineMetrics();
         $openTickets = Ticket::query()
             ->whereHas('status', fn (Builder $query) => $query->where('is_closing_status', false))
             ->count();
@@ -53,6 +55,14 @@ class AdminOverviewStats extends StatsOverviewWidget
         $activeSites = Site::query()->where('status', Site::STATUS_ACTIVE)->count();
 
         return [
+            Stat::make('Monthly MRR', '$'.number_format($billing['mrr_cents'] / 100, 0))
+                ->description('$'.number_format($billing['trial_value_cents'] / 100, 0).' in trials')
+                ->descriptionIcon('heroicon-m-banknotes')
+                ->color('success'),
+            Stat::make('Subscribed Users', number_format($billing['subscribed_users']))
+                ->description($billing['subscribed_organizations'].' paid orgs, '.$billing['trialing_organizations'].' trialing')
+                ->descriptionIcon('heroicon-m-user-group')
+                ->color('primary'),
             Stat::make('Open Tickets', $openTickets)
                 ->description($unassignedTickets.' unassigned')
                 ->descriptionIcon('heroicon-m-ticket')

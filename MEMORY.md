@@ -1,5 +1,62 @@
 # MEMORY
 
+## Billing Overview + Reconciliation (Latest)
+- Admin billing visibility is no longer a placeholder.
+- New service:
+  - `app/Services/Billing/AdminBillingOverviewService.php`
+- Current behavior:
+  - `Billing Overview` now shows:
+    - monthly MRR
+    - trial value
+    - subscribed organizations
+    - subscribed users
+    - past-due / trialing / comped counts
+  - organization rows now show:
+    - effective plan
+    - billing status
+    - monthly value
+    - covered sites
+    - renew date
+    - Stripe customer email when available
+    - source badge:
+      - `Verified`
+      - `Stripe`
+      - `Mismatch`
+      - `Local`
+      - `Local Only`
+- Important revenue logic:
+  - `MRR` now means paid recurring revenue only
+  - current MRR counts:
+    - `active`
+    - `past_due`
+  - current MRR does **not** count:
+    - `trialing`
+  - trialing plan value is tracked separately as:
+    - `Trial value`
+- Important demo handling:
+  - `FirePhage Demo` is excluded from:
+    - MRR
+    - subscribed-user revenue counts
+    - the Billing Overview organization table
+- Reconciliation behavior:
+  - for Stripe-mode organizations, admin billing now attempts to compare local subscription data with live Stripe customer/subscription data
+  - if Stripe and local state disagree, the UI should show `Mismatch` instead of silently trusting the local row
+- Current touched files:
+  - `app/Filament/Admin/Pages/BillingOverview.php`
+  - `resources/views/filament/admin/pages/billing-overview.blade.php`
+  - `app/Filament/Admin/Widgets/AdminOverviewStats.php`
+  - `app/Filament/Admin/Resources/OrganizationResource.php`
+
+## Organization Settings Table Sizing (Latest)
+- `Organization Settings` member/invite tables were adjusted because content and buttons were pushing against row borders.
+- File:
+  - `resources/views/filament/app/pages/organization-settings-page.blade.php`
+- Current behavior:
+  - larger vertical row padding
+  - explicit column sizing
+  - action-cell containers wrap more safely
+  - pending invite `Revoke` button should stay inside the row border more reliably
+
 ## Admin Stripe Payment Links For Accounts (Latest)
 - FirePhage admin now supports generating a Stripe subscription checkout link for an existing organization/account before site onboarding starts.
 - Current use case:
