@@ -26,6 +26,7 @@ class CheckAcmDnsValidationJob implements ShouldQueue
     {
         $site = Site::query()->findOrFail($this->siteId);
         $provider = $providers->forSite($site);
+        $wasLive = $site->onboarding_status === Site::ONBOARDING_LIVE;
 
         if ($site->status === Site::STATUS_PENDING_DNS_VALIDATION) {
             $dns = $provider->checkCertificateValidation($site);
@@ -79,12 +80,14 @@ class CheckAcmDnsValidationJob implements ShouldQueue
                             'last_provisioned_at' => now(),
                         ]);
 
+                        $purgeMeta = $this->purgeCacheAfterBunnyCutover($site->fresh(), $provider, $wasLive);
+
                         $this->audit(
                             $site,
                             'traffic.check_cutover',
                             'success',
                             $ssl['message'] ?? 'DNS and SSL verification complete.',
-                            $traffic + ['provider' => $provider->key(), 'ssl' => $ssl]
+                            $traffic + ['provider' => $provider->key(), 'ssl' => $ssl] + $purgeMeta
                         );
 
                         return;
@@ -166,5 +169,52 @@ class CheckAcmDnsValidationJob implements ShouldQueue
             'message' => $message,
             'meta' => $meta,
         ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function purgeCacheAfterBunnyCutover(Site $site, mixed $provider, bool $wasLive): array
+    {
+        if ($provider->key() !== Site::PROVIDER_BUNNY || $wasLive) {
+            return [];
+        }
+
+        if (data_get($site->provider_meta, 'initial_live_cache_purged_at')) {
+            return [
+                'cache_purge' => 'already-recorded',
+            ];
+        }
+
+        try {
+            $result = $provider->purgeCache($site, ['/*']);
+
+            $meta = is_array($site->provider_meta) ? $site->provider_meta : [];
+            $meta['initial_live_cache_purged_at'] = now()->toIso8601String();
+            $site->forceFill(['provider_meta' => $meta])->save();
+
+            return [
+                'cache_purge' => 'requested',
+                'cache_purge_result' => $result,
+            ];
+        } catch (\Throwable $e) {
+            $meta = is_array($site->provider_meta) ? $site->provider_meta : [];
+            $meta['initial_live_cache_purge_failed_at'] = now()->toIso8601String();
+            $meta['initial_live_cache_purge_last_error'] = $e->getMessage();
+            $site->forceFill(['provider_meta' => $meta])->save();
+
+            $this->audit(
+                $site,
+                'traffic.purge_cache_after_cutover',
+                'failed',
+                'Automatic Bunny cache purge after cutover failed.',
+                ['provider' => $provider->key(), 'error' => $e->getMessage()]
+            );
+
+            return [
+                'cache_purge' => 'failed',
+                'cache_purge_error' => $e->getMessage(),
+            ];
+        }
     }
 }

@@ -1,5 +1,32 @@
 # MEMORY
 
+## Automatic Bunny Cache Purge After Cutover (Latest)
+- FirePhage now performs a one-time full Bunny cache purge automatically when a Bunny site first becomes `Live / Protected` after DNS + SSL verification.
+- Reason:
+  - some sites were hitting region-specific redirect-loop issues immediately after cutover
+  - manual Bunny full cache purge was resolving those cases
+  - FirePhage now does that purge automatically at the moment the site is promoted to live
+- Current behavior:
+  - hook lives in:
+    - `app/Jobs/CheckAcmDnsValidationJob.php`
+  - when Bunny DNS is verified and SSL becomes active:
+    - site is marked `STATUS_ACTIVE`
+    - site onboarding becomes `ONBOARDING_LIVE`
+    - FirePhage requests Bunny full-zone purge:
+      - `/*`
+  - this runs once only, not on every later DNS recheck
+- Current idempotency markers in `provider_meta`:
+  - `initial_live_cache_purged_at`
+  - on failure:
+    - `initial_live_cache_purge_failed_at`
+    - `initial_live_cache_purge_last_error`
+- Current failure behavior:
+  - site still becomes live even if purge fails
+  - failure is recorded in:
+    - `provider_meta`
+    - audit log action:
+      - `traffic.purge_cache_after_cutover`
+
 ## Cloudflare-Backed FirePhage Edge Aliases (Latest)
 - FirePhage now creates customer-facing edge hostnames on `firephage.com` for Bunny-provisioned sites instead of exposing raw `*.b-cdn.net` targets in onboarding.
 - Current behavior:
