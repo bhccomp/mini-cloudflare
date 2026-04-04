@@ -511,8 +511,9 @@ class SiteResource extends Resource
                     ->url(static::getUrl('create')),
             ])
             ->columns([
-                Tables\Columns\TextColumn::make('display_name')->searchable(),
-                Tables\Columns\TextColumn::make('apex_domain')->searchable(),
+                Tables\Columns\TextColumn::make('apex_domain')
+                    ->label('Domain')
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
                     ->formatStateUsing(fn (string $state, Site $record): string => static::displayStatusLabel($record, $state))

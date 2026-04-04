@@ -1,5 +1,27 @@
 # MEMORY
 
+## Subscription Slot Consumption + Sites Table Cleanup (Latest)
+- Subscription website capacity is no longer freed just because a site record was deleted.
+- Current behavior:
+  - FirePhage now tracks consumed domains per subscription in:
+    - `organization_subscriptions.meta.consumed_domain_names`
+  - deleting a covered site does **not** make that subscription slot reusable for a different domain during the same subscription period
+  - if the customer recreates the same domain, FirePhage can still attach it to the already-consumed slot
+  - if the customer adds a different domain after deleting the old one:
+    - FirePhage requires another available slot
+    - or another paid subscription / plan purchase
+- Current implementation:
+  - `app/Models/OrganizationSubscription.php`
+  - `app/Services/Billing/SubscriptionSiteAssignmentService.php`
+- Important billing/product intent:
+  - this prevents customers from cycling domains through one ongoing subscription by deleting and replacing sites mid-period
+- Sites table follow-up:
+  - `/app/sites` no longer shows both `Display Name` and `Apex Domain`
+  - current table now shows one column:
+    - `Domain`
+  - file:
+    - `app/Filament/App/Resources/SiteResource.php`
+
 ## DNS Assistance Modal + Onboarding Development Mode (Latest)
 - `Ask FirePhage To Handle DNS` on the Site Status Hub no longer sends users to the support page.
 - Current behavior:

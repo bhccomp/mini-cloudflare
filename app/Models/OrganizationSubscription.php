@@ -74,4 +74,34 @@ class OrganizationSubscription extends Model
 
         return count(array_unique(array_map('intval', $loadedSiteIds)));
     }
+
+    /**
+     * @return array<int, string>
+     */
+    public function consumedDomainNames(): array
+    {
+        $domains = collect((array) data_get($this->meta, 'consumed_domain_names', []))
+            ->map(fn ($domain): string => strtolower(trim((string) $domain)))
+            ->filter()
+            ->unique()
+            ->values();
+
+        return $domains->all();
+    }
+
+    public function hasConsumedDomain(string $domain): bool
+    {
+        $normalized = strtolower(trim($domain));
+
+        if ($normalized === '') {
+            return false;
+        }
+
+        return in_array($normalized, $this->consumedDomainNames(), true);
+    }
+
+    public function consumedWebsiteSlotCount(): int
+    {
+        return count($this->consumedDomainNames());
+    }
 }

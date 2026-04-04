@@ -44,7 +44,7 @@ class SubscriptionSiteAssignmentService
             ->whereIn('status', ['active', 'trialing', 'checkout_completed'])
             ->orderBy('id')
             ->get()
-            ->first(fn (OrganizationSubscription $subscription): bool => $this->hasAvailableWebsiteSlot($subscription));
+            ->first(fn (OrganizationSubscription $subscription): bool => $this->hasAvailableWebsiteSlotForSite($subscription, $site));
     }
 
     public function assignSite(OrganizationSubscription $subscription, Site $site): OrganizationSubscription
@@ -55,13 +55,15 @@ class SubscriptionSiteAssignmentService
             throw new \RuntimeException('This site is already attached to a different subscription.');
         }
 
-        if (! $this->siteIsAssigned($subscription, $site) && ! $this->hasAvailableWebsiteSlot($subscription)) {
+        if (! $this->siteIsAssigned($subscription, $site) && ! $this->hasAvailableWebsiteSlotForSite($subscription, $site)) {
             throw new \RuntimeException('This subscription has no website slots remaining.');
         }
 
         if (! $this->siteIsAssigned($subscription, $site)) {
             $subscription->sites()->syncWithoutDetaching([$site->id]);
         }
+
+        $this->recordConsumedDomain($subscription, $site);
 
         if (! $subscription->site_id) {
             $subscription->forceFill(['site_id' => $site->id])->save();
@@ -89,9 +91,21 @@ class SubscriptionSiteAssignmentService
         return $this->usedWebsiteSlots($subscription) < $this->includedWebsiteSlots($subscription);
     }
 
+    public function hasAvailableWebsiteSlotForSite(OrganizationSubscription $subscription, Site $site): bool
+    {
+        if ($this->siteIsAssigned($subscription, $site) || $subscription->hasConsumedDomain((string) $site->apex_domain)) {
+            return true;
+        }
+
+        return $this->hasAvailableWebsiteSlot($subscription);
+    }
+
     public function usedWebsiteSlots(OrganizationSubscription $subscription): int
     {
-        return $subscription->assignableSiteCount();
+        return max(
+            $subscription->assignableSiteCount(),
+            $subscription->consumedWebsiteSlotCount(),
+        );
     }
 
     public function includedWebsiteSlots(OrganizationSubscription $subscription): int
@@ -115,5 +129,27 @@ class SubscriptionSiteAssignmentService
     private function siteIsAssigned(OrganizationSubscription $subscription, Site $site): bool
     {
         return in_array($site->id, $this->coveredSiteIds($subscription), true);
+    }
+
+    private function recordConsumedDomain(OrganizationSubscription $subscription, Site $site): void
+    {
+        $domain = strtolower(trim((string) $site->apex_domain));
+
+        if ($domain === '' || $subscription->hasConsumedDomain($domain)) {
+            return;
+        }
+
+        $meta = (array) ($subscription->meta ?? []);
+        $consumed = collect((array) data_get($meta, 'consumed_domain_names', []))
+            ->map(fn ($value): string => strtolower(trim((string) $value)))
+            ->filter()
+            ->push($domain)
+            ->unique()
+            ->values()
+            ->all();
+
+        $meta['consumed_domain_names'] = $consumed;
+
+        $subscription->forceFill(['meta' => $meta])->save();
     }
 }
