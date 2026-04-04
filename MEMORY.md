@@ -1,5 +1,44 @@
 # MEMORY
 
+## Cloudflare-Backed FirePhage Edge Aliases (Latest)
+- FirePhage now creates customer-facing edge hostnames on `firephage.com` for Bunny-provisioned sites instead of exposing raw `*.b-cdn.net` targets in onboarding.
+- Current behavior:
+  - Bunny still provisions the real edge hostname, for example:
+    - `nodesfoundry-edge.firephage.com` -> CNAME -> `fp-730-nodesfoundry-com.b-cdn.net`
+  - customer-facing DNS instructions now use the FirePhage alias hostname
+  - the raw Bunny hostname is still stored internally for provider checks and cleanup
+- Current config:
+  - `config/services.php`
+  - `.env`
+  - `.env.example`
+  - env keys:
+    - `CLOUDFLARE_ZONE_ID`
+    - `CLOUDFLARE_API_TOKEN`
+    - `CLOUDFLARE_EDGE_ALIAS_BASE_DOMAIN`
+- Current implementation:
+  - Cloudflare DNS API service:
+    - `app/Services/Dns/CloudflareDnsService.php`
+  - Bunny provider now:
+    - creates/updates the FirePhage alias during provisioning
+    - deletes the alias during deployment deletion
+    - stores:
+      - `provider_meta.edge_domain`
+      - `provider_meta.customer_edge_domain`
+      - `provider_meta.customer_edge_alias_record_id`
+- Naming rule:
+  - FirePhage aliases are now domain-based, not site-ID-based
+  - examples:
+    - `nodesfoundry.com` -> `nodesfoundry-edge.firephage.com`
+    - `nikolajocic.dev` -> `nikolajocic-edge.firephage.com`
+    - `charismaoncommand.university` -> `charismaoncommand-university-edge.firephage.com`
+  - important fix:
+    - the first implementation wrongly used only the hostname part before the first dot
+    - that caused fake collisions like:
+      - `charismaoncommand.com`
+      - `charismaoncommand.university`
+    - generator now slugs the full apex domain instead
+- Existing Bunny sites were backfilled so current customer-facing targets now use the FirePhage aliases instead of the old `fp-<id>-...firephage.com` format.
+
 ## Subscription Slot Consumption + Sites Table Cleanup (Latest)
 - Subscription website capacity is no longer freed just because a site record was deleted.
 - Current behavior:

@@ -53,4 +53,10 @@ return [
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),
         'redirect' => env('GOOGLE_REDIRECT_URI', env('APP_URL').'/auth/google/callback'),
     ],
+
+    'cloudflare' => [
+        'zone_id' => env('CLOUDFLARE_ZONE_ID'),
+        'api_token' => env('CLOUDFLARE_API_TOKEN'),
+        'edge_alias_base_domain' => env('CLOUDFLARE_EDGE_ALIAS_BASE_DOMAIN', 'firephage.com'),
+    ],
 ];

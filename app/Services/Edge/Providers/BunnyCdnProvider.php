@@ -9,6 +9,7 @@ use App\Services\Bunny\BunnyGlobalDefaultsService;
 use App\Services\Bunny\BunnyShieldAccessListService;
 use App\Services\Bunny\BunnyShieldSecurityService;
 use App\Services\Billing\OrganizationEntitlementService;
+use App\Services\Dns\CloudflareDnsService;
 use App\Services\Edge\EdgeProviderInterface;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Arr;
@@ -23,6 +24,7 @@ class BunnyCdnProvider implements EdgeProviderInterface
         protected ?BunnyShieldAccessListService $shieldAccess = null,
         protected ?BunnyShieldSecurityService $shieldSecurity = null,
         protected ?BunnyEdgeErrorPageService $edgeErrorPages = null,
+        protected ?CloudflareDnsService $cloudflareDns = null,
     ) {}
 
     public function key(): string
@@ -144,6 +146,17 @@ class BunnyCdnProvider implements EdgeProviderInterface
         }
 
         $edgeDomain = $this->zoneEdgeDomain($zoneName);
+        $customerEdgeDomain = $edgeDomain;
+        $customerEdgeAliasRecordId = null;
+
+        if ($this->cloudflareDns()->isConfigured()) {
+            $customerEdgeAlias = $this->customerEdgeAliasHostname($site);
+            $aliasRecord = $this->cloudflareDns()->upsertEdgeAlias($customerEdgeAlias, $edgeDomain);
+
+            $customerEdgeDomain = $aliasRecord['hostname'];
+            $customerEdgeAliasRecordId = $aliasRecord['id'];
+        }
+
         $hostnames = [$site->apex_domain];
 
         if ($site->www_enabled && $site->www_domain) {
@@ -166,7 +179,7 @@ class BunnyCdnProvider implements EdgeProviderInterface
         }
 
         $requiredDnsRecords = [
-            'traffic' => $this->trafficRecords($site, $edgeDomain),
+            'traffic' => $this->trafficRecords($site, $customerEdgeDomain),
         ];
 
         $existingShieldZoneId = (int) data_get($site->provider_meta, 'shield_zone_id', 0);
@@ -189,6 +202,8 @@ class BunnyCdnProvider implements EdgeProviderInterface
                 'edge_error_script_status' => $edgeScriptStatus,
                 'edge_error_script_last_error' => $edgeScriptLastError,
                 'edge_domain' => $edgeDomain,
+                'customer_edge_domain' => $customerEdgeDomain,
+                'customer_edge_alias_record_id' => $customerEdgeAliasRecordId,
                 'origin_url' => $originUrl,
                 'origin_host_header' => $originHostHeader,
                 'logging_enabled' => (bool) ($logging['EnableLogging'] ?? false),
@@ -197,11 +212,11 @@ class BunnyCdnProvider implements EdgeProviderInterface
                 'hostnames' => $hostnameResults,
             ],
             'distribution_id' => (string) $zoneId,
-            'distribution_domain_name' => $edgeDomain,
+            'distribution_domain_name' => $customerEdgeDomain,
             'required_dns_records' => $requiredDnsRecords,
             'dns_records' => $requiredDnsRecords['traffic'],
             'notes' => array_values(array_filter([
-                'Edge zone provisioned. Point DNS traffic records to the edge domain.',
+                'Edge zone provisioned. Point DNS traffic records to the FirePhage edge hostname.',
                 $resolvedShieldZoneId ? 'Security zone has been enabled for this site.' : null,
                 $resolvedShieldZoneId ? null : 'Security zone setup is pending and will retry automatically.',
                 $shieldPlanStatus === 'active' ? 'Bunny Shield advanced plan has been enabled for this site.' : null,
@@ -924,6 +939,16 @@ class BunnyCdnProvider implements EdgeProviderInterface
 
     public function deleteDeployment(Site $site): array
     {
+        $customerEdgeAliasRecordId = (string) data_get($site->provider_meta, 'customer_edge_alias_record_id', '');
+        $customerEdgeDomain = (string) data_get($site->provider_meta, 'customer_edge_domain', '');
+
+        if ($customerEdgeAliasRecordId !== '' || $customerEdgeDomain !== '') {
+            $this->cloudflareDns()->deleteEdgeAlias(
+                $customerEdgeAliasRecordId !== '' ? $customerEdgeAliasRecordId : null,
+                $customerEdgeDomain !== '' ? $customerEdgeDomain : null,
+            );
+        }
+
         $zoneId = (int) ($site->provider_resource_id ?: data_get($site->provider_meta, 'zone_id', 0));
         $zoneIds = $this->collectRelatedZoneIds($site, $zoneId);
         $shieldZoneIds = $this->collectRelatedShieldZoneIds($site, $zoneIds);
@@ -1968,6 +1993,40 @@ class BunnyCdnProvider implements EdgeProviderInterface
     protected function zoneEdgeDomain(string $zoneName): string
     {
         return strtolower($zoneName).'.b-cdn.net';
+    }
+
+    protected function customerEdgeAliasHostname(Site $site): string
+    {
+        $base = (string) Str::of((string) $site->apex_domain)
+            ->lower()
+            ->replaceMatches('/[^a-z0-9-]/', '-')
+            ->replaceMatches('/-+/', '-')
+            ->trim('-')
+            ->limit(50, '')
+            ->value();
+
+        if ($base === '') {
+            $base = 'site-'.$site->id;
+        }
+
+        $label = $base.'-edge';
+        $hostname = $this->cloudflareDns()->edgeAliasHostname($label);
+
+        $ownerId = Site::query()
+            ->where('id', '!=', $site->id)
+            ->where('cloudfront_domain_name', $hostname)
+            ->value('id');
+
+        if ($ownerId) {
+            $hostname = $this->cloudflareDns()->edgeAliasHostname($base.'-'.$site->id.'-edge');
+        }
+
+        return $hostname;
+    }
+
+    protected function cloudflareDns(): CloudflareDnsService
+    {
+        return $this->cloudflareDns ??= app(CloudflareDnsService::class);
     }
 
     /**
