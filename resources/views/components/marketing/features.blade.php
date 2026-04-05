@@ -12,6 +12,8 @@
                         src="{{ asset('images/core-capabilities-illustration.svg') }}"
                         alt="Core capabilities illustration"
                         class="relative z-10 mx-auto h-auto w-full max-w-[1100px] rounded-none shadow-none"
+                        width="1200"
+                        height="760"
                         loading="lazy"
                         decoding="async"
                     >

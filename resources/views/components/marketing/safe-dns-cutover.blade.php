@@ -4,15 +4,22 @@
         <div class="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
             <div class="order-1 lg:order-1 relative flex justify-center lg:justify-start">
                 <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_35%_45%,rgba(59,130,246,0.22),transparent_62%)] blur-3xl opacity-65" aria-hidden="true"></div>
-                <img
-                    src="{{ asset('design-assets/dns-cutover-ui.png') }}"
-                    alt="DNS cutover interface illustration"
-                    class="feature-illustration feature-illustration--dns relative z-10 rounded-none"
-                    width="1536"
-                    height="1024"
-                    loading="lazy"
-                    decoding="async"
-                >
+                <picture>
+                    <source
+                        type="image/webp"
+                        srcset="{{ asset('design-assets/dns-cutover-ui-960.webp') }} 960w, {{ asset('design-assets/dns-cutover-ui.webp') }} 1536w"
+                        sizes="(min-width: 1024px) 637px, 100vw"
+                    >
+                    <img
+                        src="{{ asset('design-assets/dns-cutover-ui.png') }}"
+                        alt="DNS cutover interface illustration"
+                        class="feature-illustration feature-illustration--dns relative z-10 rounded-none"
+                        width="1536"
+                        height="1024"
+                        loading="lazy"
+                        decoding="async"
+                    >
+                </picture>
             </div>
 
             <div class="order-2 lg:order-2">

@@ -30,15 +30,22 @@
             <div class="relative flex items-center justify-center lg:justify-end">
                 <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_62%_45%,rgba(34,211,238,0.18),transparent_65%)] blur-3xl opacity-70" aria-hidden="true"></div>
                 <div class="relative z-10 w-full max-w-[760px] md:max-w-[860px] xl:max-w-[980px]">
-                    <img
-                        src="{{ asset('design-assets/monitor-alerts.png') }}"
-                        alt="Availability monitoring and alert integrations preview"
-                        class="h-auto w-full object-contain object-center drop-shadow-[0_16px_34px_rgba(2,8,23,0.36)]"
-                        width="1024"
-                        height="1536"
-                        loading="lazy"
-                        decoding="async"
-                    >
+                    <picture>
+                        <source
+                            type="image/webp"
+                            srcset="{{ asset('design-assets/monitor-alerts-768.webp') }} 768w, {{ asset('design-assets/monitor-alerts.webp') }} 1024w"
+                            sizes="(min-width: 1024px) 576px, 100vw"
+                        >
+                        <img
+                            src="{{ asset('design-assets/monitor-alerts.png') }}"
+                            alt="Availability monitoring and alert integrations preview"
+                            class="h-auto w-full object-contain object-center drop-shadow-[0_16px_34px_rgba(2,8,23,0.36)]"
+                            width="1024"
+                            height="1536"
+                            loading="lazy"
+                            decoding="async"
+                        >
+                    </picture>
                 </div>
             </div>
         </div>

@@ -1,5 +1,73 @@
 # MEMORY
 
+## Marketing Performance + Routing Drift Alerts (Latest)
+- FirePhage marketing pages now ship on a dedicated lightweight frontend bundle instead of the heavier app/admin bundle.
+- Current frontend split:
+  - marketing/auth/public pages use:
+    - `resources/js/marketing.js`
+    - `resources/css/marketing.css`
+  - app/admin pages keep:
+    - `resources/js/app.js`
+    - `resources/css/app.css`
+  - Vite config updated in:
+    - `vite.config.js`
+- Current performance/image optimization:
+  - hero background and hero laptop now use responsive WebP-first assets with `srcset` / `sizes`
+  - large homepage illustrations now use optimized WebP assets:
+    - onboarding team
+    - DNS cutover UI
+    - dashboard laptop
+    - monitoring alerts
+  - explicit width/height were added to previously flagged illustration images to reduce CLS
+  - Google Analytics loading was moved further out of the critical path while keeping consent-mode behavior intact
+  - cookie-consent CTA contrast was improved slightly
+- Current new optimized assets:
+  - `public/images/hero-banner-new.webp`
+  - `public/images/hero-banner-new-960.webp`
+  - `public/design-assets/dashboard-laptop.webp`
+  - `public/design-assets/dashboard-laptop-960.webp`
+  - `public/design-assets/onboarding-team.webp`
+  - `public/design-assets/onboarding-team-960.webp`
+  - `public/design-assets/dns-cutover-ui.webp`
+  - `public/design-assets/dns-cutover-ui-960.webp`
+  - `public/design-assets/monitor-alerts.webp`
+  - `public/design-assets/monitor-alerts-768.webp`
+- Live server cache headers were also tightened on the Nginx vhost for:
+  - `/build/assets/*`
+  - `/images/*`
+  - `/design-assets/*`
+  - fonts
+  - this was an infra-level Nginx change, not a repo file
+- Routing drift detection fix:
+  - `app/Services/Sites/SiteRoutingStatusService.php` no longer trusts Bunny hostname attachment as proof that live DNS is still pointed at FirePhage
+  - routing status now depends on real DNS resolution only
+  - this fixed false positives where a site could be moved away from FirePhage but still show as protected
+- New delayed routing-drift notification system:
+  - service:
+    - `app/Services/Sites/SiteRoutingDriftMonitorService.php`
+  - notification:
+    - `app/Notifications/SiteRoutingDriftNotification.php`
+  - branded email view:
+    - `resources/views/emails/site-routing-drift.blade.php`
+  - scheduler:
+    - `routes/console.php`
+  - current behavior:
+    - live/protected sites are checked every 30 minutes
+    - first drift detection stores:
+      - `provider_meta.routing_drift_started_at`
+    - if drift remains unresolved for 5 hours:
+      - all organization members receive email + database notification
+    - if routing recovers before the threshold:
+      - no alert is sent
+      - drift state is cleared
+- One-off suppression support now exists for the current drift incident only:
+  - keys:
+    - `provider_meta.routing_drift_suppressed_started_at`
+    - `provider_meta.routing_drift_suppressed_at`
+    - `provider_meta.routing_drift_suppressed_note`
+  - this was used for the current `charismaoncommand.com` cutover so the client does not receive a confusing alert
+  - future drift on that same site will still notify normally after it recovers and drifts again
+
 ## Automatic Bunny Cache Purge After Cutover (Latest)
 - FirePhage now performs a one-time full Bunny cache purge automatically when a Bunny site first becomes `Live / Protected` after DNS + SSL verification.
 - Reason:

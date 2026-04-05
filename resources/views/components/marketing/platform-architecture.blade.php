@@ -8,6 +8,8 @@
                     src="{{ asset('design-assets/architecture-diagram.png') }}"
                     alt="Platform architecture diagram"
                     class="relative z-10 mx-auto w-full max-w-[1200px]"
+                    width="1536"
+                    height="1024"
                     loading="lazy"
                     decoding="async"
                 >

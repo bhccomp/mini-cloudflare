@@ -10,7 +10,7 @@
             robots="noindex,follow"
         />
         <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
-        @vite(['resources/css/app.css', 'resources/js/app.js'])
+        @vite(['resources/css/marketing.css', 'resources/js/marketing.js'])
     </head>
     <body class="bg-slate-950 text-slate-100 antialiased">
         <div class="relative min-h-screen overflow-hidden">

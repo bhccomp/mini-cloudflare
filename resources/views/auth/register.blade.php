@@ -7,7 +7,7 @@
         <meta name="description" content="Create your FirePhage workspace and start your free setup flow.">
         <meta name="theme-color" content="#0b1020">
         <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
-        @vite(['resources/css/app.css', 'resources/js/app.js'])
+        @vite(['resources/css/marketing.css', 'resources/js/marketing.js'])
     </head>
     <body class="min-h-screen bg-[#0a1020] text-slate-100 antialiased">
         <div class="relative isolate min-h-screen overflow-hidden">

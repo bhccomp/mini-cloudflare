@@ -4,6 +4,7 @@ use App\Jobs\SyncSiteAnalyticsMetricJob;
 use App\Models\Organization;
 use App\Models\Site;
 use App\Services\AvailabilityMonitorService;
+use App\Services\Sites\SiteRoutingDriftMonitorService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -65,6 +66,13 @@ Artisan::command('availability:run-due', function (AvailabilityMonitorService $m
 
 Schedule::command('availability:run-due')
     ->everyMinute()
+    ->withoutOverlapping();
+
+Schedule::call(function (SiteRoutingDriftMonitorService $monitor): void {
+    $monitor->run();
+})
+    ->name('sites:monitor-routing-drift')
+    ->everyThirtyMinutes()
     ->withoutOverlapping();
 
 Schedule::command('demo:seed-dashboard')

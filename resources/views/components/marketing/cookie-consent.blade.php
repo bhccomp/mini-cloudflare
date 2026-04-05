@@ -32,7 +32,7 @@
                 <button
                     type="button"
                     data-cookie-consent-accept
-                    class="inline-flex items-center justify-center rounded-xl bg-cyan-400 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300"
+                    class="inline-flex items-center justify-center rounded-xl bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200"
                 >
                     Accept all
                 </button>
@@ -107,7 +107,7 @@
             <button
                 type="button"
                 data-cookie-consent-save
-                class="inline-flex items-center justify-center rounded-xl bg-cyan-400 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300"
+                class="inline-flex items-center justify-center rounded-xl bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200"
             >
                 Save preferences
             </button>

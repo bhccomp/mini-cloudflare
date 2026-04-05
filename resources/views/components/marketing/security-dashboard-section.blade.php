@@ -18,15 +18,22 @@
 
             <div class="relative flex justify-center lg:justify-end">
                 <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_68%_40%,rgba(34,211,238,0.22),transparent_62%)] blur-3xl opacity-65" aria-hidden="true"></div>
-                <img
-                    src="{{ asset('design-assets/dashboard-laptop.png') }}"
-                    alt="Security dashboard laptop illustration"
-                    class="feature-illustration feature-illustration--laptop relative z-10 rounded-none"
-                    width="1536"
-                    height="1024"
-                    loading="lazy"
-                    decoding="async"
-                >
+                <picture>
+                    <source
+                        type="image/webp"
+                        srcset="{{ asset('design-assets/dashboard-laptop-960.webp') }} 960w, {{ asset('design-assets/dashboard-laptop.webp') }} 1536w"
+                        sizes="(min-width: 1024px) 637px, 100vw"
+                    >
+                    <img
+                        src="{{ asset('design-assets/dashboard-laptop.png') }}"
+                        alt="Security dashboard laptop illustration"
+                        class="feature-illustration feature-illustration--laptop relative z-10 rounded-none"
+                        width="1536"
+                        height="1024"
+                        loading="lazy"
+                        decoding="async"
+                    >
+                </picture>
             </div>
         </div>
     </div>

@@ -19,7 +19,7 @@
             ]"
         />
         <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
-        @vite(['resources/css/app.css', 'resources/js/app.js'])
+        @vite(['resources/css/marketing.css', 'resources/js/marketing.js'])
         @if ($usesTurnstile)
             <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
         @endif

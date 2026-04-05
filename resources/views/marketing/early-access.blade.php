@@ -20,7 +20,7 @@
             ]"
         />
         <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
-        @vite(['resources/css/app.css', 'resources/js/app.js'])
+        @vite(['resources/css/marketing.css', 'resources/js/marketing.js'])
         <style>
             .early-theme {
                 --fp-bg: #0B0C1A;

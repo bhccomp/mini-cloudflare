@@ -58,7 +58,7 @@
             ]"
         />
         <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
-        @vite(['resources/css/app.css', 'resources/js/app.js'])
+        @vite(['resources/css/marketing.css', 'resources/js/marketing.js'])
         <style>
             .service-graph-bar { background: linear-gradient(180deg, rgba(34,211,238,0.95), rgba(59,130,246,0.5)); }
         </style>

@@ -10,7 +10,7 @@
             robots="noindex, nofollow"
         />
         <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
-        @vite(['resources/css/app.css', 'resources/js/app.js'])
+        @vite(['resources/css/marketing.css', 'resources/js/marketing.js'])
     </head>
     <body class="min-h-screen bg-[#0B0C1A] text-white">
         <div class="mx-auto flex min-h-screen max-w-3xl items-center px-6 py-20">

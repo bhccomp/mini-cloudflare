@@ -205,15 +205,6 @@ class SiteRoutingStatusService
             return true;
         }
 
-        if ($site->provider === Site::PROVIDER_BUNNY) {
-            $hostnameStatus = collect((array) data_get($site->provider_meta, 'hostnames', []))
-                ->first(fn (array $row): bool => rtrim(strtolower((string) ($row['hostname'] ?? '')), '.') === rtrim(strtolower($domain), '.'));
-
-            if (($hostnameStatus['ok'] ?? false) === true) {
-                return true;
-            }
-        }
-
         $targetIps = array_values(array_unique(array_merge(
             gethostbynamel($target) ?: [],
             $this->lookupByType($target, 'AAAA')

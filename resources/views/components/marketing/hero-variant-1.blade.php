@@ -1,13 +1,23 @@
 <section class="relative overflow-hidden pb-6 lg:pb-8">
     <div class="pointer-events-none absolute inset-0 z-0" aria-hidden="true">
-        <img
-            src="{{ asset('images/hero-banner-new.png') }}"
-            alt="Abstract FirePhage network protection background"
-            class="absolute inset-0 h-full w-full object-cover object-right opacity-[0.85]"
-            loading="eager"
-            decoding="async"
-            aria-hidden="true"
-        >
+        <picture>
+            <source
+                type="image/webp"
+                srcset="{{ asset('images/hero-banner-new-960.webp') }} 960w, {{ asset('images/hero-banner-new.webp') }} 1584w"
+                sizes="100vw"
+            >
+            <img
+                src="{{ asset('images/hero-banner-new.png') }}"
+                alt="Abstract FirePhage network protection background"
+                class="absolute inset-0 h-full w-full object-cover object-right opacity-[0.85]"
+                width="1584"
+                height="672"
+                fetchpriority="high"
+                loading="eager"
+                decoding="async"
+                aria-hidden="true"
+            >
+        </picture>
         <div
             class="absolute inset-0"
             style="background: linear-gradient(90deg, rgba(2,8,23,0.95) 0%, rgba(2,8,23,0.85) 35%, rgba(2,8,23,0.4) 65%, rgba(2,8,23,0.1) 100%);"
@@ -51,15 +61,23 @@
             <div class="relative flex justify-center lg:justify-end">
                 <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_60%_45%,rgba(124,58,237,0.22),transparent_62%)] blur-3xl opacity-70" aria-hidden="true"></div>
                 <div class="hero-laptop relative z-10">
-                    <img
-                        src="{{ asset('design-assets/dashboard-laptop.png') }}"
-                        alt="FirePhage dashboard preview on laptop"
-                        class="hero-visual-laptop"
-                        width="1536"
-                        height="1024"
-                        loading="eager"
-                        decoding="async"
-                    >
+                    <picture>
+                        <source
+                            type="image/webp"
+                            srcset="{{ asset('design-assets/dashboard-laptop-960.webp') }} 960w, {{ asset('design-assets/dashboard-laptop.webp') }} 1536w"
+                            sizes="(min-width: 1024px) 637px, 92vw"
+                        >
+                        <img
+                            src="{{ asset('design-assets/dashboard-laptop.png') }}"
+                            alt="FirePhage dashboard preview on laptop"
+                            class="hero-visual-laptop"
+                            width="1536"
+                            height="1024"
+                            fetchpriority="high"
+                            loading="eager"
+                            decoding="async"
+                        >
+                    </picture>
                 </div>
             </div>
         </div>

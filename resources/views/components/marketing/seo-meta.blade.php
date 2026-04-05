@@ -59,8 +59,31 @@
         });
         window.gtag('js', new Date());
         window.gtag('config', window.firephageGaMeasurementId);
+
+        window.firephageLoadGoogleAnalytics = window.firephageLoadGoogleAnalytics || function firephageLoadGoogleAnalytics() {
+            if (document.getElementById('firephage-ga-loader')) {
+                return;
+            }
+
+            const script = document.createElement('script');
+            script.id = 'firephage-ga-loader';
+            script.async = true;
+            script.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(window.firephageGaMeasurementId)}`;
+
+            document.head.appendChild(script);
+        };
+
+        const firephageScheduleGoogleAnalytics = () => {
+            const idleCallback = window.requestIdleCallback || ((callback) => window.setTimeout(callback, 1200));
+            idleCallback(() => window.firephageLoadGoogleAnalytics(), { timeout: 2000 });
+        };
+
+        if (document.readyState === 'complete') {
+            firephageScheduleGoogleAnalytics();
+        } else {
+            window.addEventListener('load', firephageScheduleGoogleAnalytics, { once: true });
+        }
     </script>
-    <script async src="https://www.googletagmanager.com/gtag/js?id={{ urlencode(config('marketing.google_analytics_measurement_id')) }}"></script>
 @endif
 @if (filled(config('marketing.crisp_website_id')))
     <meta name="firephage-crisp-website-id" content="{{ config('marketing.crisp_website_id') }}">
