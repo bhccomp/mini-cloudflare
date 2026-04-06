@@ -697,4 +697,20 @@ class SiteStatusHubPage extends BaseProtectionPage
             'color' => 'success',
         ];
     }
+
+    /**
+     * @return array{title:string,body:string,color:string}|null
+     */
+    public function proModeAttentionNotice(): ?array
+    {
+        if (! $this->isSiteLive() || $this->isSimpleMode()) {
+            return null;
+        }
+
+        $recommendation = $this->simpleServiceOverviewRecommendation();
+
+        return in_array($recommendation['color'], ['danger', 'warning'], true)
+            ? $recommendation
+            : null;
+    }
 }

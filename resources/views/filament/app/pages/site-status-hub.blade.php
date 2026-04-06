@@ -52,6 +52,28 @@
                 />
             @endif
 
+            @if ($this->isSiteLive() && $this->proModeAttentionNotice())
+                @php($attention = $this->proModeAttentionNotice())
+
+                <x-filament::section
+                    :heading="$attention['title']"
+                    :icon="match ($attention['color']) {
+                        'danger' => 'heroicon-o-exclamation-triangle',
+                        'warning' => 'heroicon-o-exclamation-circle',
+                        default => 'heroicon-o-information-circle',
+                    }"
+                >
+                    <div @class([
+                        'rounded-xl border px-4 py-4 text-sm',
+                        'border-danger-200 bg-danger-50 text-danger-950 dark:border-danger-500/30 dark:bg-danger-500/10 dark:text-danger-100' => $attention['color'] === 'danger',
+                        'border-warning-200 bg-warning-50 text-warning-950 dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-warning-100' => $attention['color'] === 'warning',
+                        'border-gray-200 bg-gray-50 text-gray-950 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-100' => ! in_array($attention['color'], ['danger', 'warning'], true),
+                    ])>
+                        {{ $attention['body'] }}
+                    </div>
+                </x-filament::section>
+            @endif
+
             @if (
                 ($this->isBunnyFlow() && $this->site->onboarding_status === \App\Models\Site::ONBOARDING_PROVISIONING_EDGE)
                 || (! $this->isBunnyFlow() && $this->site->status === \App\Models\Site::STATUS_DEPLOYING)

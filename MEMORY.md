@@ -67,6 +67,10 @@
     - `provider_meta.routing_drift_suppressed_note`
   - this was used for the current `charismaoncommand.com` cutover so the client does not receive a confusing alert
   - future drift on that same site will still notify normally after it recovers and drifts again
+- Status Hub follow-up:
+  - `Protection needs attention` is no longer limited to Simple mode
+  - Pro mode now shows the same top-level warning/recommendation block for live sites when routing/protection needs attention
+  - success-state recommendation is still not duplicated in Pro mode
 
 ## Automatic Bunny Cache Purge After Cutover (Latest)
 - FirePhage now performs a one-time full Bunny cache purge automatically when a Bunny site first becomes `Live / Protected` after DNS + SSL verification.
