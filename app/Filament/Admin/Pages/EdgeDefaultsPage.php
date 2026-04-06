@@ -154,16 +154,7 @@ class EdgeDefaultsPage extends Page implements HasForms
         foreach ($sites as $site) {
             try {
                 $service->syncSecurityDefaults($site);
-                $required = is_array($site->required_dns_records) ? $site->required_dns_records : [];
-                $meta = is_array($site->provider_meta) ? $site->provider_meta : [];
-                $hasCustomCacheExclusions = data_get($required, 'control_panel.cache_exclusions') !== null
-                    || data_get($meta, 'control_panel.cache_exclusions') !== null;
-
-                if (! $hasCustomCacheExclusions) {
-                    app(\App\Services\Edge\EdgeProviderManager::class)
-                        ->forSite($site)
-                        ->applySiteControlSetting($site, 'cache_exclusions', $service->cacheExclusionsForSite($site));
-                }
+                $service->mergeMissingCacheExclusionsForSite($site);
 
                 $applied++;
             } catch (\Throwable $e) {

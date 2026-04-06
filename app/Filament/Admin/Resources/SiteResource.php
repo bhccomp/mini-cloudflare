@@ -9,6 +9,7 @@ use App\Models\Organization;
 use App\Models\Site;
 use App\Rules\ApexDomainRule;
 use App\Rules\SafeOriginUrlRule;
+use App\Services\Edge\Providers\BunnyCdnProvider;
 use Filament\Actions;
 use Filament\Forms;
 use Filament\Notifications\Notification;
@@ -82,6 +83,60 @@ class SiteResource extends Resource
                 Tables\Columns\TextColumn::make('waf_web_acl_arn')->label('WAF ARN')->limit(26)->toggleable(),
                 Tables\Columns\TextColumn::make('last_error')->limit(80)->wrap(),
                 Tables\Columns\TextColumn::make('updated_at')->since(),
+            ])
+            ->headerActions([
+                Actions\Action::make('syncFromBunny')
+                    ->label('Sync From Bunny')
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('gray')
+                    ->modalHeading('Sync Site From Bunny')
+                    ->modalDescription('Pick a Bunny-backed domain and pull its current live zone settings back into FirePhage.')
+                    ->modalSubmitActionLabel('Sync now')
+                    ->form([
+                        Forms\Components\Select::make('site_id')
+                            ->label('Domain')
+                            ->options(fn (): array => Site::query()
+                                ->where('provider', Site::PROVIDER_BUNNY)
+                                ->orderBy('apex_domain')
+                                ->pluck('apex_domain', 'id')
+                                ->all())
+                            ->searchable()
+                            ->required(),
+                    ])
+                    ->action(function (array $data): void {
+                        $site = Site::query()->find((int) ($data['site_id'] ?? 0));
+
+                        if (! $site || $site->provider !== Site::PROVIDER_BUNNY) {
+                            Notification::make()
+                                ->title('Unable to sync site.')
+                                ->body('Select a valid Bunny-backed site and try again.')
+                                ->danger()
+                                ->send();
+
+                            return;
+                        }
+
+                        try {
+                            $result = app(BunnyCdnProvider::class)->syncSiteFromProvider($site);
+
+                            Notification::make()
+                                ->title('Bunny sync completed')
+                                ->body(sprintf(
+                                    '%s now reflects the live Bunny zone state in FirePhage.',
+                                    (string) ($result['domain'] ?? $site->apex_domain),
+                                ))
+                                ->success()
+                                ->send();
+                        } catch (\Throwable $e) {
+                            report($e);
+
+                            Notification::make()
+                                ->title('Bunny sync failed')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+                    }),
             ])
             ->actions([
                 Actions\Action::make('retryProvisioning')

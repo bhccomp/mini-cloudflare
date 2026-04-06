@@ -8,6 +8,7 @@ use App\Services\Bunny\BunnyEdgeErrorPageService;
 use App\Services\Bunny\BunnyGlobalDefaultsService;
 use App\Services\Bunny\BunnyShieldAccessListService;
 use App\Services\Bunny\BunnyShieldSecurityService;
+use App\Services\Bunny\Waf\BunnyShieldWafService;
 use App\Services\Billing\OrganizationEntitlementService;
 use App\Services\Dns\CloudflareDnsService;
 use App\Services\Edge\EdgeProviderInterface;
@@ -25,6 +26,7 @@ class BunnyCdnProvider implements EdgeProviderInterface
         protected ?BunnyShieldSecurityService $shieldSecurity = null,
         protected ?BunnyEdgeErrorPageService $edgeErrorPages = null,
         protected ?CloudflareDnsService $cloudflareDns = null,
+        protected ?BunnyShieldWafService $shieldWaf = null,
     ) {}
 
     public function key(): string
@@ -61,7 +63,7 @@ class BunnyCdnProvider implements EdgeProviderInterface
     public function provision(Site $site): array
     {
         $originUrl = $this->resolvePreferredOriginUrl($site);
-        $originHostHeader = strtolower((string) $site->apex_domain);
+        $originHostHeader = $this->preferredOriginHostHeader($site);
         $logging = $this->loggingSettingsPayload();
 
         $existingId = (int) ($site->provider_resource_id ?: 0);
@@ -229,6 +231,158 @@ class BunnyCdnProvider implements EdgeProviderInterface
         ];
     }
 
+    public function syncSiteFromProvider(Site $site): array
+    {
+        $zoneId = (int) ($site->provider_resource_id ?: data_get($site->provider_meta, 'zone_id', 0));
+
+        if ($zoneId <= 0) {
+            throw new \RuntimeException('This site does not have a Bunny pull zone yet.');
+        }
+
+        $zone = (array) $this->client()->get("/pullzone/{$zoneId}")->throw()->json();
+        $required = is_array($site->required_dns_records) ? $site->required_dns_records : [];
+        $meta = is_array($site->provider_meta) ? $site->provider_meta : [];
+
+        $zoneName = (string) (Arr::get($zone, 'Name') ?: data_get($meta, 'zone_name', $this->zoneNameFor($site)));
+        $edgeDomain = (string) (Arr::get($zone, 'Host') ?: data_get($meta, 'edge_domain', $this->zoneEdgeDomain($zoneName)));
+        $customerEdgeDomain = (string) data_get($meta, 'customer_edge_domain', '');
+
+        if ($customerEdgeDomain === '') {
+            $customerEdgeDomain = $edgeDomain;
+        }
+
+        $cacheExclusions = $this->managedCacheExclusionsFromZone($zone);
+        $existingControls = $this->controlPanelState($site);
+        $controls = array_merge($existingControls, [
+            'cache_enabled' => ! (bool) Arr::get($zone, 'DisableCache', false),
+            'cache_mode' => ((bool) Arr::get($zone, 'EnableQueryStringOrdering', false) || (bool) Arr::get($zone, 'EnableSmartCache', false))
+                ? 'aggressive'
+                : 'standard',
+            'https_enforced' => $this->allTrackedHostnamesForceSsl($site, $zone),
+            'cache_exclusions' => $cacheExclusions === [] ? $existingControls['cache_exclusions'] : $cacheExclusions,
+            'browser_cache_ttl' => $this->normalizeBrowserCacheTtl(Arr::get($zone, 'CacheControlPublicMaxAgeOverride', -1)),
+            'query_string_policy' => (bool) Arr::get($zone, 'IgnoreQueryStrings', true) ? 'ignore' : 'include',
+            'optimizer_minify_css' => (bool) Arr::get($zone, 'OptimizerMinifyCSS', true),
+            'optimizer_minify_js' => (bool) Arr::get($zone, 'OptimizerMinifyJavaScript', true),
+            'optimizer_images' => (bool) (
+                Arr::get($zone, 'OptimizerAutomaticOptimizationEnabled')
+                ?? Arr::get($zone, 'OptimizerEnabled')
+                ?? true
+            ),
+            'tls1_enabled' => (bool) Arr::get($zone, 'EnableTLS1', false),
+            'tls1_1_enabled' => (bool) Arr::get($zone, 'EnableTLS1_1', false),
+            'origin_ssl_verification' => (bool) Arr::get($zone, 'VerifyOriginSSL', false),
+            'origin_host_header' => $this->normalizeOriginHostHeader(
+                (string) Arr::get($zone, 'OriginHostHeader', data_get($meta, 'origin_host_header', '')),
+                $site,
+            ),
+            'request_coalescing_enabled' => (bool) Arr::get($zone, 'EnableRequestCoalescing', true),
+            'request_coalescing_timeout' => $this->normalizeRequestCoalescingTimeout(Arr::get($zone, 'RequestCoalescingTimeout', 30)),
+            'origin_retries' => $this->normalizeOriginRetries(Arr::get($zone, 'OriginRetries', 1)),
+            'origin_connect_timeout' => $this->normalizeOriginConnectTimeout(Arr::get($zone, 'OriginConnectTimeout', 10)),
+            'origin_response_timeout' => $this->normalizeOriginResponseTimeout(Arr::get($zone, 'OriginResponseTimeout', 60)),
+            'origin_retry_delay' => $this->normalizeOriginRetryDelay(Arr::get($zone, 'OriginRetryDelay', 1)),
+            'origin_retry_5xx' => (bool) Arr::get($zone, 'OriginRetry5XXResponses', true),
+            'origin_retry_connection_timeout' => (bool) Arr::get($zone, 'OriginRetryConnectionTimeout', true),
+            'origin_retry_response_timeout' => (bool) Arr::get($zone, 'OriginRetryResponseTimeout', false),
+            'stale_while_updating' => (bool) Arr::get($zone, 'UseStaleWhileUpdating', true),
+            'stale_while_offline' => (bool) Arr::get($zone, 'UseStaleWhileOffline', true),
+        ]);
+
+        data_set($required, 'traffic', $this->trafficRecords($site, $customerEdgeDomain));
+        data_set($required, 'control_panel', $controls);
+
+        $meta['zone_id'] = $zoneId;
+        $meta['zone_name'] = $zoneName;
+        $meta['edge_domain'] = $edgeDomain;
+        $meta['origin_url'] = (string) Arr::get($zone, 'OriginUrl', data_get($meta, 'origin_url', $site->origin_url));
+        $meta['origin_host_header'] = $controls['origin_host_header'];
+        $meta['hostnames'] = collect((array) Arr::get($zone, 'Hostnames', []))
+            ->map(function (array $row): array {
+                $hostname = (string) Arr::get($row, 'Value', Arr::get($row, 'Hostname', ''));
+
+                return [
+                    'hostname' => strtolower($hostname),
+                    'ok' => trim($hostname) !== '',
+                    'status' => 204,
+                    'force_ssl' => (bool) Arr::get($row, 'ForceSSL', false),
+                ];
+            })
+            ->filter(fn (array $row): bool => $row['hostname'] !== '')
+            ->values()
+            ->all();
+        $meta['ssl'] = [
+            'enable_auto_ssl' => (bool) Arr::get($zone, 'EnableAutoSSL', true),
+            'enable_tls1' => (bool) Arr::get($zone, 'EnableTLS1', false),
+            'enable_tls1_1' => (bool) Arr::get($zone, 'EnableTLS1_1', false),
+            'verify_origin_ssl' => (bool) Arr::get($zone, 'VerifyOriginSSL', false),
+            'force_ssl_enabled' => $controls['https_enforced'],
+            'force_ssl_hostnames' => $this->trackedHostnameForceSslStates($site, $zone),
+        ];
+        $meta['zone_settings'] = [
+            'OriginHostHeader' => $controls['origin_host_header'],
+            'DisableCache' => (bool) Arr::get($zone, 'DisableCache', false),
+            'EnableOptimizers' => (bool) Arr::get($zone, 'EnableOptimizers', true),
+            'EnableQueryStringOrdering' => (bool) Arr::get($zone, 'EnableQueryStringOrdering', false),
+            'EnableSmartCache' => (bool) Arr::get($zone, 'EnableSmartCache', false),
+            'IgnoreQueryStrings' => (bool) Arr::get($zone, 'IgnoreQueryStrings', true),
+            'CacheControlMaxAgeOverride' => (int) Arr::get($zone, 'CacheControlMaxAgeOverride', -1),
+            'CacheControlPublicMaxAgeOverride' => (int) Arr::get($zone, 'CacheControlPublicMaxAgeOverride', -1),
+            'OptimizerEnabled' => (bool) Arr::get($zone, 'OptimizerEnabled', true),
+            'OptimizerAutomaticOptimizationEnabled' => (bool) Arr::get($zone, 'OptimizerAutomaticOptimizationEnabled', true),
+            'OptimizerMinifyCSS' => (bool) Arr::get($zone, 'OptimizerMinifyCSS', true),
+            'OptimizerMinifyJavaScript' => (bool) Arr::get($zone, 'OptimizerMinifyJavaScript', true),
+            'EnableAutoSSL' => (bool) Arr::get($zone, 'EnableAutoSSL', true),
+            'EnableTLS1' => (bool) Arr::get($zone, 'EnableTLS1', false),
+            'EnableTLS1_1' => (bool) Arr::get($zone, 'EnableTLS1_1', false),
+            'VerifyOriginSSL' => (bool) Arr::get($zone, 'VerifyOriginSSL', false),
+            'EnableRequestCoalescing' => (bool) Arr::get($zone, 'EnableRequestCoalescing', true),
+            'RequestCoalescingTimeout' => (int) Arr::get($zone, 'RequestCoalescingTimeout', 30),
+            'OriginRetries' => (int) Arr::get($zone, 'OriginRetries', 1),
+            'OriginConnectTimeout' => (int) Arr::get($zone, 'OriginConnectTimeout', 10),
+            'OriginResponseTimeout' => (int) Arr::get($zone, 'OriginResponseTimeout', 60),
+            'OriginRetryDelay' => (int) Arr::get($zone, 'OriginRetryDelay', 1),
+            'OriginRetry5XXResponses' => (bool) Arr::get($zone, 'OriginRetry5XXResponses', true),
+            'OriginRetryConnectionTimeout' => (bool) Arr::get($zone, 'OriginRetryConnectionTimeout', true),
+            'OriginRetryResponseTimeout' => (bool) Arr::get($zone, 'OriginRetryResponseTimeout', false),
+            'UseStaleWhileUpdating' => (bool) Arr::get($zone, 'UseStaleWhileUpdating', true),
+            'UseStaleWhileOffline' => (bool) Arr::get($zone, 'UseStaleWhileOffline', true),
+            'DisableCookies' => (bool) Arr::get($zone, 'DisableCookies', false),
+            'EnableCookieVary' => (bool) Arr::get($zone, 'EnableCookieVary', false),
+        ];
+        $meta['cache_exclusion_rules'] = [
+            'count' => count($controls['cache_exclusions']),
+            'rules' => $controls['cache_exclusions'],
+        ];
+        $meta['control_panel'] = $controls;
+        $meta['synced_from_bunny_at'] = now()->toIso8601String();
+
+        try {
+            $meta['shield_settings'] = $this->shieldSecurity()->currentSettings($site);
+        } catch (\Throwable) {
+            // Keep sync resilient even if Shield API data is temporarily unavailable.
+        }
+
+        try {
+            $meta['bot_detection'] = $this->shieldWaf()->botDetectionSettings($site);
+        } catch (\Throwable) {
+            // Keep sync resilient even if bot detection data is temporarily unavailable.
+        }
+
+        $site->forceFill([
+            'required_dns_records' => $required,
+            'provider_meta' => $meta,
+            'cloudfront_domain_name' => $customerEdgeDomain,
+        ])->save();
+
+        return [
+            'zone_id' => $zoneId,
+            'domain' => $site->apex_domain,
+            'customer_edge_domain' => $customerEdgeDomain,
+            'message' => 'Live Bunny settings were synced into FirePhage.',
+        ];
+    }
+
     private function buildOriginUrl(Site $site): string
     {
         $originIp = trim((string) ($site->origin_ip ?? ''));
@@ -258,7 +412,7 @@ class BunnyCdnProvider implements EdgeProviderInterface
     private function resolvePreferredOriginUrl(Site $site): string
     {
         $originIp = trim((string) ($site->origin_ip ?? ''));
-        $domain = strtolower((string) $site->apex_domain);
+        $domain = $this->preferredOriginHostHeader($site);
 
         if ($originIp === '' || $domain === '') {
             return $this->buildOriginUrl($site);
@@ -408,6 +562,8 @@ class BunnyCdnProvider implements EdgeProviderInterface
             'OriginHostHeader' => $originHostHeader,
             'AddHostHeader' => true,
             'EnableAutoSSL' => true,
+            'DisableCookies' => false,
+            'EnableCookieVary' => true,
             'Type' => 0,
         ] + $this->loggingSettingsPayload() + $overrides;
     }
@@ -1210,10 +1366,19 @@ class BunnyCdnProvider implements EdgeProviderInterface
         $normalized = strtolower(trim($host));
 
         if ($normalized === '') {
-            return strtolower((string) $site->apex_domain);
+            return $this->preferredOriginHostHeader($site);
         }
 
-        return preg_replace('/[^a-z0-9.-]/', '', $normalized) ?: strtolower((string) $site->apex_domain);
+        return preg_replace('/[^a-z0-9.-]/', '', $normalized) ?: $this->preferredOriginHostHeader($site);
+    }
+
+    protected function preferredOriginHostHeader(Site $site): string
+    {
+        if ($site->www_enabled && filled($site->www_domain)) {
+            return strtolower((string) $site->www_domain);
+        }
+
+        return strtolower((string) $site->apex_domain);
     }
 
     protected function normalizeRequestCoalescingTimeout(mixed $value): int
@@ -1535,6 +1700,30 @@ class BunnyCdnProvider implements EdgeProviderInterface
         }
 
         return collect($states)->every(fn (array $row): bool => (bool) ($row['force_ssl'] ?? false));
+    }
+
+    /**
+     * @param  array<string,mixed>  $zone
+     * @return array<int, array{path_pattern:string,reason:string,enabled:bool}>
+     */
+    protected function managedCacheExclusionsFromZone(array $zone): array
+    {
+        return collect((array) Arr::get($zone, 'EdgeRules', []))
+            ->filter(fn (array $rule): bool => $this->isManagedCacheExclusionRule($rule))
+            ->map(function (array $rule): array {
+                $pattern = (string) Arr::get($rule, 'Triggers.0.PatternMatches.0', '');
+                $description = trim((string) Arr::get($rule, 'Description', ''));
+                $reason = trim(Str::after($description, '[FP_CACHE_EXCLUSION]'));
+
+                return [
+                    'path_pattern' => $pattern,
+                    'reason' => $reason !== '' ? $reason : $pattern,
+                    'enabled' => (bool) Arr::get($rule, 'Enabled', true),
+                ];
+            })
+            ->filter(fn (array $rule): bool => $rule['path_pattern'] !== '')
+            ->values()
+            ->all();
     }
 
     /**
@@ -2178,5 +2367,10 @@ class BunnyCdnProvider implements EdgeProviderInterface
     protected function shieldSecurity(): BunnyShieldSecurityService
     {
         return $this->shieldSecurity ??= app(BunnyShieldSecurityService::class);
+    }
+
+    protected function shieldWaf(): BunnyShieldWafService
+    {
+        return $this->shieldWaf ??= app(BunnyShieldWafService::class);
     }
 }

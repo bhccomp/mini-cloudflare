@@ -4,6 +4,7 @@ namespace App\Services\Bunny;
 
 use App\Models\Site;
 use App\Models\SystemSetting;
+use App\Services\Edge\EdgeProviderManager;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 
@@ -124,6 +125,46 @@ class BunnyGlobalDefaultsService
         }
 
         return $this->normalizeCacheExclusions($siteRules);
+    }
+
+    public function mergeMissingCacheExclusionsForSite(Site $site): int
+    {
+        if ($site->provider !== Site::PROVIDER_BUNNY) {
+            return 0;
+        }
+
+        $defaults = collect($this->activeCacheExclusions())
+            ->keyBy(fn (array $row): string => trim((string) ($row['path_pattern'] ?? '')));
+
+        $current = collect($this->cacheExclusionsForSite($site))
+            ->mapWithKeys(fn (array $row): array => [
+                trim((string) ($row['path_pattern'] ?? '')) => [
+                    'path_pattern' => trim((string) ($row['path_pattern'] ?? '')),
+                    'reason' => trim((string) ($row['reason'] ?? '')),
+                    'enabled' => (bool) ($row['enabled'] ?? false),
+                ],
+            ]);
+
+        $added = 0;
+
+        foreach ($defaults as $pattern => $row) {
+            if ($pattern === '' || $current->has($pattern)) {
+                continue;
+            }
+
+            $current[$pattern] = $row;
+            $added++;
+        }
+
+        if ($added === 0) {
+            return 0;
+        }
+
+        app(EdgeProviderManager::class)
+            ->forSite($site)
+            ->applySiteControlSetting($site, 'cache_exclusions', $current->values()->all());
+
+        return $added;
     }
 
     /**
@@ -277,6 +318,21 @@ class BunnyGlobalDefaultsService
             [
                 'path_pattern' => '/wp-login.php*',
                 'reason' => 'Keep login requests uncached and unoptimized.',
+                'enabled' => true,
+            ],
+            [
+                'path_pattern' => '/xmlrpc.php*',
+                'reason' => 'Keep XML-RPC traffic uncached and unoptimized.',
+                'enabled' => true,
+            ],
+            [
+                'path_pattern' => '/*preview=true*',
+                'reason' => 'Keep WordPress preview requests uncached and unoptimized.',
+                'enabled' => true,
+            ],
+            [
+                'path_pattern' => '/*customize_changeset_uuid=*',
+                'reason' => 'Keep WordPress Customizer preview requests uncached and unoptimized.',
                 'enabled' => true,
             ],
             [

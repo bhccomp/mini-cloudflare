@@ -3168,3 +3168,50 @@
     - Bunny support later explicitly confirmed:
       - only white-label block pages are available right now
       - fully custom Shield block pages are on Bunny's roadmap, but not available yet
+- Bunny / WP Engine login follow-up:
+  - `charismaoncommand.com` exposed a real Bunny pull-zone issue:
+    - `DisableCookies = true` on the Bunny zone was stripping `Set-Cookie` from `/wp-login.php`
+    - that removed `wordpress_test_cookie` and broke WordPress login behind FirePhage
+  - FirePhage Bunny provisioning defaults now explicitly set:
+    - `DisableCookies = false`
+    - `EnableCookieVary = true`
+  - verified live after the fix:
+    - `https://www.charismaoncommand.com/wp-login.php` returns `Set-Cookie: wordpress_test_cookie=...` through Bunny/FirePhage
+  - Bunny origin handling was also adjusted so provisioning prefers the canonical `www` host header when a site is configured with `www`
+    - this matters for WP Engine-backed sites in particular
+  - restored steady-state protection on `charismaoncommand.com` after troubleshooting:
+    - Development Mode off
+    - cache/CDN back on
+    - WAF back on
+    - bot detection back on
+    - Shield sensitivities left at `low` for stabilization instead of `medium`
+  - important operational note:
+    - a full restore to `medium` immediately challenged `wp-login.php` on this site
+    - `low` is currently the safer baseline for this WP Engine site until more compatibility tuning exists
+- Bunny admin sync follow-up:
+  - FirePhage now has an admin-side `Sync From Bunny` action on the Sites resource
+  - flow:
+    - admin opens Sites
+    - clicks `Sync From Bunny`
+    - chooses a Bunny-backed domain
+    - FirePhage pulls live Bunny state back into the local site record
+  - current sync coverage includes:
+    - origin URL / origin host header
+    - SSL / force-SSL state
+    - cache mode / optimizer settings / browser TTL / query-string handling
+    - managed cache exclusion rules
+    - cookie flags like `DisableCookies` / `EnableCookieVary`
+    - Shield settings
+    - bot-detection settings
+    - customer-facing edge target / traffic DNS instructions
+  - verified live:
+    - `charismaoncommand.com` was synced successfully after manual Bunny changes
+- Bunny cache-exclusion defaults follow-up:
+  - default WordPress exclusions were expanded to also include:
+    - `/xmlrpc.php*`
+    - `/*preview=true*`
+    - `/*customize_changeset_uuid=*`
+  - admin `Edge Defaults` bulk-apply now merges missing default exclusions into existing Bunny sites instead of skipping sites that already have saved exclusions
+- Bunny routing-status follow-up:
+  - routing checks for Bunny-backed sites now accept live response-header proof in addition to raw DNS matching
+  - if the domain is being served by the expected Bunny pull zone, FirePhage can treat it as protected even when the DNS shape is less direct than the strict target/CNAME check

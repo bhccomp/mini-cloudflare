@@ -205,6 +205,10 @@ class SiteRoutingStatusService
             return true;
         }
 
+        if ($this->domainServedByExpectedBunnyZone($site, $domain)) {
+            return true;
+        }
+
         $targetIps = array_values(array_unique(array_merge(
             gethostbynamel($target) ?: [],
             $this->lookupByType($target, 'AAAA')
@@ -220,6 +224,65 @@ class SiteRoutingStatusService
         }
 
         return count(array_intersect($domainIps, $targetIps)) > 0;
+    }
+
+    protected function domainServedByExpectedBunnyZone(Site $site, string $domain): bool
+    {
+        if ($site->provider !== Site::PROVIDER_BUNNY) {
+            return false;
+        }
+
+        $expectedZoneId = (string) data_get($site->provider_meta, 'zone_id', '');
+        if ($expectedZoneId === '') {
+            return false;
+        }
+
+        $headers = $this->responseHeadersForDomain($domain);
+        $server = strtolower((string) ($headers['server'] ?? ''));
+        $pullZone = (string) ($headers['cdn-pullzone'] ?? '');
+
+        return str_contains($server, 'bunnycdn') && $pullZone === $expectedZoneId;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function responseHeadersForDomain(string $domain): array
+    {
+        if (! preg_match('/^[A-Za-z0-9._-]+$/', $domain)) {
+            return [];
+        }
+
+        $process = new Process([
+            'curl',
+            '-sSI',
+            '--max-time',
+            '8',
+            'https://'.$domain.'/',
+        ]);
+        $process->setTimeout(10);
+        $process->run();
+
+        if (! $process->isSuccessful()) {
+            return [];
+        }
+
+        $headers = [];
+
+        foreach (preg_split("/\r\n|\n|\r/", trim($process->getOutput())) as $line) {
+            if (! is_string($line) || ! str_contains($line, ':')) {
+                continue;
+            }
+
+            [$name, $value] = array_map('trim', explode(':', $line, 2));
+            if ($name === '' || $value === '') {
+                continue;
+            }
+
+            $headers[strtolower($name)] = $value;
+        }
+
+        return $headers;
     }
 
     /**
