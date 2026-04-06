@@ -4,6 +4,7 @@ namespace App\Providers\Filament;
 
 use App\Filament\Auth\AppLogin;
 use App\Filament\App\Pages\FirewallPage;
+use App\Http\Middleware\TouchImpersonationNotificationSuppression;
 use App\Http\Middleware\RestrictDemoDashboardPages;
 use App\Http\Middleware\RollbackDemoDatabaseChanges;
 use App\Http\Middleware\RedirectUnauthenticatedAppToLogin;
@@ -78,6 +79,10 @@ class UserPanelProvider extends PanelProvider
                 fn (): \Illuminate\Contracts\View\View => view('filament.app.components.topbar-site-switcher'),
             )
             ->renderHook(
+                PanelsRenderHook::TOPBAR_START,
+                fn (): \Illuminate\Contracts\View\View => view('filament.app.components.impersonation-banner'),
+            )
+            ->renderHook(
                 PanelsRenderHook::TOPBAR_END,
                 fn (): \Illuminate\Contracts\View\View => view('filament.app.components.topbar-global-search'),
             )
@@ -95,6 +100,7 @@ class UserPanelProvider extends PanelProvider
                 ShareErrorsFromSession::class,
                 VerifyCsrfToken::class,
                 SubstituteBindings::class,
+                TouchImpersonationNotificationSuppression::class,
                 RestrictDemoDashboardPages::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,

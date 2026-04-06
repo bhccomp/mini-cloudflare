@@ -9,16 +9,22 @@ use App\Models\Site;
 use App\Notifications\SiteAddedNotification;
 use App\Notifications\SubscriptionActivatedNotification;
 use App\Notifications\UsageThresholdNotification;
+use App\Services\Notifications\OrganizationNotificationSuppressionService;
 use Illuminate\Support\Facades\Notification;
 
 class BillingNotificationService
 {
     public function __construct(
         private readonly BillingEmailRecipientService $recipients,
+        private readonly OrganizationNotificationSuppressionService $suppression,
     ) {}
 
     public function sendSubscriptionActivated(Organization $organization, OrganizationSubscription $subscription): void
     {
+        if ($this->suppression->shouldSuppress($organization)) {
+            return;
+        }
+
         foreach ($this->recipients->forOrganization($organization) as $email) {
             Notification::route('mail', $email)->notify(
                 new SubscriptionActivatedNotification($organization, $subscription)
@@ -31,6 +37,10 @@ class BillingNotificationService
         $organization = $site->organization;
 
         if (! $organization) {
+            return;
+        }
+
+        if ($this->suppression->shouldSuppress($organization)) {
             return;
         }
 
@@ -49,6 +59,10 @@ class BillingNotificationService
         $organization = $subscription->organization;
 
         if (! $organization) {
+            return;
+        }
+
+        if ($this->suppression->shouldSuppress($organization)) {
             return;
         }
 

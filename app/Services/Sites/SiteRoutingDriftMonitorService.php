@@ -4,10 +4,15 @@ namespace App\Services\Sites;
 
 use App\Models\Site;
 use App\Notifications\SiteRoutingDriftNotification;
+use App\Services\Notifications\OrganizationNotificationSuppressionService;
 use Illuminate\Support\Carbon;
 
 class SiteRoutingDriftMonitorService
 {
+    public function __construct(
+        protected OrganizationNotificationSuppressionService $suppression,
+    ) {}
+
     /**
      * @return array{checked:int,started:int,notified:int,resolved:int}
      */
@@ -89,6 +94,13 @@ class SiteRoutingDriftMonitorService
         $users = $site->organization?->users ?? collect();
         if ($users->isEmpty()) {
             $meta['routing_drift_last_error'] = 'No organization members found for routing drift notification.';
+            $site->forceFill(['provider_meta' => $meta])->save();
+
+            return ['started' => 0, 'notified' => 0];
+        }
+
+        if ($this->suppression->shouldSuppress($site->organization)) {
+            $meta['routing_drift_last_error'] = 'Routing drift notification suppressed during admin impersonation.';
             $site->forceFill(['provider_meta' => $meta])->save();
 
             return ['started' => 0, 'notified' => 0];

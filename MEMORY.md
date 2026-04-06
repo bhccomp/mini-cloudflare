@@ -3215,3 +3215,25 @@
 - Bunny routing-status follow-up:
   - routing checks for Bunny-backed sites now accept live response-header proof in addition to raw DNS matching
   - if the domain is being served by the expected Bunny pull zone, FirePhage can treat it as protected even when the DNS shape is less direct than the strict target/CNAME check
+- Bunny cookie defaults follow-up:
+  - FirePhage now treats Bunny cookie stripping as globally unsafe for the product mix
+  - Bunny zone defaults now explicitly force:
+    - `DisableCookies = false`
+    - `EnableCookieVary = true`
+  - all real existing Bunny zones were bulk-corrected to the same setting
+  - practical reason:
+    - WordPress / WooCommerce login and session flows can break if Bunny strips `Set-Cookie`
+- Admin impersonation follow-up:
+  - added admin `Login As User` on the admin Users table and user edit page
+  - impersonation flow is now a real web-route/session swap, not a Livewire-only action
+  - once impersonating:
+    - admin is redirected into `/app` as that user
+    - the app topbar shows a visible `Return to Admin` banner/action
+  - impersonation also refreshes an org-level notification suppression window
+    - this suppresses customer-facing notifications while admin is actively managing the account
+    - current suppression coverage includes:
+      - site-added emails
+      - billing/customer emails sent through `BillingNotificationService`
+      - site-routing-drift notifications
+  - current behavior intentionally keeps the impersonated user’s normal access gates:
+    - if the user is unverified, admin impersonation still lands on the verify-email gate

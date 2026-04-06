@@ -48,6 +48,13 @@ class UserResource extends Resource
                 Tables\Columns\TextColumn::make('updated_at')->since(),
             ])
             ->actions([
+                Actions\Action::make('loginAsUser')
+                    ->label('Login As User')
+                    ->icon('heroicon-o-arrow-right-circle')
+                    ->color('gray')
+                    ->visible(fn (User $record): bool => ! $record->is_super_admin && $record->organizations()->exists())
+                    ->requiresConfirmation()
+                    ->url(fn (User $record): string => route('admin.impersonation.start', ['user' => $record])),
                 Actions\EditAction::make(),
             ])
             ->bulkActions([

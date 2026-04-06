@@ -10,6 +10,7 @@ use App\Http\Controllers\App\AcceptOrganizationInvitationController;
 use App\Http\Controllers\App\AcceptOrganizationInvitationSetupController;
 use App\Http\Controllers\App\SiteCheckoutController;
 use App\Http\Controllers\App\SiteCheckoutSuccessController;
+use App\Http\Controllers\Admin\AdminImpersonationController;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\SeoController;
@@ -72,6 +73,11 @@ Route::middleware('auth')->group(function (): void {
 
         return redirect('/');
     })->name('logout');
+
+    Route::get('/admin/impersonate/{user}', [AdminImpersonationController::class, 'store'])
+        ->name('admin.impersonation.start');
+    Route::post('/admin/impersonation/stop', [AdminImpersonationController::class, 'destroy'])
+        ->name('admin.impersonation.stop');
 
     Route::middleware('verified')->group(function (): void {
         Route::get('/app/sites/{site}/checkout/{plan}', SiteCheckoutController::class)
