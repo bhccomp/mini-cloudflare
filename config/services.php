@@ -59,4 +59,8 @@ return [
         'api_token' => env('CLOUDFLARE_API_TOKEN'),
         'edge_alias_base_domain' => env('CLOUDFLARE_EDGE_ALIAS_BASE_DOMAIN', 'firephage.com'),
     ],
+
+    'babylovegrowth' => [
+        'blog_webhook_token' => env('BABYLOVEGROWTH_BLOG_WEBHOOK_TOKEN'),
+    ],
 ];

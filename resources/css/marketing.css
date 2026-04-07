@@ -12,3 +12,126 @@
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
+
+.blog-article-content {
+    color: #cbd5e1;
+    font-size: 1.02rem;
+    line-height: 1.9;
+}
+
+.blog-article-content > * + * {
+    margin-top: 1.35rem;
+}
+
+.blog-article-content h2,
+.blog-article-content h3,
+.blog-article-content h4 {
+    color: #f8fafc;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}
+
+.blog-article-content h2 {
+    margin-top: 3.2rem;
+    margin-bottom: 1rem;
+    font-size: 1.9rem;
+    line-height: 1.2;
+}
+
+.blog-article-content h3 {
+    margin-top: 2.2rem;
+    margin-bottom: 0.85rem;
+    font-size: 1.35rem;
+    line-height: 1.3;
+}
+
+.blog-article-content p {
+    margin: 0;
+    color: #cbd5e1;
+}
+
+.blog-article-content ul,
+.blog-article-content ol {
+    margin: 1.5rem 0;
+    padding-left: 1.5rem;
+}
+
+.blog-article-content ul {
+    list-style: disc;
+}
+
+.blog-article-content ol {
+    list-style: decimal;
+}
+
+.blog-article-content li {
+    margin: 0.45rem 0;
+    padding-left: 0.15rem;
+}
+
+.blog-article-content li::marker {
+    color: #22d3ee;
+}
+
+.blog-article-content strong {
+    color: #f8fafc;
+    font-weight: 700;
+}
+
+.blog-article-content a {
+    color: #67e8f9;
+    text-decoration: none;
+}
+
+.blog-article-content a:hover {
+    color: #a5f3fc;
+}
+
+.blog-article-content blockquote {
+    margin: 1.75rem 0;
+    border-left: 3px solid #22d3ee;
+    padding-left: 1rem;
+    color: #cbd5e1;
+}
+
+.blog-article-content table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    border-collapse: collapse;
+    margin: 1.75rem 0;
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: 1rem;
+    background: rgba(15, 23, 42, 0.55);
+}
+
+.blog-article-content thead {
+    background: rgba(15, 23, 42, 0.92);
+}
+
+.blog-article-content th,
+.blog-article-content td {
+    min-width: 180px;
+    padding: 0.9rem 1rem;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+    text-align: left;
+    vertical-align: top;
+}
+
+.blog-article-content th {
+    color: #f8fafc;
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+}
+
+.blog-article-content td {
+    color: #cbd5e1;
+    font-size: 0.96rem;
+    line-height: 1.6;
+}
+
+.blog-article-content tbody tr:last-child td {
+    border-bottom: 0;
+}

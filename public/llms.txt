@@ -1,0 +1,38 @@
+# FirePhage
+
+> FirePhage provides comprehensive edge security for WordPress and WooCommerce sites, including WAF, bot filtering, DDoS mitigation, CDN integration, and monitoring tools to protect against malicious traffic and attacks.
+
+FirePhage delivers an advanced security platform designed to protect WordPress and WooCommerce environments from hostile traffic, attacks, and abuse. It offers edge protection through DNS onboarding, real-time monitoring, attack mitigation, and a human-readable dashboard, facilitating easy management and visibility into security events. The system is suitable for high-traffic sites, agencies, and stores needing scalable, lightweight protection that minimizes operational noise.
+
+## Core Content
+- [Edge protection overview](https://firephage.com) Explains how FirePhage's edge security model mitigates malicious traffic early.
+- [WordPress WAF](https://firephage.com/services/waf) Details on the web application firewall rules designed for WordPress sites.
+- [WooCommerce protection](https://firephage.com/services/bot-protection) Focuses on safeguarding checkout, cart, and API workflows against fake orders, scraping, and login abuse.
+- [Bot and DDoS mitigation](https://firephage.com/services/ddos-protection) Describes how the platform blocks automated and malicious requests in real-time.
+- [Edge firewall rules](https://firephage.com/services/waf) A detailed description of the firewall policies tailored for WordPress security.
+- [Uptime monitoring](https://firephage.com/services/uptime-monitor) Information on continuous website availability checks and alerts.
+- [Attack mitigation metrics](https://firephage.com) Highlights the platform's filtering effectiveness (>99.9%), latency (<50ms), and uptime (0 downtime).
+
+## Features & Workflows
+- Summary of DNS onboarding, staged cutovers, and zero-downtime deployment procedures.
+- How "Under Attack Mode" escalates protection instantly during traffic spikes.
+- Overview of human-readable security dashboards, attack analytics, and WordPress plugin health insights.
+- Step-by-step explanation of handling hostile traffic, bot pressure, and fake orders.
+- Custom protection plans tailored for large-scale high-traffic sites and agencies.
+
+## Pricing & Plans
+- [Single site protection](https://firephage.com/register): $29/month with a 30-day free trial, requests up to 10M/month, includes firewall, DDoS, CDN, analytics, and email alerts.
+- [Growth plan](https://firephage.com/register): $79/month for up to 3 sites, 24M requests/month, added performance insights.
+- [Pro plan](https://firephage.com/register): $149/month accommodating up to 7 sites, 56M requests/month, priority support.
+- Custom enterprise plans with tailored features and volume requests.
+
+## Resources
+- [Start free trial](https://firephage.com/register) for full protection.
+- [Live demo](https://demo.firephage.com/app) to see the platform in action.
+- [Contact sales](https://firephage.com/contact) for custom solutions.
+- [Additional service pages](https://firephage.com/services/waf), [bot protection](https://firephage.com/services/bot-protection), [cdn](https://firephage.com/services/cdn), [uptime monitor](https://firephage.com/services/uptime-monitor), [attack mitigation](https://firephage.com/services/ddos-protection).
+
+## Optional
+- Blog and updates (if available)
+- Case studies or user testimonials
+- Technical documentation and integration guides

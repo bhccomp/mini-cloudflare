@@ -1,0 +1,145 @@
+<?php
+
+namespace App\Http\Controllers\Webhooks;
+
+use App\Http\Controllers\Controller;
+use App\Models\BlogCategory;
+use App\Models\BlogPost;
+use App\Models\User;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
+
+class BabyLoveGrowthBlogWebhookController extends Controller
+{
+    public function __invoke(Request $request): JsonResponse
+    {
+        $configuredToken = (string) config('services.babylovegrowth.blog_webhook_token');
+        $providedToken = trim((string) $request->bearerToken());
+
+        abort_unless($configuredToken !== '' && hash_equals($configuredToken, $providedToken), 401);
+
+        $payload = $request->validate([
+            'id' => ['nullable'],
+            'title' => ['required', 'string', 'max:255'],
+            'slug' => ['nullable', 'string', 'max:255'],
+            'metaDescription' => ['nullable', 'string'],
+            'content_markdown' => ['required_without:content_html', 'nullable', 'string'],
+            'content_html' => ['required_without:content_markdown', 'nullable', 'string'],
+            'heroImageUrl' => ['nullable', 'url', 'max:2048'],
+            'languageCode' => ['nullable', 'string', 'max:10'],
+            'publicUrl' => ['nullable', 'url', 'max:2048'],
+            'createdAt' => ['nullable', 'date'],
+            'jsonLd' => ['nullable', 'array'],
+            'faqJsonLd' => ['nullable', 'array'],
+        ]);
+
+        $title = trim((string) $payload['title']);
+        $slug = Str::slug((string) ($payload['slug'] ?? $title));
+        $markdown = trim((string) ($payload['content_markdown'] ?? ''));
+
+        if ($markdown === '') {
+            $markdown = trim(strip_tags((string) ($payload['content_html'] ?? '')));
+        }
+
+        $markdown = $this->sanitizeImportedMarkdown($markdown);
+
+        abort_if($slug === '' || $markdown === '', 422, 'The webhook payload must include a usable slug and article body.');
+
+        $post = BlogPost::query()->firstOrNew(['slug' => $slug]);
+        $post->fill([
+            'blog_category_id' => $post->blog_category_id ?: $this->defaultCategoryId(),
+            'authored_by' => $post->authored_by ?: $this->defaultAuthorId(),
+            'title' => $title,
+            'slug' => $slug,
+            'excerpt' => $payload['metaDescription'] ?: $post->excerpt,
+            'content_markdown' => $markdown,
+            'cover_image_url' => $payload['heroImageUrl'] ?? $post->cover_image_url,
+            'seo_title' => $post->seo_title ?: $this->defaultSeoTitle($title),
+            'seo_description' => $payload['metaDescription'] ?: $post->seo_description,
+            'canonical_url' => $this->canonicalUrlForPayload($payload, $slug),
+            'og_image_url' => $payload['heroImageUrl'] ?? $post->og_image_url,
+            'is_published' => true,
+            'published_at' => $post->published_at ?: $this->publishedAtForPayload($payload),
+        ]);
+        $post->save();
+
+        return response()->json([
+            'ok' => true,
+            'post_id' => $post->id,
+            'slug' => $post->slug,
+            'created' => ! $post->wasRecentlyCreated ? false : true,
+        ]);
+    }
+
+    private function defaultCategoryId(): ?int
+    {
+        return BlogCategory::query()
+            ->where('slug', 'wordpress-security')
+            ->value('id')
+            ?? BlogCategory::query()->orderBy('id')->value('id');
+    }
+
+    private function defaultAuthorId(): ?int
+    {
+        return User::query()
+            ->where('name', 'Nikola Jocic')
+            ->orderBy('id')
+            ->value('id')
+            ?? User::query()->orderByDesc('is_super_admin')->orderBy('id')->value('id');
+    }
+
+    private function defaultSeoTitle(string $title): string
+    {
+        return Str::endsWith($title, ' | FirePhage') ? $title : "{$title} | FirePhage";
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function canonicalUrlForPayload(array $payload, string $slug): ?string
+    {
+        $publicUrl = trim((string) ($payload['publicUrl'] ?? ''));
+
+        if ($publicUrl === '') {
+            return route('blog.show', ['post' => $slug]);
+        }
+
+        $host = parse_url($publicUrl, PHP_URL_HOST);
+        $appHost = parse_url(config('app.url'), PHP_URL_HOST);
+
+        return $host === $appHost ? $publicUrl : route('blog.show', ['post' => $slug]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function publishedAtForPayload(array $payload): Carbon
+    {
+        $createdAt = trim((string) ($payload['createdAt'] ?? ''));
+
+        if ($createdAt !== '') {
+            return Carbon::parse($createdAt);
+        }
+
+        return now();
+    }
+
+    private function sanitizeImportedMarkdown(string $markdown): string
+    {
+        $cleaned = preg_replace(
+            '/\n*\[Article generated by BabyLoveGrowth\]\(https?:\/\/www\.babylovegrowth\.ai\/?\)\s*$/iu',
+            '',
+            trim($markdown)
+        );
+
+        $cleaned = preg_replace(
+            '/\n*Article generated by BabyLoveGrowth\s*$/iu',
+            '',
+            (string) $cleaned
+        );
+
+        return trim((string) $cleaned);
+    }
+}

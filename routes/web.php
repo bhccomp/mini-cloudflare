@@ -17,6 +17,7 @@ use App\Http\Controllers\ContactController;
 use App\Http\Controllers\SeoController;
 use App\Http\Controllers\ServicePageController;
 use App\Http\Controllers\StripeWebhookController;
+use App\Http\Controllers\Webhooks\BabyLoveGrowthBlogWebhookController;
 use App\Http\Controllers\WordPress\VerifyFreeTokenController;
 use App\Http\Middleware\RedirectPublicHomeToEarlyAccess;
 use Illuminate\Http\Request;
@@ -48,6 +49,9 @@ Route::view('/logos', 'marketing.logos')->name('logos');
 Route::view('/billing/checkout/complete', 'marketing.billing-checkout-complete')->name('billing.checkout.complete');
 Route::view('/billing/checkout/cancelled', 'marketing.billing-checkout-cancelled')->name('billing.checkout.cancelled');
 Route::post('/stripe/webhook', StripeWebhookController::class)->name('stripe.webhook');
+Route::post('/webhooks/babylovegrowth/blog-post', BabyLoveGrowthBlogWebhookController::class)
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class])
+    ->name('webhooks.babylovegrowth.blog-post');
 Route::middleware('guest')->group(function (): void {
     Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
     Route::post('/register', [RegisteredUserController::class, 'store'])->name('register.store');

@@ -3268,3 +3268,45 @@
   - operational note:
     - `php artisan bunny:sync-edge-error-pages` refreshes the shared middleware script
     - existing Bunny pull zones still require an explicit native `ErrorPageCustomCode` push when the built-in 502/504 HTML changes
+- Blog rendering follow-up:
+  - blog article pages were missing effective markdown typography because the frontend did not actually have Tailwind Typography / `prose` styles active
+  - FirePhage now uses explicit `.blog-article-content` CSS in `resources/css/marketing.css` for:
+    - headings
+    - paragraph spacing
+    - lists
+    - links
+    - blockquotes
+    - markdown tables
+  - practical result:
+    - blog formatting is now visible on the public site without relying on unavailable `prose` utilities
+  - markdown tables now render with:
+    - dark bordered containers
+    - padded cells
+    - readable headers
+    - horizontal overflow support on narrower screens
+- BabyLoveGrowth blog webhook follow-up:
+  - public webhook endpoint added at:
+    - `POST /webhooks/babylovegrowth/blog-post`
+  - Bearer token auth is now handled via:
+    - `BABYLOVEGROWTH_BLOG_WEBHOOK_TOKEN`
+  - webhook behavior:
+    - validates Bearer token
+    - creates or updates a blog post by slug
+    - maps title, slug, meta description, markdown/body, hero image, canonical, and publish state into the existing `blog_posts` table
+    - defaults imported posts to:
+      - category `wordpress-security`
+      - author `Nikola Jocic`
+  - imported canonical handling:
+    - if external `publicUrl` is not on the FirePhage app host, FirePhage falls back to the local `blog.show` URL
+  - imported post cleanup:
+    - strips the BabyLoveGrowth attribution tail line / link automatically if present
+  - verified live:
+    - webhook successfully created imported posts:
+      - `api-security-wordpress-protect-site-hidden-threats`
+      - `strengthen-wordpress-edge-security-steps`
+  - scheduling note:
+    - imported posts can remain hidden from `/blog` if the incoming `createdAt` is in the future relative to app time because FirePhage still respects `published_at <= now()` on the public scope
+- AI crawler text-discovery follow-up:
+  - added public static file:
+    - `/public/llms.txt`
+  - intended to help AI systems and search-oriented agents understand FirePhage services, plans, and resources from a single crawlable text file
