@@ -141,6 +141,45 @@ addEventListener("onOriginResponse", (event) => {
 JS;
     }
 
+    public function buildNativeUnavailableHtml(string $domainLabel = 'this website'): string
+    {
+        return $this->renderTemplate('edge-errors.unavailable', [
+            'title' => '{{status_title}}',
+            'headline' => '{{status_title}}',
+            'lede' => '{{status_description}}',
+            'domainLabel' => '{{target_hostname}}',
+            'statusCode' => '{{status_code}}',
+            'footerNote' => 'FirePhage edge fallback is active for {{target_hostname}} while the upstream service recovers.',
+            'sideTitle' => 'Request context',
+            'sideBody' => 'Bunny reported {{status_title}} for {{target_hostname}} while serving this request.',
+            'recoveryCopy' => 'If this persists, review the upstream service, recent deploys, and dependencies behind {{target_hostname}}. Visitor IP: {{user_ip}}.',
+        ]);
+    }
+
+    public function buildPreviewHtml(string $template, string $domainLabel = 'preview.firephage.com'): string
+    {
+        $domainLabel = trim($domainLabel) !== '' ? trim($domainLabel) : 'preview.firephage.com';
+
+        return match ($template) {
+            '403' => $this->renderTemplate('edge-errors.forbidden', [
+                'domainLabel' => $domainLabel,
+                'statusCode' => 403,
+            ]),
+            '404' => $this->renderTemplate('edge-errors.not-found', [
+                'domainLabel' => $domainLabel,
+                'statusCode' => 404,
+            ]),
+            '429' => $this->renderTemplate('edge-errors.rate-limited', [
+                'domainLabel' => $domainLabel,
+                'statusCode' => 429,
+            ]),
+            default => $this->renderTemplate('edge-errors.unavailable', [
+                'domainLabel' => $domainLabel,
+                'statusCode' => '502/504',
+            ]),
+        };
+    }
+
     /**
      * @return array<string, string>
      */

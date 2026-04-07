@@ -44,6 +44,10 @@
             flex: 1 1 auto;
         }
 
+        .fp-setting-copy--toggle {
+            max-width: 34rem;
+        }
+
         .fp-setting-label {
             font-size: 0.95rem;
             font-weight: 600;
@@ -69,10 +73,16 @@
             align-items: center;
             justify-content: flex-end;
             gap: 0.75rem;
-            flex: 0 0 auto;
+            flex: 0 1 auto;
+            min-width: 0;
+            flex-wrap: wrap;
             text-align: right;
             position: relative;
             z-index: 1;
+        }
+
+        .fp-setting-action--toggle {
+            min-width: 190px;
         }
 
         .fp-setting-state {
@@ -91,6 +101,12 @@
             flex-wrap: nowrap;
             position: relative;
             isolation: isolate;
+            justify-content: flex-end;
+            max-width: 100%;
+        }
+
+        .fp-setting-action--stack-safe .fi-btn-group {
+            flex-wrap: wrap;
         }
 
         .fp-cache-layout {
@@ -98,10 +114,19 @@
             gap: 1.5rem;
         }
 
-        .fp-cache-column {
+        .fp-cache-row {
             display: grid;
             gap: 1.5rem;
             align-content: start;
+            align-items: stretch;
+        }
+
+        .fp-cache-row > * {
+            height: 100%;
+        }
+
+        .fp-cache-row .fp-pro-card {
+            height: 100%;
         }
 
         .fp-cache-bypass-table th,
@@ -110,19 +135,60 @@
             padding-bottom: 0.9rem;
         }
 
+        .fp-cache-bypass-table {
+            table-layout: fixed;
+        }
+
+        .fp-cache-bypass-table th:nth-child(1),
+        .fp-cache-bypass-table td:nth-child(1) {
+            width: 24%;
+        }
+
+        .fp-cache-bypass-path {
+            display: block;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        .fp-cache-bypass-table th:nth-child(2),
+        .fp-cache-bypass-table td:nth-child(2) {
+            width: 52%;
+            white-space: normal;
+            word-break: break-word;
+        }
+
+        .fp-cache-bypass-table th:nth-child(3),
+        .fp-cache-bypass-table td:nth-child(3) {
+            width: 24%;
+        }
+
         .fp-cache-bypass-actions {
             display: flex;
             justify-content: flex-end;
         }
 
         .fp-cache-bypass-actions .fi-btn-group {
-            flex-wrap: nowrap;
+            flex-wrap: wrap;
+            justify-content: flex-end;
         }
 
         @media (min-width: 1280px) {
-            .fp-cache-layout {
-                grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.9fr);
+            .fp-cache-row {
+                grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.85fr);
                 align-items: start;
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .fp-setting-action {
+                width: 100%;
+                justify-content: flex-start;
+                text-align: left;
+            }
+
+            .fp-setting-action .fi-btn-group {
+                justify-content: flex-start;
             }
         }
 
@@ -147,7 +213,7 @@
             @include('filament.app.pages.protection.technical-details')
 
             <div class="fp-cache-layout">
-                <div class="fp-cache-column">
+                <div class="fp-cache-row">
                     <x-filament.app.settings.card
                         title="Cache Control"
                         description="Live cache settings that FirePhage now applies directly across the edge."
@@ -157,11 +223,11 @@
                     >
                         <div class="fp-setting-stack">
                             <div class="fp-setting-row" wire:key="cache-row-enabled">
-                                <div class="fp-setting-copy">
+                                <div class="fp-setting-copy fp-setting-copy--toggle">
                                     <div class="fp-setting-label">Caching</div>
                                     <div class="fp-setting-description">Turn edge caching on or off for this site. This is the main cache switch for protected delivery.</div>
                                 </div>
-                                <div class="fp-setting-action" wire:key="cache-enabled-toggle">
+                                <div class="fp-setting-action fp-setting-action--toggle" wire:key="cache-enabled-toggle">
                                     <x-filament::button.group>
                                         <x-filament::button
                                             type="button"
@@ -190,11 +256,11 @@
                             </div>
 
                             <div class="fp-setting-row" wire:key="cache-row-mode">
-                                <div class="fp-setting-copy">
+                                <div class="fp-setting-copy fp-setting-copy--toggle">
                                     <div class="fp-setting-label">Cache Mode</div>
                                     <div class="fp-setting-description">Choose how aggressively FirePhage should keep cached content at the edge before returning to origin.</div>
                                 </div>
-                                <div class="fp-setting-action" wire:key="cache-mode-toggle">
+                                <div class="fp-setting-action fp-setting-action--toggle" wire:key="cache-mode-toggle">
                                     <x-filament::button.group>
                                         <x-filament::button
                                             type="button"
@@ -225,11 +291,11 @@
                             </div>
 
                             <div class="fp-setting-row" wire:key="cache-row-query">
-                                <div class="fp-setting-copy">
+                                <div class="fp-setting-copy fp-setting-copy--toggle">
                                     <div class="fp-setting-label">Browser Cache</div>
                                     <div class="fp-setting-description">Control how long visitor browsers keep assets locally before checking again with the edge.</div>
                                 </div>
-                                <div class="fp-setting-action">
+                                <div class="fp-setting-action fp-setting-action--stack-safe">
                                     <span class="fp-setting-state">{{ $browserCacheLabel }}</span>
                                     <x-filament::dropdown placement="bottom-end" width="xs" :teleport="true">
                                         <x-slot name="trigger">
@@ -273,7 +339,7 @@
                                     <div class="fp-setting-label">Query Strings</div>
                                     <div class="fp-setting-description">Decide whether URLs with different query parameters should reuse the same cached response or be treated separately.</div>
                                 </div>
-                                <div class="fp-setting-action" wire:key="query-string-toggle">
+                                <div class="fp-setting-action fp-setting-action--toggle" wire:key="query-string-toggle">
                                     <x-filament::button.group>
                                         <x-filament::button
                                             type="button"
@@ -304,11 +370,11 @@
                             </div>
 
                             <div class="fp-setting-row" wire:key="cache-row-css">
-                                <div class="fp-setting-copy">
+                                <div class="fp-setting-copy fp-setting-copy--toggle">
                                     <div class="fp-setting-label">Purge Cache</div>
                                     <div class="fp-setting-description">Flush cached content across the edge when you need content changes to appear immediately.</div>
                                 </div>
-                                <div class="fp-setting-action">
+                                <div class="fp-setting-action fp-setting-action--stack-safe">
                                     <span class="fp-setting-state">{{ $this->lastAction(['edge.cache_purge', 'cloudfront.invalidate']) }}</span>
                                     <x-filament::button
                                         color="gray"
@@ -325,6 +391,84 @@
                     </x-filament.app.settings.card>
 
                     <x-filament.app.settings.card
+                        title="Testing & Safety"
+                        description="Use temporary bypass modes when you need to debug behavior without permanently changing your cache setup."
+                        icon="heroicon-o-beaker"
+                        :status="$troubleshootingMode ? 'Troubleshooting On' : ($developmentMode ? 'Development On' : 'Normal')"
+                        :status-color="$troubleshootingMode ? 'danger' : ($developmentMode ? 'warning' : 'success')"
+                    >
+                        <div class="fp-setting-stack">
+                            <div class="fp-setting-row" wire:key="cache-row-development">
+                                <div class="fp-setting-copy">
+                                    <div class="fp-setting-label">Development Mode</div>
+                                    <div class="fp-setting-description">Temporarily bypass cache and optimizer behavior while you test fresh origin responses and content changes.</div>
+                                </div>
+                                <div class="fp-setting-action fp-setting-action--toggle" wire:key="development-mode-toggle">
+                                    <x-filament::button.group>
+                                        <x-filament::button
+                                            type="button"
+                                            size="xs"
+                                            wire:key="development-mode-true"
+                                            color="{{ $developmentMode ? 'warning' : 'gray' }}"
+                                            wire:click.prevent="setDevelopmentModeState(true)"
+                                            wire:loading.attr="disabled"
+                                            wire:target="setDevelopmentModeState"
+                                        >
+                                            Enabled
+                                        </x-filament::button>
+                                        <x-filament::button
+                                            type="button"
+                                            size="xs"
+                                            wire:key="development-mode-false"
+                                            color="{{ $developmentMode ? 'gray' : 'warning' }}"
+                                            wire:click.prevent="setDevelopmentModeState(false)"
+                                            wire:loading.attr="disabled"
+                                            wire:target="setDevelopmentModeState"
+                                        >
+                                            Disabled
+                                        </x-filament::button>
+                                    </x-filament::button.group>
+                                </div>
+                            </div>
+
+                            <div class="fp-setting-row" wire:key="cache-row-troubleshooting">
+                                <div class="fp-setting-copy fp-setting-copy--toggle">
+                                    <div class="fp-setting-label">Troubleshooting Mode</div>
+                                    <div class="fp-setting-description">Use the broader debug mode when cache bypass alone is not enough and you need edge protection to stand down temporarily too.</div>
+                                </div>
+                                <div class="fp-setting-action fp-setting-action--toggle" wire:key="troubleshooting-mode-toggle">
+                                    <x-filament::button.group>
+                                        <x-filament::button
+                                            type="button"
+                                            size="xs"
+                                            wire:key="troubleshooting-mode-true"
+                                            color="{{ $troubleshootingMode ? 'danger' : 'gray' }}"
+                                            wire:click.prevent="setTroubleshootingModeState(true)"
+                                            wire:loading.attr="disabled"
+                                            wire:target="setTroubleshootingModeState"
+                                        >
+                                            Enabled
+                                        </x-filament::button>
+                                        <x-filament::button
+                                            type="button"
+                                            size="xs"
+                                            wire:key="troubleshooting-mode-false"
+                                            color="{{ $troubleshootingMode ? 'gray' : 'danger' }}"
+                                            wire:click.prevent="setTroubleshootingModeState(false)"
+                                            wire:loading.attr="disabled"
+                                            wire:target="setTroubleshootingModeState"
+                                        >
+                                            Disabled
+                                        </x-filament::button>
+                                    </x-filament::button.group>
+                                </div>
+                            </div>
+                        </div>
+                    </x-filament.app.settings.card>
+                </div>
+
+                <div class="fp-cache-row">
+                    <x-filament.app.settings.card
                         title="Optimization Controls"
                         description="These controls manage edge optimization behavior. Development mode temporarily bypasses them."
                         icon="heroicon-o-sparkles"
@@ -337,11 +481,11 @@
                     >
                         <div class="fp-setting-stack">
                             <div class="fp-setting-row">
-                                <div class="fp-setting-copy">
+                                <div class="fp-setting-copy fp-setting-copy--toggle">
                                     <div class="fp-setting-label">CSS Minification</div>
                                     <div class="fp-setting-description">Reduce CSS payload size at the edge to improve delivery without changing the origin files.</div>
                                 </div>
-                                <div class="fp-setting-action" wire:key="optimizer-css-toggle">
+                                <div class="fp-setting-action fp-setting-action--toggle" wire:key="optimizer-css-toggle">
                                     <x-filament::button.group>
                                         <x-filament::button
                                             type="button"
@@ -372,11 +516,11 @@
                             </div>
 
                             <div class="fp-setting-row" wire:key="cache-row-js">
-                                <div class="fp-setting-copy">
+                                <div class="fp-setting-copy fp-setting-copy--toggle">
                                     <div class="fp-setting-label">JavaScript Minification</div>
                                     <div class="fp-setting-description">Compress JavaScript responses at the edge for faster transfer while keeping the same origin assets.</div>
                                 </div>
-                                <div class="fp-setting-action" wire:key="optimizer-js-toggle">
+                                <div class="fp-setting-action fp-setting-action--toggle" wire:key="optimizer-js-toggle">
                                     <x-filament::button.group>
                                         <x-filament::button
                                             type="button"
@@ -407,11 +551,11 @@
                             </div>
 
                             <div class="fp-setting-row" wire:key="cache-row-images">
-                                <div class="fp-setting-copy">
+                                <div class="fp-setting-copy fp-setting-copy--toggle">
                                     <div class="fp-setting-label">Image Optimization</div>
                                     <div class="fp-setting-description">Let the edge optimize supported images automatically instead of always serving the raw origin files.</div>
                                 </div>
-                                <div class="fp-setting-action" wire:key="optimizer-images-toggle">
+                                <div class="fp-setting-action fp-setting-action--toggle" wire:key="optimizer-images-toggle">
                                     <x-filament::button.group>
                                         <x-filament::button
                                             type="button"
@@ -444,6 +588,44 @@
                     </x-filament.app.settings.card>
 
                     <x-filament.app.settings.card
+                        title="Purge Scope"
+                        description="Purge everything or target a single path when you only need one URL family refreshed."
+                        icon="heroicon-o-arrow-path"
+                        :status="$this->purgePath !== '' ? 'Path Ready' : 'Full Site Purge'"
+                        status-color="gray"
+                    >
+                        <div class="grid gap-3">
+                            <label class="grid gap-2">
+                                <span class="text-sm font-medium text-gray-900 dark:text-gray-100">Specific path</span>
+                                <input
+                                    type="text"
+                                    wire:model.live.defer="purgePath"
+                                    placeholder="/wp-content/uploads/*"
+                                    class="fi-input block w-full rounded-xl border-none bg-white/70 px-3 py-2 text-sm text-gray-950 shadow-sm ring-1 ring-gray-950/10 outline-none transition focus:ring-2 focus:ring-primary-500 dark:bg-white/5 dark:text-white dark:ring-white/10"
+                                >
+                            </label>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">
+                                Use a path like <code>/about-us</code> or a wildcard like <code>/wp-content/uploads/*</code>.
+                            </p>
+                        </div>
+
+                        <x-slot name="footer">
+                            <x-filament::actions alignment="end">
+                                <x-filament::button
+                                    color="gray"
+                                    wire:click="purgeCachePath"
+                                    wire:loading.attr="disabled"
+                                    wire:target="purgeCachePath"
+                                >
+                                    Purge Path
+                                </x-filament::button>
+                            </x-filament::actions>
+                        </x-slot>
+                    </x-filament.app.settings.card>
+                </div>
+
+                <div class="fp-cache-row">
+                    <x-filament.app.settings.card
                         title="WordPress Cache Bypass"
                         description="These path rules keep sensitive WordPress traffic uncached and unoptimized at the edge. Admin defaults seed new sites, but this site can change them here."
                         icon="heroicon-o-shield-exclamation"
@@ -462,7 +644,9 @@
                                 <tbody>
                                     @foreach ($cacheExclusions as $rule)
                                         <tr class="fi-ta-row">
-                                            <td class="fi-ta-cell font-mono">{{ $rule['path_pattern'] }}</td>
+                                            <td class="fi-ta-cell font-mono" title="{{ $rule['path_pattern'] }}">
+                                                <span class="fp-cache-bypass-path">{{ $rule['path_pattern'] }}</span>
+                                            </td>
                                             <td class="fi-ta-cell">{{ $rule['reason'] !== '' ? $rule['reason'] : 'Managed WordPress bypass rule' }}</td>
                                             <td class="fi-ta-cell fi-align-end">
                                                 <div class="fp-cache-bypass-actions" wire:key="cache-bypass-toggle-{{ md5($rule['path_pattern']) }}">
@@ -531,120 +715,8 @@
                     @endif
                 </div>
 
-                <div class="fp-cache-column">
-                    <x-filament.app.settings.card
-                        title="Testing & Safety"
-                        description="Use temporary bypass modes when you need to debug behavior without permanently changing your cache setup."
-                        icon="heroicon-o-beaker"
-                        :status="$troubleshootingMode ? 'Troubleshooting On' : ($developmentMode ? 'Development On' : 'Normal')"
-                        :status-color="$troubleshootingMode ? 'danger' : ($developmentMode ? 'warning' : 'success')"
-                    >
-                        <div class="fp-setting-stack">
-                            <div class="fp-setting-row" wire:key="cache-row-development">
-                                <div class="fp-setting-copy">
-                                    <div class="fp-setting-label">Development Mode</div>
-                                    <div class="fp-setting-description">Temporarily bypass cache and optimizer behavior while you test fresh origin responses and content changes.</div>
-                                </div>
-                                <div class="fp-setting-action" wire:key="development-mode-toggle">
-                                    <x-filament::button.group>
-                                        <x-filament::button
-                                            type="button"
-                                            size="xs"
-                                            wire:key="development-mode-true"
-                                            color="{{ $developmentMode ? 'warning' : 'gray' }}"
-                                            wire:click.prevent="setDevelopmentModeState(true)"
-                                            wire:loading.attr="disabled"
-                                            wire:target="setDevelopmentModeState"
-                                        >
-                                            Enabled
-                                        </x-filament::button>
-                                        <x-filament::button
-                                            type="button"
-                                            size="xs"
-                                            wire:key="development-mode-false"
-                                            color="{{ $developmentMode ? 'gray' : 'warning' }}"
-                                            wire:click.prevent="setDevelopmentModeState(false)"
-                                            wire:loading.attr="disabled"
-                                            wire:target="setDevelopmentModeState"
-                                        >
-                                            Disabled
-                                        </x-filament::button>
-                                    </x-filament::button.group>
-                                </div>
-                            </div>
-
-                            <div class="fp-setting-row" wire:key="cache-row-troubleshooting">
-                                <div class="fp-setting-copy">
-                                    <div class="fp-setting-label">Troubleshooting Mode</div>
-                                    <div class="fp-setting-description">Use the broader debug mode when cache bypass alone is not enough and you need edge protection to stand down temporarily too.</div>
-                                </div>
-                                <div class="fp-setting-action" wire:key="troubleshooting-mode-toggle">
-                                    <x-filament::button.group>
-                                        <x-filament::button
-                                            type="button"
-                                            size="xs"
-                                            wire:key="troubleshooting-mode-true"
-                                            color="{{ $troubleshootingMode ? 'danger' : 'gray' }}"
-                                            wire:click.prevent="setTroubleshootingModeState(true)"
-                                            wire:loading.attr="disabled"
-                                            wire:target="setTroubleshootingModeState"
-                                        >
-                                            Enabled
-                                        </x-filament::button>
-                                        <x-filament::button
-                                            type="button"
-                                            size="xs"
-                                            wire:key="troubleshooting-mode-false"
-                                            color="{{ $troubleshootingMode ? 'gray' : 'danger' }}"
-                                            wire:click.prevent="setTroubleshootingModeState(false)"
-                                            wire:loading.attr="disabled"
-                                            wire:target="setTroubleshootingModeState"
-                                        >
-                                            Disabled
-                                        </x-filament::button>
-                                    </x-filament::button.group>
-                                </div>
-                            </div>
-                        </div>
-                    </x-filament.app.settings.card>
-
-                    <x-filament.app.settings.card
-                        title="Purge Scope"
-                        description="Purge everything or target a single path when you only need one URL family refreshed."
-                        icon="heroicon-o-arrow-path"
-                        :status="$this->purgePath !== '' ? 'Path Ready' : 'Full Site Purge'"
-                        status-color="gray"
-                    >
-                        <div class="grid gap-3">
-                            <label class="grid gap-2">
-                                <span class="text-sm font-medium text-gray-900 dark:text-gray-100">Specific path</span>
-                                <input
-                                    type="text"
-                                    wire:model.live.defer="purgePath"
-                                    placeholder="/wp-content/uploads/*"
-                                    class="fi-input block w-full rounded-xl border-none bg-white/70 px-3 py-2 text-sm text-gray-950 shadow-sm ring-1 ring-gray-950/10 outline-none transition focus:ring-2 focus:ring-primary-500 dark:bg-white/5 dark:text-white dark:ring-white/10"
-                                >
-                            </label>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">
-                                Use a path like <code>/about-us</code> or a wildcard like <code>/wp-content/uploads/*</code>.
-                            </p>
-                        </div>
-
-                        <x-slot name="footer">
-                            <x-filament::actions alignment="end">
-                                <x-filament::button
-                                    color="gray"
-                                    wire:click="purgeCachePath"
-                                    wire:loading.attr="disabled"
-                                    wire:target="purgeCachePath"
-                                >
-                                    Purge Path
-                                </x-filament::button>
-                            </x-filament::actions>
-                        </x-slot>
-                    </x-filament.app.settings.card>
-
-                    @unless ($this->isSimpleMode())
+                @unless ($this->isSimpleMode())
+                    <div class="fp-cache-row">
                         <x-filament.app.settings.card title="Top Cache Misses" description="Paths with highest miss or error activity." icon="heroicon-o-exclamation-triangle">
                             @if (empty($misses))
                                 <p class="text-sm opacity-75">No cache miss telemetry yet.</p>
@@ -696,8 +768,8 @@
                                 </div>
                             @endif
                         </x-filament.app.settings.card>
-                    @endunless
-                </div>
+                    </div>
+                @endunless
             </div>
         @endif
     </div>

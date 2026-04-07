@@ -3237,3 +3237,34 @@
       - site-routing-drift notifications
   - current behavior intentionally keeps the impersonated user’s normal access gates:
     - if the user is unverified, admin impersonation still lands on the verify-email gate
+- Cache page layout follow-up:
+  - `/app/cache` was reworked to match the row-based paired-card layout used by the healthier protection pages like `/app/ssl`
+  - the page no longer uses the earlier oversized left/right column split that was colliding on normal app widths
+  - toggle rows were tightened so their text copy and action controls no longer overlap
+  - `WordPress Cache Bypass` table improvements:
+    - `Purpose` now wraps instead of forcing horizontal scroll
+    - `Path` now truncates with ellipsis and shows the full value on hover
+- Bunny native 502/504 error-page follow-up:
+  - FirePhage now uses Bunny's native `ErrorPageCustomCode` for real Bunny-generated `502/504` responses instead of relying only on middleware
+  - important distinction:
+    - middleware-branded pages still apply to origin responses like `403` / `404` / `429` / `5xx`
+    - Bunny-generated `502/504` now use the native static HTML path
+  - a temporary timeout endpoint on `nodesfoundry.com` was used to verify the live Bunny 504 path
+    - Bunny returned the FirePhage-branded HTML instead of the Bunny white-label page
+  - the native Bunny 502/504 page was widened and shortened after live testing exposed that the original centered layout felt too tall and narrow in production
+  - FirePhage now has an admin-only `System > Edge Error Preview` page:
+    - lets admins choose the error template
+    - shows the raw HTML editor
+    - opens preview in a separate admin-only tab without republishing to Bunny
+  - the native Bunny 502/504 page now uses Bunny's built-in variables:
+    - `{{status_code}}`
+    - `{{status_title}}`
+    - `{{target_hostname}}`
+    - `{{user_ip}}`
+    - `{{status_description}}`
+  - verified live on the timeout path:
+    - exact status now renders as `504`
+    - Bunny supplies the hostname/title/description on the branded page
+  - operational note:
+    - `php artisan bunny:sync-edge-error-pages` refreshes the shared middleware script
+    - existing Bunny pull zones still require an explicit native `ErrorPageCustomCode` push when the built-in 502/504 HTML changes

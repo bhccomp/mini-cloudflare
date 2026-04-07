@@ -349,6 +349,8 @@ class BunnyCdnProvider implements EdgeProviderInterface
             'UseStaleWhileOffline' => (bool) Arr::get($zone, 'UseStaleWhileOffline', true),
             'DisableCookies' => (bool) Arr::get($zone, 'DisableCookies', false),
             'EnableCookieVary' => (bool) Arr::get($zone, 'EnableCookieVary', false),
+            'ErrorPageEnableCustomCode' => (bool) Arr::get($zone, 'ErrorPageEnableCustomCode', false),
+            'ErrorPageCustomCodeConfigured' => filled((string) Arr::get($zone, 'ErrorPageCustomCode', '')),
         ];
         $meta['cache_exclusion_rules'] = [
             'count' => count($controls['cache_exclusions']),
@@ -564,6 +566,8 @@ class BunnyCdnProvider implements EdgeProviderInterface
             'EnableAutoSSL' => true,
             'DisableCookies' => false,
             'EnableCookieVary' => true,
+            'ErrorPageEnableCustomCode' => true,
+            'ErrorPageCustomCode' => $this->edgeErrorPages()->buildNativeUnavailableHtml(),
             'Type' => 0,
         ] + $this->loggingSettingsPayload() + $overrides;
     }

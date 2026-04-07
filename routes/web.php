@@ -8,6 +8,7 @@ use App\Http\Controllers\Auth\ResendEmailVerificationController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\App\AcceptOrganizationInvitationController;
 use App\Http\Controllers\App\AcceptOrganizationInvitationSetupController;
+use App\Http\Controllers\Admin\EdgeErrorPreviewRenderController;
 use App\Http\Controllers\App\SiteCheckoutController;
 use App\Http\Controllers\App\SiteCheckoutSuccessController;
 use App\Http\Controllers\Admin\AdminImpersonationController;
@@ -78,6 +79,8 @@ Route::middleware('auth')->group(function (): void {
         ->name('admin.impersonation.start');
     Route::post('/admin/impersonation/stop', [AdminImpersonationController::class, 'destroy'])
         ->name('admin.impersonation.stop');
+    Route::post('/admin/edge-error-preview/render', EdgeErrorPreviewRenderController::class)
+        ->name('admin.edge-error-preview.render');
 
     Route::middleware('verified')->group(function (): void {
         Route::get('/app/sites/{site}/checkout/{plan}', SiteCheckoutController::class)

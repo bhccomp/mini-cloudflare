@@ -1,8 +1,8 @@
 @include('edge-errors.layout', [
-    'title' => 'Temporarily unavailable',
+    'title' => $title ?? 'Temporarily unavailable',
     'eyebrow' => 'Temporary Disruption',
-    'headline' => 'The site is having trouble responding right now.',
-    'lede' => 'This usually means the origin is overloaded, restarting, timing out, or temporarily unavailable behind the edge network.',
+    'headline' => $headline ?? 'The site is having trouble responding right now.',
+    'lede' => $lede ?? 'This usually means the origin is overloaded, restarting, timing out, or temporarily unavailable behind the edge network.',
     'domainLabel' => $domainLabel,
     'statusCode' => $statusCode,
     'steps' => [
@@ -12,9 +12,9 @@
     ],
     'primaryActionLabel' => 'Try again',
     'secondaryActionLabel' => 'Contact support',
-    'footerNote' => 'The edge is still online and serving a branded fallback, but the origin behind this website needs attention before normal traffic can resume.',
-    'sideTitle' => 'Likely cause',
-    'sideBody' => 'This status usually points to upstream instability: origin overload, maintenance windows, application crashes, or dependency timeouts before the page could complete.',
-    'recoveryCopy' => 'For visitors, a short wait is often enough. For site owners, check application logs, server health, recent deploys, and third-party integrations tied to the affected route.',
-    'badges' => ['Status __FIREPHAGE_STATUS__', 'Edge online', 'Origin recovery needed'],
+    'footerNote' => $footerNote ?? 'The edge is still online and serving a branded fallback, but the origin behind this website needs attention before normal traffic can resume.',
+    'sideTitle' => $sideTitle ?? 'Likely cause',
+    'sideBody' => $sideBody ?? 'This status usually points to upstream instability: origin overload, maintenance windows, application crashes, or dependency timeouts before the page could complete.',
+    'recoveryCopy' => $recoveryCopy ?? 'For visitors, a short wait is often enough. For site owners, check application logs, server health, recent deploys, and third-party integrations tied to the affected route.',
+    'badges' => ["Status {$statusCode}", 'Edge online', 'Origin recovery needed'],
 ])
