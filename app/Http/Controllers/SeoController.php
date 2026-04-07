@@ -2,12 +2,19 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\BlogPost;
+use App\Services\Seo\LlmsTxtService;
 use App\Support\MarketingSeo;
 use Illuminate\Http\Response;
 
 class SeoController extends Controller
 {
+    public function llms(): Response
+    {
+        $content = app(LlmsTxtService::class)->render();
+
+        return response($content, 200, ['Content-Type' => 'text/plain; charset=UTF-8']);
+    }
+
     public function robots(): Response
     {
         $content = implode("\n", [

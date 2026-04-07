@@ -1,5 +1,48 @@
 # MEMORY
 
+## Dynamic llms.txt + Footer Trust Line (Latest)
+- `llms.txt` is no longer a static file in `public/`.
+- Current behavior:
+  - public URL:
+    - `/llms.txt`
+  - route:
+    - `routes/web.php`
+  - controller:
+    - `app/Http/Controllers/SeoController.php`
+  - content now comes from:
+    - `app/Services/Seo/LlmsTxtService.php`
+- `llms.txt` now has two layers:
+  - static editable template
+  - dynamic published blog list
+- Current admin editing flow:
+  - admin page:
+    - `app/Filament/Admin/Pages/LlmsTxtPage.php`
+  - view:
+    - `resources/views/filament/admin/pages/llms-txt.blade.php`
+  - admin navigation location:
+    - `Marketing > llms.txt`
+  - stored in:
+    - `system_settings`
+    - key:
+      - `llms`
+- Important template behavior:
+  - the editable template should keep:
+    - `{{blog_posts}}`
+  - that placeholder is replaced automatically with all currently published blog posts ordered by latest publish date
+  - if the placeholder is removed, FirePhage appends a `## Blog` section automatically at the end instead
+- Important publishing behavior:
+  - newly published blog posts now appear in `llms.txt` automatically
+  - scheduled/future posts do not appear until they match the normal published scope
+- Footer/legal trust presentation was also updated on the marketing site:
+  - both footer variants now show exactly:
+    - `© 2026 FirePhage. Operated by Dialbotics LLC.`
+  - no public address or location details were added
+  - footer legal/support/navigation links were kept
+  - spacing was improved by rendering footer links as pill-style items for clearer separation on desktop and mobile
+  - files:
+    - `resources/views/components/marketing/footer.blade.php`
+    - `resources/views/components/marketing/footer-variant-1.blade.php`
+
 ## Marketing Performance + Routing Drift Alerts (Latest)
 - FirePhage marketing pages now ship on a dedicated lightweight frontend bundle instead of the heavier app/admin bundle.
 - Current frontend split:

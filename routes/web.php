@@ -29,6 +29,7 @@ Route::domain(config('demo.host'))->group(function (): void {
 });
 
 Route::view('/', 'marketing.home-variant-1')->name('home');
+Route::get('/llms.txt', [SeoController::class, 'llms'])->name('seo.llms');
 Route::get('/robots.txt', [SeoController::class, 'robots'])->name('seo.robots');
 Route::get('/sitemap.xml', [SeoController::class, 'sitemap'])->name('seo.sitemap');
 Route::get('/early-access', [EarlyAccessController::class, 'create'])->name('early-access');
