@@ -22,6 +22,7 @@
             <x-marketing.services-dropdown />
             <a href="{{ route('home') }}#features" class="hover:text-white">Features</a>
             <a href="{{ route('home') }}#pricing" class="hover:text-white">Pricing</a>
+            <a href="{{ route('about') }}" class="hover:text-white">About</a>
             <a href="{{ route('blog.index') }}" class="hover:text-white">Blog</a>
             <a href="{{ route('contact') }}" class="hover:text-white">Contact</a>
             <x-marketing.auth-aware-session-link class="hover:text-white" />
@@ -33,6 +34,7 @@
         <x-marketing.services-mobile-links />
         <a href="{{ route('home') }}#features" class="block rounded-lg px-3 py-2 hover:bg-slate-800/80">Features</a>
         <a href="{{ route('home') }}#pricing" class="mt-1 block rounded-lg px-3 py-2 hover:bg-slate-800/80">Pricing</a>
+        <a href="{{ route('about') }}" class="mt-1 block rounded-lg px-3 py-2 hover:bg-slate-800/80">About</a>
         <a href="{{ route('blog.index') }}" class="mt-1 block rounded-lg px-3 py-2 hover:bg-slate-800/80">Blog</a>
         <a href="{{ route('contact') }}" class="mt-1 block rounded-lg px-3 py-2 hover:bg-slate-800/80">Contact</a>
         <x-marketing.auth-aware-session-link class="mt-1 block w-full rounded-lg px-3 py-2 text-left hover:bg-slate-800/80" />

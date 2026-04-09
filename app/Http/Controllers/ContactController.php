@@ -56,11 +56,19 @@ class ContactController extends Controller
             ->get();
 
         if ($adminRecipients->isNotEmpty()) {
-            Notification::send($adminRecipients, new ContactSubmissionAdminNotification($submission));
+            try {
+                Notification::send($adminRecipients, new ContactSubmissionAdminNotification($submission));
+            } catch (\Throwable $e) {
+                report($e);
+            }
         }
 
-        Notification::route('mail', $submission->email)
-            ->notify(new ContactSubmissionCustomerNotification($submission));
+        try {
+            Notification::route('mail', $submission->email)
+                ->notify(new ContactSubmissionCustomerNotification($submission));
+        } catch (\Throwable $e) {
+            report($e);
+        }
 
         return redirect()
             ->route('contact')

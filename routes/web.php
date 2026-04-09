@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\EarlyAccessController;
+use App\Http\Controllers\AboutController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\Auth\EmailVerificationPromptController;
@@ -19,7 +20,6 @@ use App\Http\Controllers\ServicePageController;
 use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\Webhooks\BabyLoveGrowthBlogWebhookController;
 use App\Http\Controllers\WordPress\VerifyFreeTokenController;
-use App\Http\Middleware\RedirectPublicHomeToEarlyAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -29,11 +29,15 @@ Route::domain(config('demo.host'))->group(function (): void {
 });
 
 Route::view('/', 'marketing.home-variant-1')->name('home');
+Route::get('/about', [AboutController::class, 'show'])->name('about');
+Route::get('/about/founder-photo', [AboutController::class, 'founderPhoto'])->name('about.founder-photo');
 Route::get('/llms.txt', [SeoController::class, 'llms'])->name('seo.llms');
 Route::get('/robots.txt', [SeoController::class, 'robots'])->name('seo.robots');
 Route::get('/sitemap.xml', [SeoController::class, 'sitemap'])->name('seo.sitemap');
-Route::get('/early-access', [EarlyAccessController::class, 'create'])->name('early-access');
-Route::post('/early-access', [EarlyAccessController::class, 'store'])->name('early-access.store');
+Route::redirect('/early-access', '/', 301)->name('early-access');
+Route::post('/early-access', function () {
+    return redirect()->route('home');
+})->name('early-access.store');
 Route::view('/blue-alternative', 'marketing.home')->name('home.blue');
 Route::get('/services', [ServicePageController::class, 'index'])->name('services.index');
 Route::get('/services/{service}', [ServicePageController::class, 'show'])->name('services.show');

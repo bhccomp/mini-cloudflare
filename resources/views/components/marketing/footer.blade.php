@@ -4,6 +4,7 @@
             &copy; 2026 FirePhage. Operated by Dialbotics LLC.
         </p>
         <nav class="flex flex-wrap items-center gap-3 text-sm">
+            <a href="{{ route('about') }}" class="rounded-full border border-white/8 px-3 py-1.5 transition hover:border-white/15 hover:text-slate-200">About</a>
             <a href="{{ route('blog.index') }}" class="rounded-full border border-white/8 px-3 py-1.5 transition hover:border-white/15 hover:text-slate-200">Blog</a>
             <a href="{{ route('terms') }}" class="rounded-full border border-white/8 px-3 py-1.5 transition hover:border-white/15 hover:text-slate-200">Terms</a>
             <a href="{{ route('privacy') }}" class="rounded-full border border-white/8 px-3 py-1.5 transition hover:border-white/15 hover:text-slate-200">Privacy</a>

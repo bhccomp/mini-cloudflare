@@ -48,14 +48,14 @@ class LlmsTxtPage extends Page implements HasForms
         return $schema
             ->schema([
                 Section::make('Static llms.txt content')
-                    ->description('Edit the static content for /llms.txt. Keep {{blog_posts}} in place so published blog posts continue to appear automatically.')
+                    ->description('Edit the static content for /llms.txt. Keep {{blog_posts}} and {{pricing_plans}} in place so published blog posts and live pricing continue to appear automatically.')
                     ->schema([
                         Textarea::make('template')
                             ->label('Template')
                             ->rows(32)
                             ->autosize()
                             ->required()
-                            ->helperText('Use plain text / markdown style content. The {{blog_posts}} placeholder is replaced automatically with all currently published blog posts.'),
+                            ->helperText('Use plain text / markdown style content. The {{blog_posts}} placeholder is replaced automatically with all currently published blog posts, and {{pricing_plans}} is replaced automatically with the live marketing pricing block.'),
                     ]),
             ])
             ->statePath('data');

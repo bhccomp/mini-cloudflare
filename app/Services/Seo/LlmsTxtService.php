@@ -4,6 +4,8 @@ namespace App\Services\Seo;
 
 use App\Models\BlogPost;
 use App\Models\SystemSetting;
+use App\Models\Plan;
+use App\Services\Billing\PlanCatalogService;
 use App\Support\MarketingSeo;
 
 class LlmsTxtService
@@ -12,15 +14,22 @@ class LlmsTxtService
 
     public const BLOG_PLACEHOLDER = '{{blog_posts}}';
 
+    public const PRICING_PLACEHOLDER = '{{pricing_plans}}';
+
     public function render(): string
     {
-        $template = $this->template();
+        $template = $this->normalizeTemplate($this->template());
         $blogLines = implode("\n", $this->blogLines());
+        $pricingLines = implode("\n", $this->pricingLines());
 
         if (str_contains($template, self::BLOG_PLACEHOLDER)) {
             $content = str_replace(self::BLOG_PLACEHOLDER, $blogLines, $template);
         } else {
             $content = rtrim($template) . "\n\n## Blog\n" . $blogLines;
+        }
+
+        if (str_contains($content, self::PRICING_PLACEHOLDER)) {
+            $content = str_replace(self::PRICING_PLACEHOLDER, $pricingLines, $content);
         }
 
         return rtrim($content) . "\n";
@@ -64,10 +73,7 @@ FirePhage sits in front of WordPress via DNS onboarding, placing WAF rules, bot 
 FirePhage includes specific workflows for WooCommerce stores facing fake orders, login abuse, checkout friction, and product scraping. Store-specific presets (such as High Bot Pressure mode) allow operators to tighten protection quickly when store traffic turns hostile. Protected flows include checkout, cart, account login, and store APIs.
 
 ## Pricing
-- **Starter — $29/month** — 1 site, up to 10M requests/month. Includes WAF, DDoS, CDN, caching, bot protection, WordPress plugin, uptime monitoring, attack analytics, Slack and email alerts. 30-day free trial available.
-- **Growth — $79/month** — Up to 3 sites, up to 24M requests/month. Adds performance insights.
-- **Pro — $149/month** — Up to 7 sites, up to 56M requests/month. Adds priority support.
-- **Enterprise — Custom pricing** — Tailored for high-traffic sites and agencies with custom requirements.
+{{pricing_plans}}
 
 ## Key Metrics
 - 99.9% malicious traffic filtered before reaching origin
@@ -123,5 +129,87 @@ TXT;
             })
             ->values()
             ->all();
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function pricingLines(): array
+    {
+        return app(PlanCatalogService::class)
+            ->marketingPlans()
+            ->map(fn (Plan $plan): string => '- ' . $this->pricingLine($plan))
+            ->values()
+            ->all();
+    }
+
+    protected function pricingLine(Plan $plan): string
+    {
+        $headline = '**' . trim((string) $plan->name) . ' — ' . $this->planPriceLabel($plan) . '**';
+        $parts = [];
+
+        if (! $plan->is_contact_only) {
+            $siteLabel = $plan->includedWebsites() === 1 ? '1 site' : 'Up to ' . $plan->includedWebsites() . ' sites';
+            $parts[] = $siteLabel;
+        }
+
+        if ((int) $plan->included_requests_per_month > 0) {
+            $parts[] = 'up to ' . $this->compactRequests((int) $plan->included_requests_per_month) . ' requests/month';
+        }
+
+        if (filled($plan->description)) {
+            $parts[] = rtrim(trim((string) $plan->description), '.');
+        } elseif ($plan->is_contact_only) {
+            $parts[] = 'Tailored for high-traffic sites and agencies with custom requirements';
+        }
+
+        if ($plan->hasTrial()) {
+            $parts[] = $plan->trial_days . '-day free trial available';
+        }
+
+        return $headline . ' — ' . implode('. ', array_filter($parts)) . '.';
+    }
+
+    protected function planPriceLabel(Plan $plan): string
+    {
+        if ($plan->is_contact_only) {
+            return 'Custom pricing';
+        }
+
+        return $plan->displayPrice() . '/' . trim((string) ($plan->price_suffix ?: 'month'), ' /');
+    }
+
+    protected function compactRequests(int $count): string
+    {
+        if ($count >= 1_000_000) {
+            $value = $count / 1_000_000;
+            $formatted = fmod($value, 1.0) === 0.0 ? number_format($value, 0) : number_format($value, 1);
+
+            return (str_contains($formatted, '.') ? rtrim(rtrim($formatted, '0'), '.') : $formatted) . 'M';
+        }
+
+        if ($count >= 1_000) {
+            $value = $count / 1_000;
+            $formatted = fmod($value, 1.0) === 0.0 ? number_format($value, 0) : number_format($value, 1);
+
+            return (str_contains($formatted, '.') ? rtrim(rtrim($formatted, '0'), '.') : $formatted) . 'k';
+        }
+
+        return (string) $count;
+    }
+
+    protected function normalizeTemplate(string $template): string
+    {
+        return str_replace($this->legacyPricingBlock(), self::PRICING_PLACEHOLDER, $template);
+    }
+
+    protected function legacyPricingBlock(): string
+    {
+        return <<<'TXT'
+- **Starter — $29/month** — 1 site, up to 10M requests/month. Includes WAF, DDoS, CDN, caching, bot protection, WordPress plugin, uptime monitoring, attack analytics, Slack and email alerts. 30-day free trial available.
+- **Growth — $79/month** — Up to 3 sites, up to 24M requests/month. Adds performance insights.
+- **Pro — $149/month** — Up to 7 sites, up to 56M requests/month. Adds priority support.
+- **Enterprise — Custom pricing** — Tailored for high-traffic sites and agencies with custom requirements.
+TXT;
     }
 }

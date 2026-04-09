@@ -54,7 +54,7 @@
                                 <article class="rounded-3xl border border-white/10 bg-slate-900/75 p-6">
                                     <p class="text-xs font-semibold uppercase tracking-[0.14em] text-cyan-300">Direct email</p>
                                     <p class="mt-4 text-xl font-semibold text-white">
-                                        <a href="mailto:contact@firephage.com" class="hover:text-cyan-200">contact@firephage.com</a>
+                                        <a href="mailto:nikola@firephage.com" class="hover:text-cyan-200">nikola@firephage.com</a>
                                     </p>
                                     <p class="mt-4 text-sm leading-7 text-slate-300">If you are already a customer, signing in and using the support area is usually the fastest path.</p>
                                     @auth

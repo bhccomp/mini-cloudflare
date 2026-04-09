@@ -1,5 +1,91 @@
 # MEMORY
 
+## About Page + Sitemap Controls + Contact Mail Fixes (Latest)
+- FirePhage now has a public About page at:
+  - `/about`
+- Current implementation:
+  - controller:
+    - `app/Http/Controllers/AboutController.php`
+  - view:
+    - `resources/views/marketing/about.blade.php`
+  - routes:
+    - `about`
+    - `about.founder-photo`
+- Founder photo behavior:
+  - the page serves the founder image from:
+    - `/tmp/IMG_20260408_120639.jpg`
+  - the public image URL is:
+    - `/about/founder-photo`
+  - practical note:
+    - replacing that file in `/tmp` updates the public founder image without code changes
+- Current About page UX details:
+  - hero intro explains why FirePhage exists
+  - founder section uses a circular avatar-style photo with:
+    - smaller mobile size
+    - inline desktop layout
+    - caption:
+      - `Nikola Jocic`
+      - `Founder, FirePhage`
+  - CTA buttons currently go to:
+    - `/register`
+    - `/services`
+- Public navigation/footer follow-up:
+  - `About` was added to the shared marketing header/footer navigation
+  - footer trust line remains:
+    - `© 2026 FirePhage. Operated by Dialbotics LLC.`
+- Dynamic sitemap follow-up:
+  - `/sitemap.xml` is generated through:
+    - `app/Http/Controllers/SeoController.php`
+    - `app/Services/Seo/SitemapService.php`
+  - About page is now included automatically
+  - a backend control page now exists at:
+    - `Marketing > Sitemap`
+  - admin page files:
+    - `app/Filament/Admin/Pages/SitemapPage.php`
+    - `resources/views/filament/admin/pages/sitemap.blade.php`
+  - current behavior:
+    - public static pages, service pages, and published blog posts are auto-detected
+    - all detected URLs are included by default
+    - admin can uncheck URLs to exclude them from `/sitemap.xml`
+  - exclusions are stored in:
+    - `system_settings`
+    - key:
+      - `sitemap`
+- Dynamic `llms.txt` follow-up:
+  - backend page copy now explicitly documents both automatic placeholders:
+    - `{{blog_posts}}`
+    - `{{pricing_plans}}`
+  - pricing block is now generated dynamically through:
+    - `app/Services/Seo/LlmsTxtService.php`
+  - current behavior:
+    - if the old hardcoded pricing block still exists in saved template content, FirePhage normalizes it to `{{pricing_plans}}`
+    - published blog posts and live pricing are injected automatically into the final `/llms.txt`
+- Contact page follow-up:
+  - direct contact address shown on `/contact` is now:
+    - `nikola@firephage.com`
+  - contact form submissions continue to save locally through:
+    - `app/Http/Controllers/ContactController.php`
+  - admin/customer notifications are now wrapped in `try/catch` so mail failures no longer cause a public 500
+  - confirmation email to the submitter now uses the shared transactional FirePhage email shell instead of broken Markdown mail components
+  - updated email views:
+    - `resources/views/emails/contact-submission-admin.blade.php`
+    - `resources/views/emails/contact-submission-customer.blade.php`
+  - practical effect:
+    - submitter confirmation email should send
+    - admin notification should send
+    - even if mail rendering fails later, the submission should still be stored and the user-facing form should not crash
+- Cross-project note:
+  - the separate public WordPress plugin repo:
+    - `https://github.com/bhccomp/firephage-security`
+    was cleaned up and reopened publicly
+  - current public-safe state:
+    - `MEMORY.md` and `SCANNER-UPDATE-REPORT.txt` were removed from tree and history
+    - history was rewritten to a single clean commit:
+      - `Initial public release`
+    - `LICENSE` and `THIRD-PARTY-LICENSES.md` were added
+  - important operational rule:
+    - do not reintroduce internal memory or scanner report files into the public plugin repo
+
 ## Dynamic llms.txt + Footer Trust Line (Latest)
 - `llms.txt` is no longer a static file in `public/`.
 - Current behavior:
