@@ -21,10 +21,17 @@
                     'dateModified' => optional($post->updated_at ?? $post->published_at ?? $post->created_at)->toAtomString(),
                     'mainEntityOfPage' => $post->canonical_url ?: route('blog.show', $post),
                     'url' => $post->canonical_url ?: route('blog.show', $post),
-                    'author' => [
-                        '@type' => 'Organization',
-                        'name' => 'FirePhage',
-                    ],
+                    'author' => $post->author
+                        ? array_filter([
+                            '@type' => 'Person',
+                            'name' => $post->author->name,
+                            'url' => $post->author->publicAuthorProfileUrl(),
+                            'sameAs' => $post->author->publicSocialProfileUrls() !== [] ? $post->author->publicSocialProfileUrls() : null,
+                        ])
+                        : [
+                            '@type' => 'Organization',
+                            'name' => 'FirePhage',
+                        ],
                     'publisher' => [
                         '@type' => 'Organization',
                         'name' => 'FirePhage',
@@ -110,7 +117,37 @@
                                 <div class="mt-4 space-y-3 text-sm leading-7 text-slate-300">
                                     <p><strong>Published:</strong> {{ $post->publishedLabel() }}</p>
                                     @if ($post->author)
-                                        <p><strong>Author:</strong> {{ $post->author->name }}</p>
+                                        <div>
+                                            <p><strong>Author:</strong> {{ $post->author->name }}</p>
+                                            @if ($post->author->publicSocialProfiles() !== [])
+                                                <div class="mt-3 flex flex-wrap gap-2.5">
+                                                    @foreach ($post->author->publicSocialProfiles() as $profile)
+                                                        <a
+                                                            href="{{ $profile['url'] }}"
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            title="{{ $profile['label'] }}"
+                                                            aria-label="{{ $profile['label'] }}"
+                                                            class="@class([
+                                                                'inline-flex items-center gap-2 rounded-full px-3 py-2 text-[11px] font-semibold tracking-[0.12em] uppercase text-white shadow-[0_10px_30px_rgba(8,15,30,0.24)] transition hover:-translate-y-0.5',
+                                                                'bg-[#0A66C2] hover:bg-[#0c72d6]' => $profile['label'] === 'LinkedIn',
+                                                                'border border-white/15 bg-black hover:border-white/30 hover:bg-slate-950' => $profile['label'] === 'X',
+                                                                'bg-[#14A800] hover:bg-[#18bc00]' => $profile['label'] === 'Upwork',
+                                                            ])"
+                                                        >
+                                                            @if ($profile['label'] === 'LinkedIn')
+                                                                <span class="text-sm font-bold leading-none text-white">in</span>
+                                                            @elseif ($profile['label'] === 'X')
+                                                                <span class="text-sm font-bold leading-none text-white">X</span>
+                                                            @elseif ($profile['label'] === 'Upwork')
+                                                                <span class="text-[10px] font-bold leading-none text-white">Up</span>
+                                                            @endif
+                                                            <span class="text-[10px] leading-none text-white">{{ $profile['label'] }}</span>
+                                                        </a>
+                                                    @endforeach
+                                                </div>
+                                            @endif
+                                        </div>
                                     @endif
                                     @if ($post->category)
                                         <p><strong>Category:</strong> {{ $post->category->name }}</p>

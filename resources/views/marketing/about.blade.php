@@ -66,6 +66,36 @@
                                 <div class="mt-4 text-center lg:text-left">
                                     <p class="text-sm font-semibold text-white">Nikola Jocic</p>
                                     <p class="mt-1 text-xs uppercase tracking-[0.16em] text-slate-400">Founder, FirePhage</p>
+                                    <div class="mt-4 flex flex-wrap items-center justify-center gap-2.5 lg:justify-start">
+                                        @foreach ([
+                                            ['label' => 'LinkedIn', 'url' => 'https://www.linkedin.com/in/nikola-jocic/'],
+                                            ['label' => 'X', 'url' => 'https://x.com/nikolajocicdev'],
+                                            ['label' => 'Upwork', 'url' => 'https://www.upwork.com/freelancers/nikolajocic'],
+                                        ] as $profile)
+                                            <a
+                                                href="{{ $profile['url'] }}"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                title="{{ $profile['label'] }}"
+                                                aria-label="{{ $profile['label'] }}"
+                                                class="@class([
+                                                    'inline-flex items-center gap-2 rounded-full px-3 py-2 text-[11px] font-semibold tracking-[0.14em] uppercase text-white shadow-[0_10px_30px_rgba(8,15,30,0.24)] transition hover:-translate-y-0.5',
+                                                    'bg-[#0A66C2] hover:bg-[#0c72d6]' => $profile['label'] === 'LinkedIn',
+                                                    'border border-white/15 bg-black hover:border-white/30 hover:bg-slate-950' => $profile['label'] === 'X',
+                                                    'bg-[#14A800] hover:bg-[#18bc00]' => $profile['label'] === 'Upwork',
+                                                ])"
+                                            >
+                                                @if ($profile['label'] === 'LinkedIn')
+                                                    <span class="text-sm font-bold leading-none text-white">in</span>
+                                                @elseif ($profile['label'] === 'X')
+                                                    <span class="text-sm font-bold leading-none text-white">X</span>
+                                                @elseif ($profile['label'] === 'Upwork')
+                                                    <span class="text-[10px] font-bold leading-none text-white">Up</span>
+                                                @endif
+                                                <span class="text-[10px] leading-none text-white">{{ $profile['label'] }}</span>
+                                            </a>
+                                        @endforeach
+                                    </div>
                                 </div>
                             </div>
 
