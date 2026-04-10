@@ -12,6 +12,7 @@ return [
     'openai' => [
         'api_key' => env('OPENAI_API_KEY'),
         'signature_model' => env('OPENAI_SIGNATURE_MODEL', 'gpt-4o-mini'),
+        'image_model' => env('OPENAI_IMAGE_MODEL', 'gpt-image-1'),
     ],
 
     'ses' => [
@@ -62,5 +63,9 @@ return [
 
     'babylovegrowth' => [
         'blog_webhook_token' => env('BABYLOVEGROWTH_BLOG_WEBHOOK_TOKEN'),
+    ],
+
+    'outrank' => [
+        'blog_webhook_token' => env('OUTRANK_BLOG_WEBHOOK_TOKEN'),
     ],
 ];

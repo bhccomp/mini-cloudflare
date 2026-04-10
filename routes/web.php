@@ -19,6 +19,7 @@ use App\Http\Controllers\SeoController;
 use App\Http\Controllers\ServicePageController;
 use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\Webhooks\BabyLoveGrowthBlogWebhookController;
+use App\Http\Controllers\Webhooks\OutrankBlogWebhookController;
 use App\Http\Controllers\WordPress\VerifyFreeTokenController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -57,6 +58,9 @@ Route::post('/stripe/webhook', StripeWebhookController::class)->name('stripe.web
 Route::post('/webhooks/babylovegrowth/blog-post', BabyLoveGrowthBlogWebhookController::class)
     ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class])
     ->name('webhooks.babylovegrowth.blog-post');
+Route::post('/webhooks/outrank/blog-post', OutrankBlogWebhookController::class)
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class])
+    ->name('webhooks.outrank.blog-post');
 Route::middleware('guest')->group(function (): void {
     Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
     Route::post('/register', [RegisteredUserController::class, 'store'])->name('register.store');
