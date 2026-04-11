@@ -3507,3 +3507,7 @@
   - added public static file:
     - `/public/llms.txt`
   - intended to help AI systems and search-oriented agents understand FirePhage services, plans, and resources from a single crawlable text file
+- Marketing trust/footer follow-up:
+  - FirePhage footer trust line now links `Dialbotics LLC` to:
+    - `https://dialbotics.com`
+  - applied to both shared footer variants so the operator/LLC reference is clickable across the public marketing site
