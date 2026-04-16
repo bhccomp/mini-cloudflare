@@ -36,6 +36,7 @@ Route::get('/llms.txt', [SeoController::class, 'llms'])->name('seo.llms');
 Route::get('/robots.txt', [SeoController::class, 'robots'])->name('seo.robots');
 Route::get('/sitemap.xml', [SeoController::class, 'sitemap'])->name('seo.sitemap');
 Route::redirect('/early-access', '/', 301)->name('early-access');
+Route::redirect('/wordpress-security-plugin', '/services/wordpress-plugin', 301)->name('wordpress-security-plugin');
 Route::post('/early-access', function () {
     return redirect()->route('home');
 })->name('early-access.store');
