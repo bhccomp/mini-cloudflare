@@ -3511,3 +3511,32 @@
   - FirePhage footer trust line now links `Dialbotics LLC` to:
     - `https://dialbotics.com`
   - applied to both shared footer variants so the operator/LLC reference is clickable across the public marketing site
+- WordPress.org plugin review follow-up:
+  - plugin repository path:
+    - `/var/www/firephage-security`
+  - remote live test plugin path:
+    - `/var/www/nodesfoundry.com/wp-content/plugins/firephage-security`
+  - WP-CLI is installed system-wide on the remote nodesfoundry server:
+    - `/usr/local/bin/wp`
+    - version checked as `2.12.0`
+  - Plugin Check is installed and active on the nodesfoundry WordPress site
+  - WordPress.org review ZIP workflow:
+    - build from `/var/www/firephage-security`
+    - exclude `.git`, `.gitignore`, `README.md`, `THIRD-PARTY-LICENSES.md`, `MEMORY.md`, and `SCANNER-UPDATE-REPORT.txt`
+    - replace `includes/Scanner/class-firephage-signature-bundle.php` with a demo-only safe stub before upload
+  - Plugin Check 1.9.0 does not accept an arbitrary ZIP path directly; use a temporary inactive plugin directory instead:
+    - unzip review ZIP into `/var/www/nodesfoundry.com/wp-content/plugins/firephage-security-review-check`
+    - run `wp plugin check firephage-security-review-check/firephage-security.php --slug=firephage-security --format=table`
+    - remove the temporary plugin directory afterward
+  - latest cleanup commit:
+    - `b2d9b1d` in `bhccomp/firephage-security`
+  - changes in that cleanup:
+    - added translator comments for dynamic i18n strings flagged by Plugin Check
+    - added narrow nonce-ignore comments for sanitized read-only query parameters
+    - documented intentional scanner direct filesystem operations where streaming is required for large malware scans
+    - documented WordPress core filter usage for `xmlrpc_enabled` and `https_local_ssl_verify`
+    - removed the explicit `load_plugin_textdomain()` call body because WordPress.org handles hosted plugin translations automatically
+  - verification:
+    - all plugin PHP files pass `php -l`
+    - review ZIP passes remote Plugin Check with `Success: Checks complete. No errors found.`
+    - nodesfoundry live plugin checkout was fast-forwarded to `b2d9b1d`
