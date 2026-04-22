@@ -3540,3 +3540,49 @@
     - all plugin PHP files pass `php -l`
     - review ZIP passes remote Plugin Check with `Success: Checks complete. No errors found.`
     - nodesfoundry live plugin checkout was fast-forwarded to `b2d9b1d`
+- WordPress.org plugin launch follow-up (2026-04-23):
+  - FirePhage Security was approved by the WordPress.org Plugins Team
+  - public plugin URL:
+    - `https://wordpress.org/plugins/firephage-security/`
+  - WordPress.org SVN URL:
+    - `https://plugins.svn.wordpress.org/firephage-security`
+  - SVN working copy used on the FirePhage app server:
+    - `/tmp/firephage-security-svn`
+  - initial released version:
+    - `0.1.0`
+  - WordPress.org SVN release layout:
+    - production plugin files live in `trunk/`
+    - release tag lives in `tags/0.1.0/`
+    - WordPress.org visual assets live in top-level `assets/`, not plugin `trunk/assets`
+  - production SVN release includes the original/full signature bundle:
+    - `includes/Scanner/class-firephage-signature-bundle.php`
+  - public SVN/plugin package intentionally excludes internal repo/support files:
+    - `.git`
+    - `.gitignore`
+    - `README.md`
+    - `THIRD-PARTY-LICENSES.md`
+    - `MEMORY.md`
+    - `SCANNER-UPDATE-REPORT.txt`
+  - WordPress.org assets generated/added:
+    - `assets/icon-128x128.png`
+    - `assets/icon-256x256.png`
+    - `assets/banner-772x250.png`
+    - `assets/banner-1544x500.png`
+  - banner copy was adjusted to describe the WordPress plugin accurately, not the full FirePhage edge service:
+    - `FirePhage Security`
+    - `Malware scanning, brute-force protection,`
+    - `and site health monitoring for WordPress.`
+    - `FirePhage connector plugin`
+  - asset cache note:
+    - WordPress.org serves plugin assets via `https://ps.w.org/firephage-security/assets/...`
+    - icon/banner/search thumbnails can take minutes to hours to purge after SVN commits
+  - update/release process note:
+    - normal bugfixes after approval do not require the full initial review queue
+    - bump `Version:` in `firephage-security.php`
+    - bump `Stable tag:` in `readme.txt`
+    - copy fixed files to SVN `trunk/`
+    - create a new tag such as `tags/0.1.1/`
+    - commit to SVN with WordPress.org username `bhccomp`
+  - testing recommendation:
+    - keep `nodesfoundry.com` on the official WordPress.org plugin package for real-customer behavior
+    - use a separate test site such as `test.nodesfoundry.com` for Git/dev plugin builds and scanner QA
